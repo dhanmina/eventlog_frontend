@@ -16,40 +16,34 @@ import {
 } from "../../../../database/queries";
 import { syncAttendance } from "../../../../services/api";
 
+
 const Scan = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [confirmationModalVisible, setConfirmationModalVisible] =
-    useState(false);
+  const [confirmationModalVisible, setConfirmationModalVisible] = useState(false);
   const [pendingAttendanceData, setPendingAttendanceData] = useState(null);
   const [cameraKey, setCameraKey] = useState(0);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isScanning, setIsScanning] = useState(true);
 
   const handleCameraPermission = async () => {
+    console.log("[Permission] Checking camera permissions");
     if (!permission) return;
     if (permission.status === "undetermined") {
       const response = await requestPermission();
       if (!response.granted) {
-        Alert.alert(
-          "Camera Permission Required",
-          "Please enable camera access in your device settings to scan QR codes.",
-          [{ text: "OK" }]
-        );
+        Alert.alert("Camera Permission Required", "Enable camera in settings.", [{ text: "OK" }]);
       }
     } else if (permission.status === "denied") {
-      Alert.alert(
-        "Camera Access Denied",
-        "Camera permission is required to scan QR codes. Please go to Settings > Privacy & Security > Camera and enable access for this app.",
-        [{ text: "OK" }]
-      );
+      Alert.alert("Camera Access Denied", "Go to Settings and enable camera.", [{ text: "OK" }]);
     }
   };
 
   useFocusEffect(
     React.useCallback(() => {
+      console.log("[Focus] Screen focused, resetting camera");
       setCameraKey((prev) => prev + 1);
       setIsCameraReady(false);
       setIsScanning(true);
@@ -58,138 +52,86 @@ const Scan = () => {
   );
 
   useEffect(() => {
-    if (permission) {
-      handleCameraPermission();
-    }
+    if (permission) handleCameraPermission();
   }, [permission]);
 
   useEffect(() => {
     const performAutoSync = async () => {
       try {
-        const result = await syncAttendance();
-      } catch (error) {}
+        console.log("[Sync] Performing auto sync");
+        await syncAttendance();
+      } catch {}
     };
     performAutoSync();
   }, []);
 
-  if (!permission) {
-    return (
-      <View style={[globalStyles.secondaryContainer, styles.messageContainer]}>
-        <Text style={styles.message}>Initializing camera...</Text>
-        <StatusBar style="light" />
-      </View>
-    );
-  }
-
-  if (permission.status !== "granted") {
-    return (
-      <View style={[globalStyles.secondaryContainer, styles.messageContainer]}>
-        <Text style={styles.message}>
-          Camera access is required to scan QR codes
-        </Text>
-        <Text style={styles.subNote}>
-          {Platform.OS === "ios"
-            ? "Go to Settings → Privacy & Security → Camera → Your App and enable access"
-            : "Go to Settings → Apps → Your App → Permissions → Camera and allow access"}
-        </Text>
-        <StatusBar style="light" />
-      </View>
-    );
-  }
-
   const handleBarcodeScanned = async ({ data }) => {
     if (!isScanning) return;
     setIsScanning(false);
+    console.log("[Scan] Barcode scanned with data:", data);
     try {
-      if (!isBase64(data)) {
-        throw new Error("Invalid QR Code format - not base64");
-      }
+      if (!isBase64(data)) throw new Error("Invalid QR Code format");
 
       let decryptedText;
       try {
         const bytes = CryptoJS.AES.decrypt(data, QR_SECRET_KEY);
         decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-      } catch (decryptError) {
+        console.log("[Decrypt] Decrypted QR content:", decryptedText);
+      } catch {
         throw new Error("Failed to decrypt QR code");
       }
 
-      if (!decryptedText.startsWith("eventlog")) {
-        throw new Error(
-          "Invalid QR code format. Please scan an EventLog QR code."
-        );
-      }
-
-      const [prefix, eventDateIdStr, studentIdStr] = decryptedText.split("-");
-      if (prefix !== "eventlog") {
-        throw new Error("Invalid QR code format.");
-      }
-
+      if (!decryptedText.startsWith("eventlog")) throw new Error("Invalid QR format");
+      const [_, eventDateIdStr, studentIdStr] = decryptedText.split("-");
       const eventDateId = parseInt(eventDateIdStr, 10);
       const studentId = studentIdStr;
-
-      if (isNaN(eventDateId) || !studentId) {
-        throw new Error("Invalid QR code data.");
-      }
+      if (isNaN(eventDateId) || !studentId) throw new Error("Invalid QR code data.");
 
       let events;
       try {
         events = await getStoredEvents(eventDateId);
-      } catch (dbError) {
+        console.log("[DB] Retrieved events for date ID:", eventDateId, events);
+      } catch {
         throw new Error("Failed to retrieve event data");
       }
 
-      if (!Array.isArray(events) || events.length === 0) {
-        throw new Error("No events found for the given date.");
-      }
-
       const event = events.find((e) => {
-        const possibleDateIds =
-          e.event_date_ids || e.dateIds || e.date_ids || e.eventDateIds;
-        return possibleDateIds && possibleDateIds.includes(eventDateId);
+        const ids = e.event_date_ids || e.date_ids;
+        return ids?.includes(eventDateId);
       });
-
-      if (!event) {
-        throw new Error(
-          "QR code is not valid for current events. Please use a current QR code."
-        );
-      }
+      if (!event) throw new Error("QR not valid for current events.");
 
       const { am_in, am_out, pm_in, pm_out, duration, event_name } = event;
-
-      const calculateWindow = (time) => {
-        return time
-          ? moment(time, "HH:mm:ss").add(duration, "minutes").format("HH:mm:ss")
-          : null;
-      };
-
-      const amInWindowEnd = calculateWindow(am_in);
-      const amOutWindowEnd = calculateWindow(am_out);
-      const pmInWindowEnd = calculateWindow(pm_in);
-      const pmOutWindowEnd = calculateWindow(pm_out);
+      const calcWindow = (t) => t ? moment(t, "HH:mm:ss").add(duration, "minutes").format("HH:mm:ss") : null;
+      const amInEnd = calcWindow(am_in);
+      const amOutEnd = calcWindow(am_out);
+      const pmInEnd = calcWindow(pm_in);
+      const pmOutEnd = calcWindow(pm_out);
       const currentTime = moment().format("HH:mm:ss");
 
       let isValidTime = false;
       let attendanceType = null;
 
       const timeChecks = [
-        { type: "AM_IN", start: am_in, end: amInWindowEnd },
-        { type: "AM_OUT", start: am_out, end: amOutWindowEnd },
-        { type: "PM_IN", start: pm_in, end: pmInWindowEnd },
-        { type: "PM_OUT", start: pm_out, end: pmOutWindowEnd },
+        { type: "AM_IN", start: am_in, end: amInEnd },
+        { type: "AM_OUT", start: am_out, end: amOutEnd },
+        { type: "PM_IN", start: pm_in, end: pmInEnd },
+        { type: "PM_OUT", start: pm_out, end: pmOutEnd },
       ];
+
+      console.log("[TimeCheck] Current time:", currentTime);
+      console.log("[TimeCheck] Time windows:", timeChecks);
 
       for (const check of timeChecks) {
         if (check.start && check.end) {
-          const currentMoment = moment(currentTime, "HH:mm:ss");
-          const startMoment = moment(check.start, "HH:mm:ss");
-          const endMoment = moment(check.end, "HH:mm:ss");
-          const isInWindow = currentMoment.isBetween(
-            startMoment,
-            endMoment,
-            null,
-            "[]"
-          );
-          if (isInWindow) {
+          const now = moment(currentTime, "HH:mm:ss");
+          const start = moment(check.start, "HH:mm:ss");
+          const end = moment(check.end, "HH:mm:ss");
+          const match = now.isBetween(start, end, null, "[]");
+
+          console.log(`[TimeCheck] ${check.type} | Now: ${now.format("HH:mm:ss")} | Start: ${start.format("HH:mm:ss")} | End: ${end.format("HH:mm:ss")} | Match: ${match}`);
+
+          if (match) {
             isValidTime = true;
             attendanceType = check.type;
             break;
@@ -198,52 +140,48 @@ const Scan = () => {
       }
 
       if (isValidTime) {
-        const attendanceData = {
+        const data = {
           event_date_id: eventDateId,
           student_id_number: studentId,
           type: attendanceType,
-          event_name: event_name,
+          event_name,
         };
 
-        const typeDescriptions = {
+        const descriptions = {
           AM_IN: "Morning Time In",
           AM_OUT: "Morning Time Out",
           PM_IN: "Afternoon Time In",
           PM_OUT: "Afternoon Time Out",
         };
 
-        const friendlyTypeDescription = typeDescriptions[attendanceData.type];
-
-        let alreadyLogged;
+        let alreadyLogged = false;
         try {
           alreadyLogged = await isAlreadyLogged(
-            attendanceData.event_date_id,
-            attendanceData.student_id_number,
-            attendanceData.type
+            data.event_date_id,
+            data.student_id_number,
+            data.type
           );
-        } catch (checkError) {
-          throw new Error("Failed to verify attendance status");
+        } catch {
+          throw new Error("Failed to verify attendance");
         }
 
         if (alreadyLogged) {
-          const errorMsg = `${friendlyTypeDescription} attendance already logged for this student.`;
-          setErrorMessage(errorMsg);
+          const msg = `${descriptions[data.type]} already logged.`;
+          setErrorMessage(msg);
           setErrorModalVisible(true);
           return;
         }
 
-        setPendingAttendanceData(attendanceData);
+        setPendingAttendanceData(data);
         setConfirmationModalVisible(true);
       } else {
-        const currentTimeFormatted = moment(currentTime, "HH:mm:ss").format(
-          "h:mm A"
-        );
-        const errorMsg = `Current time (${currentTimeFormatted}) is outside valid attendance hours.`;
-        setErrorMessage(errorMsg);
+        const formatted = moment(currentTime, "HH:mm:ss").format("h:mm A");
+        const msg = `Current time (${formatted}) is outside valid hours.`;
+        setErrorMessage(msg);
         setErrorModalVisible(true);
       }
-    } catch (error) {
-      setErrorMessage(error.message || "Please scan a valid EventLog QR Code.");
+    } catch (err) {
+      setErrorMessage(err.message || "Invalid QR");
       setErrorModalVisible(true);
     }
   };
@@ -252,17 +190,13 @@ const Scan = () => {
     try {
       await logAttendance(pendingAttendanceData);
       setSuccessModalVisible(true);
-      try {
-        await syncAttendance();
-      } catch (syncError) {}
+      await syncAttendance();
     } catch (error) {
-      if (error.message.includes("has already been logged")) {
-        setErrorMessage(error.message);
-        setErrorModalVisible(true);
-      } else {
-        setErrorMessage("Failed to log attendance. Please try again.");
-        setErrorModalVisible(true);
-      }
+      const msg = error.message?.includes("already been logged")
+        ? error.message
+        : "Failed to log attendance.";
+      setErrorMessage(msg);
+      setErrorModalVisible(true);
     } finally {
       setConfirmationModalVisible(false);
       setPendingAttendanceData(null);
@@ -272,9 +206,7 @@ const Scan = () => {
   const cancelAttendance = () => {
     setConfirmationModalVisible(false);
     setPendingAttendanceData(null);
-    setTimeout(() => {
-      setIsScanning(true);
-    }, 1000);
+    setTimeout(() => setIsScanning(true), 1000);
   };
 
   const isBase64 = (str) => {
@@ -287,19 +219,8 @@ const Scan = () => {
 
   const handleModalClose = (setter) => {
     setter(false);
-    setTimeout(() => {
-      setIsScanning(true);
-    }, 1000);
+    setTimeout(() => setIsScanning(true), 1000);
   };
-
-  const isModalVisible =
-    successModalVisible || errorModalVisible || confirmationModalVisible;
-
-  const handleCameraReady = () => {
-    setIsCameraReady(true);
-  };
-
-  const handleCameraError = (error) => {};
 
   const reloadCamera = () => {
     setCameraKey((prev) => prev + 1);
@@ -324,14 +245,13 @@ const Scan = () => {
           key={cameraKey}
           style={styles.camera}
           facing="back"
-          barcodeScannerSettings={{
-            barcodeTypes: ["qr"],
+          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+          onBarcodeScanned={!isScanning ? undefined : handleBarcodeScanned}
+          onCameraReady={() => {
+            console.log("[Camera] Ready");
+            setIsCameraReady(true);
           }}
-          onBarcodeScanned={
-            isModalVisible || !isScanning ? undefined : handleBarcodeScanned
-          }
-          onCameraReady={handleCameraReady}
-          onMountError={handleCameraError}
+          onMountError={() => {}}
           animateShutter={false}
           enableTorch={false}
         />
@@ -365,14 +285,12 @@ const Scan = () => {
       <CustomModal
         visible={confirmationModalVisible}
         title="Confirm Attendance"
-        message={`Are you sure you want to log attendance for:
-Student ID: ${pendingAttendanceData?.student_id_number}
-Event Name: ${pendingAttendanceData?.event_name}`}
+        message={`Are you sure you want to log attendance for:\nStudent ID: ${pendingAttendanceData?.student_id_number}\nEvent Name: ${pendingAttendanceData?.event_name}`}
         type="warning"
-        onClose={() => cancelAttendance()}
-        onCancel={() => cancelAttendance()}
+        onClose={cancelAttendance}
+        onCancel={cancelAttendance}
         confirmTitle="Yes"
-        onConfirm={() => confirmAttendance()}
+        onConfirm={confirmAttendance}
         cancelTitle="No"
       />
 
@@ -382,6 +300,7 @@ Event Name: ${pendingAttendanceData?.event_name}`}
 };
 
 export default Scan;
+
 
 const styles = StyleSheet.create({
   messageContainer: {
