@@ -15,22 +15,15 @@ import images from "../../../../constants/images";
 
 const Generate = () => {
   const { user: authUser } = useAuth();
-  const {
-    events,
-    refreshEventsFromDatabase,
-    fetchAndStoreEvents,
-    lastEventUpdate,
-  } = useEvents();
+  const { events, fetchAndStoreEvents, lastEventUpdate } = useEvents();
   const [user, setUser] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const prevEventsLength = useRef(events.length);
   const lastFetchRef = useRef(0);
 
   const fetchUserData = async () => {
-    try {
-      const userData = await getStoredUser();
-      setUser(userData);
-    } catch (error) {}
+    const userData = await getStoredUser();
+    setUser(userData);
   };
 
   useEffect(() => {
@@ -43,9 +36,7 @@ const Generate = () => {
       const isSelectedEventStillValid = events.some(
         (event) => event.event_id === selectedEvent.event_id
       );
-      if (!isSelectedEventStillValid) {
-        setSelectedEvent(null);
-      }
+      if (!isSelectedEventStillValid) setSelectedEvent(null);
     }
     prevEventsLength.current = currentLength;
   }, [events, selectedEvent]);
@@ -53,9 +44,7 @@ const Generate = () => {
   const smartFetch = useCallback(
     (reason) => {
       const now = Date.now();
-      if (now - lastFetchRef.current < 3000) {
-        return;
-      }
+      if (now - lastFetchRef.current < 3000) return;
       lastFetchRef.current = now;
       fetchAndStoreEvents();
     },
@@ -66,21 +55,13 @@ const Generate = () => {
     smartFetch("Mount");
   }, [smartFetch]);
 
-  useFocusEffect(
-    useCallback(() => {
-      smartFetch("Focus");
-    }, [smartFetch])
-  );
+  useFocusEffect(useCallback(() => smartFetch("Focus"), [smartFetch]));
 
   useEffect(() => {
-    if (lastEventUpdate > 0) {
-      smartFetch("EventsContext notification");
-    }
+    if (lastEventUpdate > 0) smartFetch("EventsContext notification");
   }, [lastEventUpdate, smartFetch]);
 
-  const handleEventSelect = (event) => {
-    setSelectedEvent(event);
-  };
+  const handleEventSelect = (event) => setSelectedEvent(event);
 
   const encryptQRValue = (value) => {
     if (!value) return null;
@@ -92,19 +73,27 @@ const Generate = () => {
       !event ||
       !Array.isArray(event.event_dates) ||
       !Array.isArray(event.event_date_ids)
-    ) {
+    )
       return null;
-    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     for (let i = 0; i < event.event_dates.length; i++) {
       const eventDate = new Date(event.event_dates[i]);
       eventDate.setHours(0, 0, 0, 0);
-      if (eventDate.getTime() === today.getTime()) {
+      if (eventDate.getTime() === today.getTime())
         return event.event_date_ids[i];
-      }
     }
+
     return event.event_date_ids[0];
+  };
+
+  const generateQRValue = () => {
+    if (!selectedEvent || !user) return "INVALID";
+    const eventDateId = getEventDateId(selectedEvent);
+    const rawValue = `eventlog-${eventDateId}-${user?.id_number}`;
+    return encryptQRValue(rawValue) || "INVALID";
   };
 
   return (
@@ -112,11 +101,7 @@ const Generate = () => {
       <View style={styles.qrCodeContainer}>
         {selectedEvent && user && (
           <QRCode
-            value={
-              encryptQRValue(
-                `eventlog-${getEventDateId(selectedEvent)}-${user?.id_number}`
-              ) || "INVALID"
-            }
+            value={generateQRValue()}
             backgroundColor={theme.colors.secondary}
             size={200}
           />
@@ -135,6 +120,7 @@ const Generate = () => {
           </View>
         </View>
       </View>
+
       <View style={styles.dropdownContainer}>
         <CustomDropdown
           key={`dropdown-${events.length}-${events
@@ -154,20 +140,16 @@ const Generate = () => {
           }))}
           value={selectedEvent?.event_id || null}
           onSelect={(selectedItem) => {
-            if (
-              !selectedItem ||
-              selectedItem.value === selectedEvent?.event_id
-            ) {
+            if (!selectedItem || selectedItem.value === selectedEvent?.event_id)
               handleEventSelect(null);
-            } else {
-              const selectedEventObject = events.find(
-                (event) => event.event_id === selectedItem.value
+            else
+              handleEventSelect(
+                events.find((event) => event.event_id === selectedItem.value)
               );
-              handleEventSelect(selectedEventObject);
-            }
           }}
         />
       </View>
+
       {user && (
         <View style={styles.userDetailsContainer}>
           <Text style={styles.userDetails}>
@@ -180,6 +162,7 @@ const Generate = () => {
           <Text style={styles.userDetails}>Block: {user.block_name}</Text>
         </View>
       )}
+
       <View style={styles.noteContainer}>
         <Text style={styles.note}>
           NOTE: The instructors or officers in-charged will scan your QR Code.
@@ -221,24 +204,10 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 6,
   },
-  logo: {
-    width: 50,
-    height: 50,
-    resizeMode: "contain",
-  },
-  logoBackgroundNoEvent: {
-    backgroundColor: theme.colors.primary,
-    padding: 4,
-  },
-  logoLarger: {
-    width: 90,
-    height: 90,
-    resizeMode: "contain",
-  },
-  dropdownContainer: {
-    width: "80%",
-    marginTop: theme.spacing.large,
-  },
+  logo: { width: 50, height: 50, resizeMode: "contain" },
+  logoBackgroundNoEvent: { backgroundColor: theme.colors.primary, padding: 4 },
+  logoLarger: { width: 90, height: 90, resizeMode: "contain" },
+  dropdownContainer: { width: "80%", marginTop: theme.spacing.large },
   userDetails: {
     fontFamily: theme.fontFamily.SquadaOne,
     color: theme.colors.primary,
