@@ -68,18 +68,24 @@ export const clearAllTablesData = async () => {
         return;
       }
 
-      await dbInstance.execAsync(`
-        DELETE FROM users;
-        DELETE FROM events;
-        DELETE FROM event_dates;
-        DELETE FROM attendance;
-        DELETE FROM records;
-      `);
+
+      await dbInstance.execAsync("PRAGMA foreign_keys = OFF");
+
+
+      await dbInstance.execAsync("DELETE FROM attendance;");
+      await dbInstance.execAsync("DELETE FROM records;");
+      await dbInstance.execAsync("DELETE FROM event_dates;");
+      await dbInstance.execAsync("DELETE FROM events;");
+      await dbInstance.execAsync("DELETE FROM users;");
+
+      await dbInstance.execAsync("PRAGMA foreign_keys = ON");
+
     } catch (error) {
       console.error("Error clearing all tables data:", error);
     }
   }
 };
+
 
 export const getRoleID = async () => {
   if (Platform.OS !== "web") {
@@ -194,18 +200,18 @@ export const storeEvent = async (event, allApiEventIds = []) => {
 
     if (existingEvent) {
       await db.runAsync(
-        `UPDATE events SET 
-         event_name = ?, venue = ?, description = ?, created_by_id = ?, created_by = ?, 
-         status = ?, am_in = ?, am_out = ?, pm_in = ?, pm_out = ?, scan_personnel = ?, 
+        `UPDATE events SET
+         event_name = ?, venue = ?, description = ?, created_by_id = ?, created_by = ?,
+         status = ?, am_in = ?, am_out = ?, pm_in = ?, pm_out = ?, scan_personnel = ?,
          approved_by = ?, approved_by_id = ?, duration = ?
        WHERE id = ?`,
         [...eventParams, event.event_id]
       );
     } else {
       await db.runAsync(
-        `INSERT INTO events 
-         (id, event_name, venue, description, created_by_id, created_by, status, 
-         am_in, am_out, pm_in, pm_out, scan_personnel, approved_by, approved_by_id, duration) 
+        `INSERT INTO events
+         (id, event_name, venue, description, created_by_id, created_by, status,
+         am_in, am_out, pm_in, pm_out, scan_personnel, approved_by, approved_by_id, duration)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [event.event_id, ...eventParams]
       );
@@ -276,7 +282,8 @@ export const storeEvent = async (event, allApiEventIds = []) => {
       eventName: event?.event_name,
     };
   }
-};
+}
+
 
 export const cleanupOutdatedEvents = async (allApiEventIds = []) => {
   if (Platform.OS === "web") {
