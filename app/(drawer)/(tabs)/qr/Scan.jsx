@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Alert, Platform } from "react-native";
+import { StyleSheet, Text, View, Alert } from "react-native";
 import React, { useState, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -16,7 +16,6 @@ import {
 } from "../../../../database/queries";
 import { syncAttendance } from "../../../../services/api";
 
-
 const Scan = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const [successModalVisible, setSuccessModalVisible] = useState(false);
@@ -29,7 +28,6 @@ const Scan = () => {
   const [isScanning, setIsScanning] = useState(true);
 
   const handleCameraPermission = async () => {
-    console.log("[Permission] Checking camera permissions");
     if (!permission) return;
     if (permission.status === "undetermined") {
       const response = await requestPermission();
@@ -43,7 +41,6 @@ const Scan = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      console.log("[Focus] Screen focused, resetting camera");
       setCameraKey((prev) => prev + 1);
       setIsCameraReady(false);
       setIsScanning(true);
@@ -58,7 +55,6 @@ const Scan = () => {
   useEffect(() => {
     const performAutoSync = async () => {
       try {
-        console.log("[Sync] Performing auto sync");
         await syncAttendance();
       } catch {}
     };
@@ -68,7 +64,7 @@ const Scan = () => {
   const handleBarcodeScanned = async ({ data }) => {
     if (!isScanning) return;
     setIsScanning(false);
-    console.log("[Scan] Barcode scanned with data:", data);
+
     try {
       if (!isBase64(data)) throw new Error("Invalid QR Code format");
 
@@ -76,7 +72,6 @@ const Scan = () => {
       try {
         const bytes = CryptoJS.AES.decrypt(data, QR_SECRET_KEY);
         decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-        console.log("[Decrypt] Decrypted QR content:", decryptedText);
       } catch {
         throw new Error("Failed to decrypt QR code");
       }
@@ -85,12 +80,12 @@ const Scan = () => {
       const [_, eventDateIdStr, studentIdStr] = decryptedText.split("-");
       const eventDateId = parseInt(eventDateIdStr, 10);
       const studentId = studentIdStr;
+
       if (isNaN(eventDateId) || !studentId) throw new Error("Invalid QR code data.");
 
       let events;
       try {
         events = await getStoredEvents(eventDateId);
-        console.log("[DB] Retrieved events for date ID:", eventDateId, events);
       } catch {
         throw new Error("Failed to retrieve event data");
       }
@@ -119,17 +114,12 @@ const Scan = () => {
         { type: "PM_OUT", start: pm_out, end: pmOutEnd },
       ];
 
-      console.log("[TimeCheck] Current time:", currentTime);
-      console.log("[TimeCheck] Time windows:", timeChecks);
-
       for (const check of timeChecks) {
         if (check.start && check.end) {
           const now = moment(currentTime, "HH:mm:ss");
           const start = moment(check.start, "HH:mm:ss");
           const end = moment(check.end, "HH:mm:ss");
           const match = now.isBetween(start, end, null, "[]");
-
-          console.log(`[TimeCheck] ${check.type} | Now: ${now.format("HH:mm:ss")} | Start: ${start.format("HH:mm:ss")} | End: ${end.format("HH:mm:ss")} | Match: ${match}`);
 
           if (match) {
             isValidTime = true;
@@ -248,7 +238,6 @@ const Scan = () => {
           barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
           onBarcodeScanned={!isScanning ? undefined : handleBarcodeScanned}
           onCameraReady={() => {
-            console.log("[Camera] Ready");
             setIsCameraReady(true);
           }}
           onMountError={() => {}}
@@ -300,7 +289,6 @@ const Scan = () => {
 };
 
 export default Scan;
-
 
 const styles = StyleSheet.create({
   messageContainer: {

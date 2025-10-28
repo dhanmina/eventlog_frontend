@@ -663,35 +663,14 @@ export const syncAttendance = async () => {
       const cleanedRecord = {
         event_date_id: record.event_date_id,
         student_id_number: record.student_id_number,
-
-        am_in:
-          record.am_in === 1 || record.am_in === true
-            ? true
-            : record.am_in === 0 || record.am_in === false
-            ? false
-            : undefined,
-        am_out:
-          record.am_out === 1 || record.am_out === true
-            ? true
-            : record.am_out === 0 || record.am_out === false
-            ? false
-            : undefined,
-        pm_in:
-          record.pm_in === 1 || record.pm_in === true
-            ? true
-            : record.pm_in === 0 || record.pm_in === false
-            ? false
-            : undefined,
-        pm_out:
-          record.pm_out === 1 || record.pm_out === true
-            ? true
-            : record.pm_out === 0 || record.pm_out === false
-            ? false
-            : undefined,
+        am_in: record.am_in || null,
+        am_out: record.am_out || null,
+        pm_in: record.pm_in || null,
+        pm_out: record.pm_out || null,
       };
 
       Object.keys(cleanedRecord).forEach((key) => {
-        if (cleanedRecord[key] === undefined) {
+        if (cleanedRecord[key] === null) {
           delete cleanedRecord[key];
         }
       });
@@ -737,12 +716,11 @@ export const syncAttendance = async () => {
     if (dbInstance && typeof dbInstance.close === "function") {
       try {
         await dbInstance.close();
-      } catch (closeError) {
-        console.warn("Error closing database:", closeError);
-      }
+      } catch {}
     }
   }
 };
+
 
 export const startSync = async () => {
   if (syncInterval) {

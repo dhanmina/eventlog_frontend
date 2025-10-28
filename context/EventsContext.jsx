@@ -72,6 +72,7 @@ export const EventsProvider = ({ children }) => {
 
   const fetchAndStoreEvents = useCallback(async () => {
     if (!user) return;
+
     const now = Date.now();
     if (now - lastFetchTime < 2000) return;
     setLastFetchTime(now);
@@ -81,8 +82,8 @@ export const EventsProvider = ({ children }) => {
       const { storeEvent, cleanupOutdatedEvents } = await import("../database/queries");
 
       const blockIdToFetch = [1, 2, 3, 4].includes(user.role_id) && user.block_id ? user.block_id : null;
-
       const response = await fetchUpcomingEvents(blockIdToFetch);
+
       if (!response?.success) throw new Error("Failed to fetch events from API.");
 
       const allEvents = response.events || [];
@@ -113,7 +114,9 @@ export const EventsProvider = ({ children }) => {
       socketService.joinRoom(`block-${user.block_id}`);
     }
 
-    const handleDatabaseUpdated = () => refreshEventsFromDatabase();
+    const handleDatabaseUpdated = () => {
+      refreshEventsFromDatabase();
+    };
 
     const handleNewApprovedEvent = (data) => {
       if (isEventRelevantToUser(data?.block_ids, user.block_id, user.role_id)) {

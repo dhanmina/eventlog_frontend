@@ -37,9 +37,7 @@ export const storeUser = async (user) => {
         user.year_level_id || null,
         user.year_level_name || null,
       ]);
-    } catch (error) {
-      console.error("Error storing user", error);
-    }
+    } catch {}
   }
 };
 
@@ -56,9 +54,7 @@ export const clearAllTablesData = async () => {
       await dbInstance.execAsync("DELETE FROM events;");
       await dbInstance.execAsync("DELETE FROM users;");
       await dbInstance.execAsync("PRAGMA foreign_keys = ON");
-    } catch (error) {
-      console.error("Error clearing all tables data:", error);
-    }
+    } catch {}
   }
 };
 
@@ -76,8 +72,7 @@ export const getRoleID = async () => {
         [idNumber]
       );
       return result?.role_id;
-    } catch (error) {
-      console.error("Error getting role ID:", error);
+    } catch {
       return null;
     }
   } else {
@@ -100,8 +95,7 @@ export const getStoredUser = async () => {
       );
 
       return result;
-    } catch (error) {
-      console.error("Error getting stored user:", error);
+    } catch {
       return null;
     }
   } else {
@@ -110,7 +104,8 @@ export const getStoredUser = async () => {
 };
 
 export const storeEvent = async (event, allApiEventIds = []) => {
-  if (Platform.OS === "web") return { success: false, error: "Web platform not supported" };
+  if (Platform.OS === "web")
+    return { success: false, error: "Web platform not supported" };
 
   try {
     if (!event || typeof event !== "object" || !event.event_id) {
@@ -141,7 +136,13 @@ export const storeEvent = async (event, allApiEventIds = []) => {
     await ensureUserExists(event.created_by_id, event.created_by);
     await ensureUserExists(event.approved_by_id, event.approved_by);
 
-    await db.execAsync("BEGIN TRANSACTION");
+    let startedTransaction = false;
+    if (!isTransactionInProgress) {
+      isTransactionInProgress = true;
+      await db.execAsync("BEGIN TRANSACTION");
+      startedTransaction = true;
+    }
+
     try {
       const existingEvent = await db.getFirstAsync(
         "SELECT id FROM events WHERE id = ?",
@@ -194,8 +195,13 @@ export const storeEvent = async (event, allApiEventIds = []) => {
           ? event.event_date_ids.map(String)
           : JSON.parse(event.event_date_ids || "[]").map(String);
 
-        if (eventDatesArray.length > 0 && eventDatesArray.length === eventDateIdsArray.length) {
-          await db.runAsync("DELETE FROM event_dates WHERE event_id = ?", [event.event_id]);
+        if (
+          eventDatesArray.length > 0 &&
+          eventDatesArray.length === eventDateIdsArray.length
+        ) {
+          await db.runAsync("DELETE FROM event_dates WHERE event_id = ?", [
+            event.event_id,
+          ]);
 
           for (let i = 0; i < eventDatesArray.length; i++) {
             await db.runAsync(
@@ -206,10 +212,17 @@ export const storeEvent = async (event, allApiEventIds = []) => {
         }
       }
 
-      await db.execAsync("COMMIT");
+      if (startedTransaction) {
+        await db.execAsync("COMMIT");
+        isTransactionInProgress = false;
+      }
+
       return { success: true };
     } catch (err) {
-      await db.execAsync("ROLLBACK");
+      if (startedTransaction) {
+        await db.execAsync("ROLLBACK");
+        isTransactionInProgress = false;
+      }
       throw err;
     }
   } catch (error) {
@@ -223,7 +236,8 @@ export const storeEvent = async (event, allApiEventIds = []) => {
 };
 
 export const cleanupOutdatedEvents = async (allApiEventIds = []) => {
-  if (Platform.OS === "web") return { success: false, error: "Web platform not supported" };
+  if (Platform.OS === "web")
+    return { success: false, error: "Web platform not supported" };
 
   try {
     const db = await initDB();
@@ -237,12 +251,20 @@ export const cleanupOutdatedEvents = async (allApiEventIds = []) => {
 
     const storedEvents = await db.getAllAsync("SELECT id FROM events");
     const storedEventIds = storedEvents.map((e) => e.id.toString());
-    const idsToDelete = storedEventIds.filter((id) => !allApiEventIds.includes(parseInt(id)));
+    const idsToDelete = storedEventIds.filter(
+      (id) => !allApiEventIds.includes(parseInt(id))
+    );
 
     if (idsToDelete.length > 0) {
       const placeholders = idsToDelete.map(() => "?").join(",");
-      await db.runAsync(`DELETE FROM event_dates WHERE event_id IN (${placeholders})`, idsToDelete);
-      await db.runAsync(`DELETE FROM events WHERE id IN (${placeholders})`, idsToDelete);
+      await db.runAsync(
+        `DELETE FROM event_dates WHERE event_id IN (${placeholders})`,
+        idsToDelete
+      );
+      await db.runAsync(
+        `DELETE FROM events WHERE id IN (${placeholders})`,
+        idsToDelete
+      );
     }
 
     return { success: true, deletedCount: idsToDelete.length };
@@ -293,14 +315,18 @@ export const getStoredEvents = async () => {
       const eventDates = await db.getAllAsync(eventDatesQuery);
 
       for (const { event_id, event_date, event_date_id } of eventDates) {
-        if (!eventDatesMap[event_id]) eventDatesMap[event_id] = { event_dates: [], event_date_ids: [] };
+        if (!eventDatesMap[event_id])
+          eventDatesMap[event_id] = { event_dates: [], event_date_ids: [] };
         eventDatesMap[event_id].event_dates.push(event_date);
         eventDatesMap[event_id].event_date_ids.push(event_date_id);
       }
     }
 
     for (const event of events) {
-      const eventData = eventDatesMap[event.event_id] || { event_dates: [], event_date_ids: [] };
+      const eventData = eventDatesMap[event.event_id] || {
+        event_dates: [],
+        event_date_ids: [],
+      };
       event.event_dates = eventData.event_dates;
       event.event_date_ids = eventData.event_date_ids;
 
@@ -343,7 +369,10 @@ export const logAttendance = async (attendanceData) => {
     const typeColumn = attendanceData.type.toLowerCase();
 
     if (existingRecord) {
-      if (existingRecord[typeColumn]) throw new Error(`Attendance for ${attendanceData.type} has already been logged.`);
+      if (existingRecord[typeColumn])
+        throw new Error(
+          `Attendance for ${attendanceData.type} has already been logged.`
+        );
       await dbInstance.runAsync(
         `UPDATE attendance SET ${typeColumn} = TRUE WHERE event_date_id = ? AND student_id_number = ?`,
         [attendanceData.event_date_id, attendanceData.student_id_number]
@@ -357,7 +386,11 @@ export const logAttendance = async (attendanceData) => {
   }
 };
 
-export const isAlreadyLogged = async (event_date_id, student_id_number, type) => {
+export const isAlreadyLogged = async (
+  event_date_id,
+  student_id_number,
+  type
+) => {
   if (Platform.OS !== "web") {
     try {
       const dbInstance = await initDB();

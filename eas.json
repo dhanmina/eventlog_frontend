@@ -3,39 +3,11 @@
     "preview": {
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.citeventlog.xyz",
-        "EXPO_PUBLIC_QR_SECRET_KEY": "eventlog"
-      }
-    },
-    "preview2": {
-      "android": {
-        "gradleCommand": ":app:assembleRelease"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.citeventlog.xyz",
-        "EXPO_PUBLIC_QR_SECRET_KEY": "eventlog"
-      }
-    },
-    "preview3": {
-      "developmentClient": true,
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.citeventlog.xyz",
-        "EXPO_PUBLIC_QR_SECRET_KEY": "eventlog"
-      }
-    },
-    "preview4": {
-      "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.citeventlog.xyz",
-        "EXPO_PUBLIC_QR_SECRET_KEY": "eventlog"
       }
     },
     "production": {
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.citeventlog.xyz",
-        "EXPO_PUBLIC_QR_SECRET_KEY": "eventlog"
+      "android": {
+        "gradleCommand": ":app:assembleRelease"
       }
     }
   }

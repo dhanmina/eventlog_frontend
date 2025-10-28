@@ -5,7 +5,6 @@
     "slug": "eventlog",
     "icon": "./assets/images/icon.png",
     "version": "1.2.3",
-    "usesCleartextTraffic": true,
     "plugins": [
       "expo-router",
       [
@@ -19,8 +18,8 @@
           ]
         }
       ],
-       [
-       "expo-splash-screen",
+      [
+        "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
           "dark": {
@@ -60,7 +59,22 @@
           "iCloudContainerEnvironment": "Production"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          },
+          "ios": {
+            "infoPlist": {
+              "NSAppTransportSecurity": {
+                "NSAllowsArbitraryLoads": true
+              }
+            }
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {
@@ -72,11 +86,12 @@
     },
     "owner": "chocopndn",
     "android": {
+      "package": "com.chocopndn.eventlog",
       "permissions": [
+        "android.permission.INTERNET",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
-      ],
-      "package": "com.chocopndn.eventlog"
+      ]
     },
     "runtimeVersion": "1.0.0",
     "updates": {

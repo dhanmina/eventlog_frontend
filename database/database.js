@@ -74,21 +74,14 @@ const createTables = async (database) => {
   await database.execAsync(`
     CREATE TABLE IF NOT EXISTS attendance (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      event_date_id INTEGER NOT NULL,
-      student_id_number TEXT NOT NULL,
-      am_in BOOLEAN DEFAULT 0,
-      am_out BOOLEAN DEFAULT 0,
-      pm_in BOOLEAN DEFAULT 0,
-      pm_out BOOLEAN DEFAULT 0,
-      am_in_time DATETIME,
-      am_out_time DATETIME,
-      pm_in_time DATETIME,
-      pm_out_time DATETIME,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (event_date_id) REFERENCES event_dates (id) ON DELETE CASCADE,
-      FOREIGN KEY (student_id_number) REFERENCES users (id_number),
-      UNIQUE(event_date_id, student_id_number)
+      event_date_id INTEGER,
+      student_id_number TEXT,
+      event_name TEXT,
+      am_in TEXT,
+      am_out TEXT,
+      pm_in TEXT,
+      pm_out TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
@@ -99,10 +92,10 @@ const createTables = async (database) => {
       event_name TEXT NOT NULL,
       event_date DATE NOT NULL,
       student_id_number TEXT NOT NULL,
-      am_in BOOLEAN DEFAULT 0,
-      am_out BOOLEAN DEFAULT 0,
-      pm_in BOOLEAN DEFAULT 0,
-      pm_out BOOLEAN DEFAULT 0,
+      am_in_time DATETIME,
+      am_out_time DATETIME,
+      pm_in_time DATETIME,
+      pm_out_time DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (event_id) REFERENCES events (id),
       FOREIGN KEY (student_id_number) REFERENCES users (id_number),
@@ -124,7 +117,9 @@ const createTables = async (database) => {
 const validateDatabaseConnection = async (database) => {
   try {
     await database.execAsync("SELECT 1");
-    await database.getFirstAsync("SELECT name FROM sqlite_master WHERE type='table' LIMIT 1");
+    await database.getFirstAsync(
+      "SELECT name FROM sqlite_master WHERE type='table' LIMIT 1"
+    );
     return true;
   } catch {
     return false;
@@ -133,7 +128,9 @@ const validateDatabaseConnection = async (database) => {
 
 const closeDatabase = async () => {
   if (db) {
-    try { await db.closeAsync(); } catch {}
+    try {
+      await db.closeAsync();
+    } catch {}
     db = null;
   }
 };
@@ -185,18 +182,33 @@ export const insertUserIfMissing = async (user) => {
   const dbInstance = await getDatabase();
   await dbInstance.runAsync(
     `INSERT OR IGNORE INTO users (id_number, first_name, last_name, role_id, role_name) VALUES (?, ?, ?, ?, ?)`,
-    [user.id_number, user.first_name, user.last_name, user.role_id || 1, user.role_name || 'User']
+    [
+      user.id_number,
+      user.first_name,
+      user.last_name,
+      user.role_id || 1,
+      user.role_name || "User",
+    ]
   );
 };
 
 export const storeEvent = async (event) => {
   const dbInstance = await getDatabase();
-  await insertUserIfMissing({ id_number: event.created_by_id, first_name: event.created_by.split(" ")[0], last_name: event.created_by.split(" ")[1] || "" });
+  await insertUserIfMissing({
+    id_number: event.created_by_id,
+    first_name: event.created_by.split(" ")[0],
+    last_name: event.created_by.split(" ")[1] || "",
+  });
   if (event.approved_by_id) {
-    await insertUserIfMissing({ id_number: event.approved_by_id, first_name: event.approved_by.split(" ")[0], last_name: event.approved_by.split(" ")[1] || "" });
+    await insertUserIfMissing({
+      id_number: event.approved_by_id,
+      first_name: event.approved_by.split(" ")[0],
+      last_name: event.approved_by.split(" ")[1] || "",
+    });
   }
-
-  const blockIdsText = Array.isArray(event.block_ids) ? JSON.stringify(event.block_ids) : event.block_ids || "";
+  const blockIdsText = Array.isArray(event.block_ids)
+    ? JSON.stringify(event.block_ids)
+    : event.block_ids || "";
   await dbInstance.runAsync(
     `INSERT INTO events (event_name, venue, description, scan_personnel, status, created_by_id, created_by, approved_by_id, approved_by, am_in, am_out, pm_in, pm_out, duration, block_ids)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -215,7 +227,7 @@ export const storeEvent = async (event) => {
       event.pm_in,
       event.pm_out,
       event.duration,
-      blockIdsText
+      blockIdsText,
     ]
   );
 };
