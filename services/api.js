@@ -4,7 +4,7 @@ import initDB from "../database/database";
 
 export const fetchEventById = async (eventId) => {
   try {
-    const response = await axios.get(`${API_URL}/api/events/events/${eventId}`);
+    const response = await axios.get(`${API_URL}/api/events/${eventId}`);
     if (response.data.success) {
       return response.data.event;
     }
@@ -90,7 +90,7 @@ export const fetchBlocksByDepartment = async (departmentIds) => {
   try {
     const responses = await Promise.all(
       departmentIds.map((deptId) =>
-        axios.get(`${API_URL}/api/blocks/${deptId}`)
+        axios.get(`${API_URL}/api/blocks`, { params: { department_id: deptId } })
       )
     );
 
@@ -122,7 +122,7 @@ export const fetchBlockById = async (blockId) => {
   }
 
   try {
-    const response = await axios.get(`${API_URL}/api/blocks/block/${blockId}`);
+    const response = await axios.get(`${API_URL}/api/blocks/${blockId}`);
 
     if (response.data.success) {
       return response.data.data;
@@ -159,7 +159,7 @@ export const addBlock = async (blockData) => {
 export const editBlock = async (blockId, blockData) => {
   try {
     const response = await axios.put(
-      `${API_URL}/api/blocks/block/${blockId}`,
+      `${API_URL}/api/blocks/${blockId}`,
       blockData
     );
     if (response.data.success) return response.data.data;
@@ -171,7 +171,7 @@ export const editBlock = async (blockId, blockData) => {
 
 export const disableBlock = async (blockId) => {
   try {
-    const response = await axios.put(`${API_URL}/api/blocks/${blockId}`);
+    const response = await axios.patch(`${API_URL}/api/blocks/${blockId}/status`);
     if (response.data.success) return response.data.message;
     throw new Error("Failed to delete block");
   } catch (error) {
@@ -181,7 +181,7 @@ export const disableBlock = async (blockId) => {
 
 export const fetchEventNames = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/events/names`);
+    const response = await axios.get(`${API_URL}/api/event-names`);
 
     if (response.data.success) {
       return response.data.eventNames.map((event) => ({
@@ -199,7 +199,7 @@ export const fetchEventNames = async () => {
 export const updateEvent = async (eventId, eventData) => {
   try {
     const response = await axios.put(
-      `${API_URL}/api/events/admin/edit/${eventId}`,
+      `${API_URL}/api/events/admin/${eventId}`,
       eventData
     );
     if (response.data.success) {
@@ -213,7 +213,7 @@ export const updateEvent = async (eventId, eventData) => {
 
 export const fetchApprovedOngoing = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/events/approved-ongoing`);
+    const response = await axios.get(`${API_URL}/api/events`);
 
     if (response.data.success) {
       return response.data;
@@ -231,8 +231,8 @@ export const fetchApprovedOngoing = async () => {
 
 export const fetchUpcomingEvents = async (blockId) => {
   try {
-    const response = await axios.post(`${API_URL}/api/events/upcoming`, {
-      block_id: blockId,
+    const response = await axios.get(`${API_URL}/api/events/upcoming`, {
+      params: { block_id: blockId },
     });
 
     if (response.data.success) {
@@ -259,7 +259,7 @@ export const fetchAdmins = async () => {
 export const addAdmin = async (adminData) => {
   try {
     const response = await axios.post(
-      `${API_URL}/api/admins/add-admin`,
+      `${API_URL}/api/admins`,
       adminData
     );
     if (response.data.success) {
@@ -274,7 +274,7 @@ export const addAdmin = async (adminData) => {
 export const editAdmin = async (id_number, adminData) => {
   try {
     const response = await axios.put(
-      `${API_URL}/api/admins/edit/${id_number}`,
+      `${API_URL}/api/admins/${id_number}`,
       adminData
     );
     if (response.data.success) {
@@ -300,7 +300,7 @@ export const fetchAdminById = async (id_number) => {
 
 export const disableAdmin = async (id_number) => {
   try {
-    const response = await axios.put(`${API_URL}/api/admins/${id_number}`);
+    const response = await axios.patch(`${API_URL}/api/admins/${id_number}/status`);
 
     if (response.data.success) {
       return response.data;
@@ -341,7 +341,7 @@ export const fetchCourseById = async (courseId) => {
 export const addCourse = async (courseData) => {
   try {
     const response = await axios.post(
-      `${API_URL}/api/courses/add-course`,
+      `${API_URL}/api/courses`,
       courseData
     );
     if (response.data.success) {
@@ -356,7 +356,7 @@ export const addCourse = async (courseData) => {
 export const editCourse = async (courseId, courseData) => {
   try {
     const response = await axios.put(
-      `${API_URL}/api/courses/edit/${courseId}`,
+      `${API_URL}/api/courses/${courseId}`,
       courseData
     );
     if (response.data.success) {
@@ -370,7 +370,7 @@ export const editCourse = async (courseId, courseData) => {
 
 export const disableCourse = async (courseId) => {
   try {
-    const response = await axios.put(`${API_URL}/api/courses/${courseId}`);
+    const response = await axios.patch(`${API_URL}/api/courses/${courseId}/status`);
     if (response.data.success) {
       return response.data;
     }
@@ -397,7 +397,7 @@ export const fetchUsers = async (searchQuery = "", page = 1, limit = 10) => {
 export const fetchUserById = async (idNumber) => {
   try {
     const response = await axios.get(
-      `${API_URL}/api/users/id-number/${idNumber}`
+      `${API_URL}/api/users/${idNumber}`
     );
     if (response.data.success) {
       return response.data.user;
@@ -411,7 +411,7 @@ export const fetchUserById = async (idNumber) => {
 export const updateUser = async (idNumber, userData) => {
   try {
     const response = await axios.put(
-      `${API_URL}/api/users/edit/${idNumber}`,
+      `${API_URL}/api/users/${idNumber}`,
       userData
     );
     if (response.data.success) {
@@ -425,11 +425,9 @@ export const updateUser = async (idNumber, userData) => {
 
 export const disableUser = async (idNumber) => {
   try {
-    const response = await axios.put(
-      `${API_URL}/api/users/disable/${idNumber}`,
-      {
-        status: "disabled",
-      }
+    const response = await axios.patch(
+      `${API_URL}/api/users/${idNumber}/status`,
+      { status: "disabled" }
     );
 
     if (response.data.success) {
@@ -441,12 +439,12 @@ export const disableUser = async (idNumber) => {
   }
 };
 
-export const changeUserPassword = async (email, newPassword) => {
+export const changeUserPassword = async (idNumber, newPassword) => {
   try {
-    const response = await axios.post(`${API_URL}/api/users/change-password`, {
-      email,
-      newPassword,
-    });
+    const response = await axios.patch(
+      `${API_URL}/api/users/${idNumber}/password`,
+      { newPassword }
+    );
     if (response.data.success) {
       return response.data;
     }
@@ -459,7 +457,7 @@ export const changeUserPassword = async (email, newPassword) => {
 export const addUser = async (userData) => {
   try {
     const response = await axios.post(
-      `${API_URL}/api/users/add-user`,
+      `${API_URL}/api/users`,
       userData
     );
     if (response.data.success) {
@@ -504,7 +502,7 @@ export const fetchYearLevels = async () => {
 
 export const fetchEvents = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/events/`);
+    const response = await axios.get(`${API_URL}/api/events`);
 
     if (response.data.success) {
       return response.data;
@@ -516,8 +514,8 @@ export const fetchEvents = async () => {
 
 export const disableEventName = async (eventId) => {
   try {
-    const response = await axios.put(
-      `${API_URL}/api/event-names/disable/${eventId}`
+    const response = await axios.patch(
+      `${API_URL}/api/event-names/${eventId}/status`
     );
     if (response.data.success) {
       return response.data;
@@ -529,8 +527,8 @@ export const disableEventName = async (eventId) => {
 
 export const approveEvent = async (eventId, adminId) => {
   try {
-    const response = await axios.put(
-      `${API_URL}/api/events/admin/approve/${eventId}`,
+    const response = await axios.patch(
+      `${API_URL}/api/events/admin/${eventId}/status`,
       {
         admin_id_number: adminId,
       }
@@ -558,9 +556,7 @@ export const fetchEventNameById = async (id) => {
 
 export const addEventName = async (name) => {
   try {
-    const response = await axios.post(`${API_URL}/api/event-names/add`, {
-      name,
-    });
+    const response = await axios.post(`${API_URL}/api/event-names`, { name });
     if (response.data.success) {
       return response.data.eventName;
     }
@@ -573,7 +569,7 @@ export const addEventName = async (name) => {
 export const editEventName = async (id, data) => {
   try {
     const response = await axios.put(
-      `${API_URL}/api/event-names/update/${id}`,
+      `${API_URL}/api/event-names/${id}`,
       data
     );
     if (response.data.success) {
@@ -588,7 +584,7 @@ export const editEventName = async (id, data) => {
 export const deleteEventName = async (id) => {
   try {
     const response = await axios.delete(
-      `${API_URL}/api/event-names/delete/${id}`
+      `${API_URL}/api/event-names/${id}`
     );
     if (response.data.success) {
       return true;
@@ -602,7 +598,7 @@ export const deleteEventName = async (id) => {
 export const addEvent = async (eventData) => {
   try {
     const response = await axios.post(
-      `${API_URL}/api/events/admin/add`,
+      `${API_URL}/api/events/admin`,
       eventData
     );
 
@@ -619,7 +615,7 @@ export const addEvent = async (eventData) => {
 export const deleteEvent = async (id) => {
   try {
     const response = await axios.delete(
-      `${API_URL}/api/events/admin/delete/${id}`
+      `${API_URL}/api/events/admin/${id}`
     );
     if (response.data.success) {
       return true;
@@ -751,7 +747,7 @@ export const uploadSchoolYearFile = async (fileUri, type) => {
     });
 
     const response = await axios.post(
-      `${API_URL}/api/school-years/update`,
+      `${API_URL}/api/school-years/students`,
       formData,
       {
         headers: {

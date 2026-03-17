@@ -12,14 +12,9 @@ export const fetchUserOngoingEvents = async (
       throw new Error("Missing required parameter: idNumber.");
     }
 
-    const response = await axios.post(
-      `${API_URL}/api/attendance/user/ongoing/events`,
-      {
-        id_number: idNumber,
-        page,
-        limit,
-        search,
-      }
+    const response = await axios.get(
+      `${API_URL}/api/attendance/user/events/ongoing`,
+      { params: { id_number: idNumber, page, limit, search } }
     );
 
     if (response.data.success) {
@@ -43,14 +38,9 @@ export const fetchUserPastEvents = async (
       throw new Error("Missing required parameter: idNumber.");
     }
 
-    const response = await axios.post(
-      `${API_URL}/api/attendance/user/past/events`,
-      {
-        id_number: idNumber,
-        page,
-        limit,
-        search,
-      }
+    const response = await axios.get(
+      `${API_URL}/api/attendance/user/events/past`,
+      { params: { id_number: idNumber, page, limit, search } }
     );
 
     if (response.data.success) {
@@ -65,13 +55,9 @@ export const fetchUserPastEvents = async (
 
 export const fetchAllPastEvents = async (page = 1, limit = 10, search = "") => {
   try {
-    const response = await axios.post(
-      `${API_URL}/api/attendance/admin/past/events`,
-      {
-        page,
-        limit,
-        search,
-      }
+    const response = await axios.get(
+      `${API_URL}/api/attendance/admin/events/past`,
+      { params: { page, limit } }
     );
 
     if (response.data.success) {
@@ -92,13 +78,9 @@ export const fetchAllOngoingEvents = async (
   search = ""
 ) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/api/attendance/admin/ongoing/events`,
-      {
-        page,
-        limit,
-        search,
-      }
+    const response = await axios.get(
+      `${API_URL}/api/attendance/admin/events/ongoing`,
+      { params: { page, limit, search } }
     );
 
     if (response.data.success) {
@@ -120,25 +102,23 @@ export const fetchBlocksOfEvents = async (
   searchQuery = ""
 ) => {
   try {
-    const body = {
-      event_id: eventId,
-    };
+    const params = { event_id: eventId };
 
     if (selectedDepartment) {
-      body.department_id = selectedDepartment;
+      params.department_id = selectedDepartment;
     }
 
     if (selectedYearLevel) {
-      body.year_level_id = selectedYearLevel;
+      params.year_level_id = selectedYearLevel;
     }
 
     if (searchQuery.trim() !== "") {
-      body.search_query = searchQuery;
+      params.search_query = searchQuery;
     }
 
-    const response = await axios.post(
+    const response = await axios.get(
       `${API_URL}/api/attendance/events/blocks`,
-      body
+      { params }
     );
 
     if (response.data.success) {
@@ -157,25 +137,24 @@ export const fetchBlocksOfEvents = async (
 export const fetchStudentAttendanceByEventAndBlock = async (
   eventId,
   blockId,
-  searchQuery = ""
+  searchQuery = "",
+  page = 1,
+  limit = 10
 ) => {
   try {
     if (!eventId || !blockId) {
       throw new Error("Missing required parameters: eventId and blockId.");
     }
 
-    const body = {
-      event_id: eventId,
-      block_id: blockId,
-    };
+    const params = { event_id: eventId, block_id: blockId, page, limit };
 
     if (searchQuery.trim() !== "") {
-      body.search_query = searchQuery;
+      params.search_query = searchQuery;
     }
 
-    const response = await axios.post(
-      `${API_URL}/api/attendance/events/block/students`,
-      body
+    const response = await axios.get(
+      `${API_URL}/api/attendance/events/blocks/students`,
+      { params }
     );
 
     if (response.data.success) {
@@ -201,16 +180,9 @@ export const fetchAttendanceSummaryPerBlock = async (
       throw new Error("Missing required parameters: eventId and blockId.");
     }
 
-    const body = {
-      event_id: eventId,
-      block_id: blockId,
-      attendanceFilter: attendanceFilter,
-    };
-
-    const response = await axios.post(
-      `${API_URL}/api/attendance/summary`,
-      body
-    );
+    const response = await axios.get(`${API_URL}/api/attendance/summary`, {
+      params: { event_id: eventId, block_id: blockId, attendanceFilter },
+    });
 
     if (response.data.success) {
       return response.data;
@@ -231,14 +203,9 @@ export const getStudentAttSummary = async (eventId, studentId) => {
       throw new Error("Missing required parameters: eventId and studentId.");
     }
 
-    const body = {
-      event_id: eventId,
-      student_id: studentId,
-    };
-
-    const response = await axios.post(
+    const response = await axios.get(
       `${API_URL}/api/attendance/student/summary`,
-      body
+      { params: { event_id: eventId, student_id: studentId } }
     );
 
     if (response.data.success) {
@@ -254,7 +221,11 @@ export const getStudentAttSummary = async (eventId, studentId) => {
   }
 };
 
-export const fetchAttendanceSummaryOfEvent = async (eventId) => {
+export const fetchAttendanceSummaryOfEvent = async (
+  eventId,
+  departmentId,
+  yearLevelId
+) => {
   try {
     if (!eventId) {
       throw new Error("Missing required parameter: eventId.");
@@ -264,18 +235,16 @@ export const fetchAttendanceSummaryOfEvent = async (eventId) => {
       throw new Error("Invalid eventId format. Expected string or number.");
     }
 
-    const body = {
-      event_id: eventId,
-    };
+    const params = { event_id: eventId };
+    if (departmentId) params.department_id = departmentId;
+    if (yearLevelId) params.year_level_id = yearLevelId;
 
-    const response = await axios.post(
+    const response = await axios.get(
       `${API_URL}/api/attendance/event/summary`,
-      body,
       {
+        params,
         timeout: 10000,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       }
     );
 
