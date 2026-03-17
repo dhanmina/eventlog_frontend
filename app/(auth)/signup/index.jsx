@@ -49,16 +49,14 @@ const SignUp = () => {
   const fetchDepartments = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${API_URL}/api/departments/departments`
-      );
+      const response = await axios.get(`${API_URL}/api/departments`);
 
       if (response.data?.departments) {
         setDepartments(
           response.data.departments.map((dept) => ({
             label: dept.department_name,
             value: dept.department_id,
-          }))
+          })),
         );
       } else {
         showModal("Invalid API response.", "warning");
@@ -144,7 +142,7 @@ const SignUp = () => {
     } catch (error) {
       showModal(
         error.response?.data?.message || "Something went wrong.",
-        "error"
+        "error",
       );
     } finally {
       setLoading(false);
