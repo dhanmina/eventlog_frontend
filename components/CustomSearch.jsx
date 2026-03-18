@@ -5,7 +5,7 @@ import {
   StyleSheet,
   Image,
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import images from "../constants/images";
 import theme from "../constants/theme";
 
@@ -13,17 +13,19 @@ const CustomSearch = ({ placeholder = "Search...", onSearch }) => {
   const [searchText, setSearchText] = useState("");
 
   useEffect(() => {
-    const delayDebounce = setTimeout(() => {
+    const debounce = setTimeout(() => {
       if (onSearch) onSearch(searchText);
     }, 500);
 
-    return () => clearTimeout(delayDebounce);
+    return () => clearTimeout(debounce);
   }, [searchText]);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     setSearchText("");
     if (onSearch) onSearch("");
-  };
+  }, [onSearch]);
+
+  const hasText = searchText.length > 0;
 
   return (
     <View style={styles.container}>
@@ -31,10 +33,14 @@ const CustomSearch = ({ placeholder = "Search...", onSearch }) => {
       <TextInput
         style={styles.input}
         placeholder={placeholder}
+        placeholderTextColor={theme.colors.placeholder}
         value={searchText}
         onChangeText={setSearchText}
+        autoCorrect={false}
+        autoCapitalize="none"
+        returnKeyType="search"
       />
-      {searchText.length > 0 && (
+      {hasText && (
         <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
           <Image source={images.close} style={styles.icon} />
         </TouchableOpacity>
@@ -50,8 +56,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.secondary,
     borderWidth: 2,
     borderColor: theme.colors.primary,
-    paddingHorizontal: 10,
-    height: 50,
+    paddingHorizontal: theme.spacing.medium,
+    height: 46,
+    gap: theme.spacing.small,
   },
   input: {
     flex: 1,
@@ -60,7 +67,7 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
   },
   clearButton: {
-    padding: 6,
+    padding: theme.spacing.xsmall,
   },
   icon: {
     width: 20,
