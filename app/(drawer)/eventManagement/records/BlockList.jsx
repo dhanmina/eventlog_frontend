@@ -23,7 +23,10 @@ import * as Sharing from "expo-sharing";
 import CustomModal from "../../../../components/CustomModal";
 import TabsComponent from "../../../../components/TabsComponent";
 
-const BlockList = () => {
+const BlockList = ({
+  studentListPath = "eventManagement/records/StudentsList",
+  showTabs = true,
+}) => {
   const { eventId } = useLocalSearchParams();
   const [eventTitle, setEventTitle] = useState("");
   const [allBlocks, setAllBlocks] = useState([]);
@@ -468,7 +471,7 @@ const BlockList = () => {
 
   const handleBlockPress = (block) => {
     router.push({
-      pathname: "eventManagement/records/StudentsList",
+      pathname: studentListPath,
       params: { eventId: eventId, blockId: block.block_id },
     });
   };
@@ -574,7 +577,7 @@ const BlockList = () => {
         cancelTitle={modalConfig.cancelTitle}
         onCancel={() => setModalVisible(false)}
       />
-      <TabsComponent />
+      {showTabs && <TabsComponent />}
     </View>
   );
 };
@@ -638,8 +641,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     width: "100%",
-    marginVertical: 20,
+    marginVertical: theme.spacing.medium,
     paddingHorizontal: theme.spacing.medium,
-    marginBottom: 95,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -17,7 +17,10 @@ import images from "../../../../constants/images";
 import CustomSearch from "../../../../components/CustomSearch";
 import TabsComponent from "../../../../components/TabsComponent";
 
-const StudentsList = () => {
+const StudentsList = ({
+  attendancePath = "eventManagement/records/Attendance",
+  showTabs = true,
+}) => {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +76,7 @@ const StudentsList = () => {
 
   const handleStudentPress = (student) => {
     router.push({
-      pathname: "eventManagement/records/Attendance",
+      pathname: attendancePath,
       params: {
         eventId,
         blockId,
@@ -141,7 +144,7 @@ const StudentsList = () => {
           ))
         )}
       </ScrollView>
-      <TabsComponent />
+      {showTabs && <TabsComponent />}
     </View>
   );
 };
