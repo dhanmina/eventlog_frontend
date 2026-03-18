@@ -11,7 +11,7 @@ import {
   fetchEventById,
   deleteEvent,
   approveEvent,
-} from "../../../../services/api";
+} from "../../../../services/api/events";
 import { getStoredUser } from "../../../../database/queries";
 import { useLocalSearchParams } from "expo-router";
 

@@ -13,7 +13,7 @@ import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomButton from "../../../../components/CustomButton";
-import { editDepartment, fetchDepartmentById } from "../../../../services/api";
+import { editDepartment, fetchDepartmentById } from "../../../../services/api/departments";
 import CustomModal from "../../../../components/CustomModal";
 import { useLocalSearchParams } from "expo-router";
 import CustomDropdown from "../../../../components/CustomDropdown";

@@ -11,7 +11,7 @@ import {
 import TabsComponent from "../../../../components/TabsComponent";
 
 import { StatusBar } from "expo-status-bar";
-import { fetchUsers, disableUser } from "../../../../services/api";
+import { fetchUsers, disableUser } from "../../../../services/api/users";
 import { router, useFocusEffect } from "expo-router";
 import images from "../../../../constants/images";
 import SearchBar from "../../../../components/CustomSearch";

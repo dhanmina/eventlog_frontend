@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import {
-  fetchEventById,
-  fetchDepartments,
-  fetchBlocksByDepartment,
-  fetchEventNames,
-} from "../services/api";
+import { fetchEventById, fetchEventNames } from "../services/api/events";
+import { fetchDepartments } from "../services/api/departments";
+import { fetchBlocksByDepartment } from "../services/api/blocks";
 
 export const useEventDetailsById = (eventId) => {
   const [data, setData] = useState(null);

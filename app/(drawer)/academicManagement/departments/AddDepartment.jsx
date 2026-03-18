@@ -12,7 +12,7 @@ import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomButton from "../../../../components/CustomButton";
-import { addDepartment } from "../../../../services/api";
+import { addDepartment } from "../../../../services/api/departments";
 import CustomModal from "../../../../components/CustomModal";
 
 const AddDepartment = () => {

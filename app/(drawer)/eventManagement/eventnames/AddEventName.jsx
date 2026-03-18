@@ -7,7 +7,7 @@ import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
-import { addEventName } from "../../../../services/api";
+import { addEventName } from "../../../../services/api/events";
 
 const AddEventName = () => {
   const [formData, setFormData] = useState({ name: "" });

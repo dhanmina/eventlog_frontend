@@ -13,7 +13,7 @@ import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomDropdown from "../../../../components/CustomDropdown";
 import CustomButton from "../../../../components/CustomButton";
-import { fetchEventNameById, editEventName } from "../../../../services/api";
+import { fetchEventNameById, editEventName } from "../../../../services/api/events";
 import CustomModal from "../../../../components/CustomModal";
 import { useLocalSearchParams } from "expo-router";
 

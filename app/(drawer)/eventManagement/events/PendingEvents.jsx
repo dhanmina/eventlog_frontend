@@ -14,7 +14,7 @@ import {
   fetchEvents,
   approveEvent,
   deleteEvent,
-} from "../../../../services/api";
+} from "../../../../services/api/events";
 import { router } from "expo-router";
 import images from "../../../../constants/images";
 import globalStyles from "../../../../constants/globalStyles";

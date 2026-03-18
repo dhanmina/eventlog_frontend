@@ -12,7 +12,7 @@ import theme from "../../../../constants/theme";
 import {
   fetchDepartmentById,
   disableDepartment,
-} from "../../../../services/api";
+} from "../../../../services/api/departments";
 import { useLocalSearchParams } from "expo-router";
 
 const DepartmentDetails = () => {

@@ -15,12 +15,9 @@ import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
 import { useLocalSearchParams } from "expo-router";
 import CustomDropdown from "../../../../components/CustomDropdown";
-import {
-  fetchBlockById,
-  editBlock,
-  fetchYearLevels,
-  fetchDepartments,
-} from "../../../../services/api";
+import { fetchBlockById, editBlock } from "../../../../services/api/blocks";
+import { fetchYearLevels } from "../../../../services/api/roles";
+import { fetchDepartments } from "../../../../services/api/departments";
 import { fetchCoursesByDepartmentId } from "../../../../services/api/courses";
 
 const EditBlock = () => {

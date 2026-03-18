@@ -7,7 +7,7 @@ import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
-import { fetchAdminById, disableAdmin } from "../../../../services/api";
+import { fetchAdminById, disableAdmin } from "../../../../services/api/admins";
 import { useLocalSearchParams } from "expo-router";
 import { getStoredUser } from "../../../../database/queries";
 

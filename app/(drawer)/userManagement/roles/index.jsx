@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 
 import { StatusBar } from "expo-status-bar";
-import { fetchRoles } from "../../../../services/api";
+import { fetchRoles } from "../../../../services/api/roles";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import TabsComponent from "../../../../components/TabsComponent";

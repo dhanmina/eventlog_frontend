@@ -13,7 +13,8 @@ import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomDropdown from "../../../../components/CustomDropdown";
 import CustomButton from "../../../../components/CustomButton";
-import { fetchBlocks, addUser } from "../../../../services/api";
+import { fetchBlocks } from "../../../../services/api/blocks";
+import { addUser } from "../../../../services/api/users";
 import CustomModal from "../../../../components/CustomModal";
 
 const AddStudent = () => {

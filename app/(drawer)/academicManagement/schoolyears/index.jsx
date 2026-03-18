@@ -5,7 +5,7 @@ import {
   uploadSchoolYearFile,
   changeSchoolYear,
   getCurrentSchoolYear,
-} from "../../../../services/api";
+} from "../../../../services/api/schoolYears";
 import CustomButton from "../../../../components/CustomButton";
 import globalStyles from "../../../../constants/globalStyles";
 import CustomModal from "../../../../components/CustomModal";

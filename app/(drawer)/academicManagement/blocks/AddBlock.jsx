@@ -14,11 +14,9 @@ import FormField from "../../../../components/FormField";
 import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
 import CustomDropdown from "../../../../components/CustomDropdown";
-import {
-  addBlock,
-  fetchYearLevels,
-  fetchDepartments,
-} from "../../../../services/api";
+import { addBlock } from "../../../../services/api/blocks";
+import { fetchYearLevels } from "../../../../services/api/roles";
+import { fetchDepartments } from "../../../../services/api/departments";
 
 import { fetchCoursesByDepartmentId } from "../../../../services/api/courses";
 

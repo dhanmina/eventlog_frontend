@@ -9,7 +9,7 @@ import CustomModal from "../../../../components/CustomModal";
 
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
-import { fetchBlockById, disableBlock } from "../../../../services/api";
+import { fetchBlockById, disableBlock } from "../../../../services/api/blocks";
 import { useLocalSearchParams } from "expo-router";
 
 const BlockDetails = () => {

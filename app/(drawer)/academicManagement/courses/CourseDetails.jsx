@@ -9,7 +9,7 @@ import CustomModal from "../../../../components/CustomModal";
 
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
-import { fetchCourseById, disableCourse } from "../../../../services/api";
+import { fetchCourseById, disableCourse } from "../../../../services/api/courses";
 import { useLocalSearchParams } from "expo-router";
 
 const CourseDetails = () => {

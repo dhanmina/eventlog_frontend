@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { clearAllTablesData, getStoredUser } from "../database/queries";
-import { stopSync } from "../services/api";
+import { stopSync } from "../services/api/sync";
 
 const useUserAccount = () => {
   const [user, setUser] = useState(null);

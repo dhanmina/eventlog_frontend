@@ -14,7 +14,7 @@ import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomDropdown from "../../../../components/CustomDropdown";
 import CustomButton from "../../../../components/CustomButton";
-import { addAdmin } from "../../../../services/api";
+import { addAdmin } from "../../../../services/api/admins";
 import CustomModal from "../../../../components/CustomModal";
 
 const AddAdmin = () => {

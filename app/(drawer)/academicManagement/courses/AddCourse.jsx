@@ -13,7 +13,8 @@ import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomDropdown from "../../../../components/CustomDropdown";
 import CustomButton from "../../../../components/CustomButton";
-import { fetchDepartments, addCourse } from "../../../../services/api";
+import { fetchDepartments } from "../../../../services/api/departments";
+import { addCourse } from "../../../../services/api/courses";
 import CustomModal from "../../../../components/CustomModal";
 
 const AddCourse = () => {

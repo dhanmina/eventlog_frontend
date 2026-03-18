@@ -9,7 +9,7 @@ import CustomModal from "../../../../components/CustomModal";
 
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
-import { fetchEventNameById, disableEventName } from "../../../../services/api";
+import { fetchEventNameById, disableEventName } from "../../../../services/api/events";
 import { useLocalSearchParams } from "expo-router";
 
 const EventNameDetails = () => {

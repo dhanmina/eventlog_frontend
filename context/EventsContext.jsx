@@ -78,7 +78,7 @@ export const EventsProvider = ({ children }) => {
     setLastFetchTime(now);
 
     try {
-      const { fetchUpcomingEvents } = await import("../services/api");
+      const { fetchUpcomingEvents } = await import("../services/api/events");
       const { storeEvent, cleanupOutdatedEvents } = await import("../database/queries");
 
       const blockIdToFetch = [1, 2, 3, 4].includes(user.role_id) && user.block_id ? user.block_id : null;

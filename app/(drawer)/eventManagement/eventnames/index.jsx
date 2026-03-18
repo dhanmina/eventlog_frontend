@@ -11,7 +11,7 @@ import {
 import TabsComponent from "../../../../components/TabsComponent";
 
 import { StatusBar } from "expo-status-bar";
-import { fetchEventNames, disableEventName } from "../../../../services/api";
+import { fetchEventNames, disableEventName } from "../../../../services/api/events";
 import { router, useFocusEffect } from "expo-router";
 import images from "../../../../constants/images";
 import SearchBar from "../../../../components/CustomSearch";

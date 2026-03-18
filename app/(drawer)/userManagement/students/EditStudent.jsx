@@ -15,11 +15,8 @@ import FormField from "../../../../components/FormField";
 import CustomDropdown from "../../../../components/CustomDropdown";
 import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
-import {
-  fetchBlocks,
-  fetchUserById,
-  updateUser,
-} from "../../../../services/api";
+import { fetchBlocks } from "../../../../services/api/blocks";
+import { fetchUserById, updateUser } from "../../../../services/api/users";
 import { useLocalSearchParams } from "expo-router";
 
 const EditStudent = () => {

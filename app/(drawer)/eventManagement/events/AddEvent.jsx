@@ -17,12 +17,9 @@ import FormField from "../../../../components/FormField";
 import TimePickerComponent from "../../../../components/TimePickerComponent";
 import DatePickerComponent from "../../../../components/DatePickerComponent";
 import DurationPicker from "../../../../components/DurationPicker";
-import {
-  fetchDepartments,
-  fetchEventNames,
-  fetchBlocksByDepartment,
-  addEvent,
-} from "../../../../services/api";
+import { fetchDepartments } from "../../../../services/api/departments";
+import { fetchEventNames, addEvent } from "../../../../services/api/events";
+import { fetchBlocksByDepartment } from "../../../../services/api/blocks";
 import { getStoredUser } from "../../../../database/queries";
 import { router } from "expo-router";
 

@@ -11,7 +11,7 @@ import {
 import TabsComponent from "../../../../components/TabsComponent";
 
 import { StatusBar } from "expo-status-bar";
-import { fetchBlocks, disableBlock } from "../../../../services/api";
+import { fetchBlocks, disableBlock } from "../../../../services/api/blocks";
 import { router, useFocusEffect } from "expo-router";
 
 import images from "../../../../constants/images";

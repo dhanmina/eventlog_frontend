@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import TabsComponent from "../../../../components/TabsComponent";
 import { StatusBar } from "expo-status-bar";
-import { fetchDepartments, disableDepartment } from "../../../../services/api";
+import { fetchDepartments, disableDepartment } from "../../../../services/api/departments";
 import { router, useFocusEffect } from "expo-router";
 import images from "../../../../constants/images";
 import SearchBar from "../../../../components/CustomSearch";

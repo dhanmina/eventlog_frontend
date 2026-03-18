@@ -14,7 +14,7 @@ import {
   logAttendance,
   isAlreadyLogged,
 } from "../../../../database/queries";
-import { syncAttendance } from "../../../../services/api";
+import { syncAttendance } from "../../../../services/api/sync";
 
 const Scan = () => {
   const [permission, requestPermission] = useCameraPermissions();

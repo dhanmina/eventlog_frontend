@@ -10,7 +10,7 @@ import { clearAllTablesData } from "../../database/queries";
 
 import images from "../../constants/images";
 import theme from "../../constants/theme";
-import { stopSync } from "../../services/api";
+import { stopSync } from "../../services/api/sync";
 
 const screenWidth = Dimensions.get("window").width;
 
