@@ -171,6 +171,7 @@ const FormField = ({
             styles.textInput,
             multiline && styles.multilineInput,
             { color: theme.colors.primary },
+            iconShow && getIcon() && styles.textInputWithIcon,
           ]}
           placeholder={placeholder}
           placeholderTextColor={theme.colors.placeholder}
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
   inputWrapper: {
     width: "100%",
     height: 46,
-    paddingHorizontal: 10,
+    paddingHorizontal: theme.spacing.medium,
     backgroundColor: theme.colors.secondary,
     flexDirection: "row",
     alignItems: "center",
@@ -232,12 +233,15 @@ const styles = StyleSheet.create({
   multilineInputWrapper: {
     height: 92,
     alignItems: "flex-start",
-    paddingVertical: 10,
+    paddingVertical: theme.spacing.small,
   },
   textInput: {
     fontFamily: "Arial",
     fontSize: theme.fontSizes.medium,
     flex: 1,
+  },
+  textInputWithIcon: {
+    marginLeft: theme.spacing.small,
   },
   multilineInput: {
     height: 92,
