@@ -4,21 +4,19 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Platform,
   Modal,
-  Dimensions,
+  Image,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
 import theme from "../constants/theme";
-
-const { width, height } = Dimensions.get("window");
+import images from "../constants/images";
 
 const TimePickerComponent = ({
   label,
   title,
   onTimeChange,
   selectedValue = null,
-  mode = "single",
+  defaultValue = null,
   allowAM = true,
   allowPM = true,
 }) => {
@@ -40,202 +38,198 @@ const TimePickerComponent = ({
 
   const [showPicker, setShowPicker] = useState(false);
   const [selectedTime, setSelectedTime] = useState(selectedValue || null);
-  const [tempTime, setTempTime] = useState(null);
+  const [pickerHour, setPickerHour] = useState(8);
+  const [pickerMinute, setPickerMinute] = useState(0);
 
-  const convertTo12HourFormat = useCallback((date) => {
-    if (!date) return null;
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    const isPM = hours >= 12;
-    const formattedHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
-    const formattedTime = `${hours.toString().padStart(2, "0")}:${minutes
+  const convertTo12HourFormat = useCallback((h24, min) => {
+    const isPM = h24 >= 12;
+    const h12 = h24 > 12 ? h24 - 12 : h24 === 0 ? 12 : h24;
+    const formattedTime = `${h24.toString().padStart(2, "0")}:${min
       .toString()
       .padStart(2, "0")}:00`;
-    const displayTime = `${formattedHours.toString().padStart(2, "0")}:${minutes
+    const displayTime = `${h12.toString().padStart(2, "0")}:${min
       .toString()
       .padStart(2, "0")} ${isPM ? "PM" : "AM"}`;
-    return { formattedTime, displayTime, isPM };
+    return { formattedTime, displayTime };
   }, []);
 
-  const initialPickerTime = useMemo(() => {
-    if (selectedTime) {
-      const timeParts = selectedTime.split(" ");
-      const [hours, minutes] = timeParts[0].split(":").map(Number);
-      const isPM = timeParts[1] === "PM";
-      const adjustedHours = isPM
-        ? hours === 12
-          ? 12
-          : hours + 12
-        : hours === 12
-        ? 0
-        : hours;
-      const initialDate = new Date();
-      initialDate.setHours(adjustedHours, minutes, 0);
-      return initialDate;
+  // AM only: 12(midnight)=0, 01–11
+  // PM only: 12(noon)=12, 01 PM=13, … 11 PM=23
+  // Both:    01–12 (value = display hour, AM/PM determined separately)
+  const hourOptions = useMemo(() => {
+    if (finalAllowAM && !finalAllowPM) {
+      return Array.from({ length: 12 }, (_, i) => ({
+        label: i === 0 ? "12" : String(i).padStart(2, "0"),
+        value: i,
+      }));
     }
-    return new Date();
-  }, [selectedTime]);
+    if (!finalAllowAM && finalAllowPM) {
+      return Array.from({ length: 12 }, (_, i) => ({
+        label: i === 0 ? "12" : String(i).padStart(2, "0"),
+        value: i === 0 ? 12 : i + 12,
+      }));
+    }
+    return Array.from({ length: 12 }, (_, i) => ({
+      label: String(i + 1).padStart(2, "0"),
+      value: i + 1,
+    }));
+  }, [finalAllowAM, finalAllowPM]);
 
-  const forceTimeToAllowedRange = useCallback(
-    (time) => {
-      if (!time) return time;
-      const hours = time.getHours();
-      const isPM = hours >= 12;
-
-      if (!finalAllowAM && finalAllowPM && !isPM) {
-        const pmTime = new Date(time);
-        pmTime.setHours(hours + 12);
-        return pmTime;
-      }
-
-      if (finalAllowAM && !finalAllowPM && isPM) {
-        const amTime = new Date(time);
-        amTime.setHours(hours - 12);
-        return amTime;
-      }
-
-      return time;
-    },
-    [finalAllowAM, finalAllowPM]
+  const minuteOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        label: String(i * 5).padStart(2, "0"),
+        value: i * 5,
+      })),
+    []
   );
 
-  const togglePicker = () => {
-    if (showPicker) {
-      if (tempTime) {
-        const convertedTime = convertTo12HourFormat(tempTime);
-        if (convertedTime) {
-          if (convertedTime.displayTime !== selectedTime) {
-            setSelectedTime(convertedTime.displayTime);
-            onTimeChange?.(convertedTime.formattedTime);
-          }
-        }
+  const parseSelectedTime = useCallback((timeStr) => {
+    if (!timeStr) return null;
+    const parts = timeStr.split(" ");
+    if (parts.length !== 2) return null;
+    const [hStr, mStr] = parts[0].split(":");
+    const h12 = parseInt(hStr, 10);
+    const min = parseInt(mStr, 10);
+    const isPM = parts[1] === "PM";
+    const h24 = isPM
+      ? h12 === 12 ? 12 : h12 + 12
+      : h12 === 12 ? 0 : h12;
+    return { h24, min };
+  }, []);
+
+  const parseFormattedTime = useCallback((timeStr) => {
+    if (!timeStr) return null;
+    const parts = timeStr.split(":");
+    if (parts.length < 2) return null;
+    return { h24: parseInt(parts[0], 10), min: parseInt(parts[1], 10) };
+  }, []);
+
+  const openPicker = () => {
+    const parsed = parseSelectedTime(selectedTime);
+    if (parsed) {
+      setPickerHour(parsed.h24);
+      setPickerMinute(parsed.min);
+    } else if (defaultValue) {
+      const parsedDefault = parseFormattedTime(defaultValue);
+      if (parsedDefault) {
+        setPickerHour(parsedDefault.h24);
+        setPickerMinute(parsedDefault.min);
       }
-      setShowPicker(false);
-      setTempTime(null);
     } else {
-      setShowPicker(true);
-      const initialTime = forceTimeToAllowedRange(initialPickerTime);
-      setTempTime(initialTime);
+      setPickerHour(finalAllowAM && !finalAllowPM ? 8 : 13);
+      setPickerMinute(0);
     }
+    setShowPicker(true);
   };
 
-  const handleTimeChange = (event, time) => {
-    if (Platform.OS === "android") {
-      if (event.type === "dismissed") {
-        setShowPicker(false);
-        return;
-      }
-      if (event.type === "set" && time) {
-        let adjustedTime;
-        const hours = time.getHours();
-        const minutes = time.getMinutes();
-        if (!finalAllowAM && finalAllowPM) {
-          adjustedTime = new Date();
-          adjustedTime.setHours(hours < 12 ? hours + 12 : hours, minutes, 0);
-        } else if (finalAllowAM && !finalAllowPM) {
-          adjustedTime = new Date();
-          adjustedTime.setHours(hours >= 12 ? hours - 12 : hours, minutes, 0);
-        } else {
-          adjustedTime = forceTimeToAllowedRange(time);
-        }
-
-        const convertedTime = convertTo12HourFormat(adjustedTime);
-        if (convertedTime) {
-          setSelectedTime(convertedTime.displayTime);
-          onTimeChange?.(convertedTime.formattedTime);
-        }
-        setShowPicker(false);
-      }
-    } else if (Platform.OS === "ios") {
-      if (time) {
-        let adjustedTime;
-        const hours = time.getHours();
-        const minutes = time.getMinutes();
-        if (!finalAllowAM && finalAllowPM) {
-          adjustedTime = new Date();
-          adjustedTime.setHours(hours < 12 ? hours + 12 : hours, minutes, 0);
-        } else if (finalAllowAM && !finalAllowPM) {
-          adjustedTime = new Date();
-          adjustedTime.setHours(hours >= 12 ? hours - 12 : hours, minutes, 0);
-        } else {
-          adjustedTime = forceTimeToAllowedRange(time);
-        }
-
-        setTempTime(adjustedTime);
-      }
-    }
+  const handleConfirm = () => {
+    const { formattedTime, displayTime } = convertTo12HourFormat(
+      pickerHour,
+      pickerMinute
+    );
+    setSelectedTime(displayTime);
+    onTimeChange?.(formattedTime);
+    setShowPicker(false);
   };
 
-  const handleLongPress = () => {
+  const handleCancel = () => setShowPicker(false);
+
+  const handleClear = () => {
     setSelectedTime(null);
     onTimeChange?.(null);
     setShowPicker(false);
-    setTempTime(null);
   };
 
-  const formattedDisplay = !selectedTime ? "Select time" : selectedTime;
+  const hasSelection = !!selectedTime;
 
   return (
     <View style={styles.container}>
       {title && <Text style={styles.titleText}>{title}</Text>}
       <TouchableOpacity
-        style={[styles.pickerButton, showPicker && styles.pickerButtonActive]}
-        onPress={togglePicker}
-        onLongPress={handleLongPress}
+        style={[styles.pickerButton, hasSelection && styles.pickerButtonFilled]}
+        onPress={openPicker}
         accessibilityRole="button"
-        accessibilityLabel="Toggle time picker"
+        accessibilityLabel="Open time picker"
       >
         {label && <Text style={styles.label}>{label}</Text>}
-        <Text style={styles.dateDisplay}>{formattedDisplay}</Text>
+        <View style={styles.buttonContent}>
+          <Image
+            source={images.calendarStar}
+            style={[styles.clockIcon, hasSelection && styles.iconFilled]}
+          />
+          <Text
+            style={[styles.dateDisplay, hasSelection && styles.dateDisplayFilled]}
+          >
+            {selectedTime || "Select time"}
+          </Text>
+        </View>
       </TouchableOpacity>
-      {showPicker && Platform.OS === "android" && (
-        <DateTimePicker
-          value={tempTime || initialPickerTime}
-          mode="time"
-          display="default"
-          onChange={handleTimeChange}
-          is24Hour={false}
-          onCancel={() => {
-            setShowPicker(false);
-          }}
-        />
-      )}
-      {showPicker && Platform.OS === "ios" && (
-        <Modal
-          visible={showPicker}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowPicker(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <View style={styles.iosPickerWrapper}>
-                <DateTimePicker
-                  value={tempTime || initialPickerTime}
-                  mode="time"
-                  display="spinner"
-                  onChange={handleTimeChange}
-                  is24Hour={false}
-                />
-                <View style={styles.iosButtonContainer}>
-                  <TouchableOpacity
-                    onPress={() => setShowPicker(false)}
-                    style={styles.iosButton}
-                  >
-                    <Text style={styles.iosButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={togglePicker}
-                    style={styles.iosButton}
-                  >
-                    <Text style={styles.iosButtonText}>Confirm</Text>
-                  </TouchableOpacity>
-                </View>
+
+      <Modal
+        visible={showPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancel}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {title || label || "Select Time"}
+              </Text>
+            </View>
+
+            <View style={styles.pickerWrapper}>
+              <View style={styles.pickerRow}>
+                <Picker
+                  selectedValue={pickerHour}
+                  onValueChange={(val) => setPickerHour(val)}
+                  style={styles.picker}
+                  itemStyle={styles.pickerItem}
+                >
+                  {hourOptions.map((opt) => (
+                    <Picker.Item
+                      key={opt.value}
+                      label={opt.label}
+                      value={opt.value}
+                      color={theme.colors.primary}
+                    />
+                  ))}
+                </Picker>
+                <Text style={styles.pickerSeparator}>:</Text>
+                <Picker
+                  selectedValue={pickerMinute}
+                  onValueChange={(val) => setPickerMinute(val)}
+                  style={styles.picker}
+                  itemStyle={styles.pickerItem}
+                >
+                  {minuteOptions.map((opt) => (
+                    <Picker.Item
+                      key={opt.value}
+                      label={opt.label}
+                      value={opt.value}
+                      color={theme.colors.primary}
+                    />
+                  ))}
+                </Picker>
               </View>
             </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.clearBtn} onPress={handleClear}>
+                <Text style={styles.clearBtnText}>Clear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
+                <Text style={styles.confirmBtnText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </Modal>
-      )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -249,26 +243,42 @@ const styles = StyleSheet.create({
   pickerButton: {
     borderColor: theme.colors.primary,
     borderWidth: 2,
-    padding: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
     borderRadius: theme.borderRadius.medium,
     justifyContent: "center",
-    alignItems: "center",
     minHeight: 46,
-    backgroundColor: theme.colors.background,
   },
-  pickerButtonActive: {
-    backgroundColor: theme.colors.primary + "20",
+  pickerButtonFilled: {
+    backgroundColor: theme.colors.primary,
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.small,
+  },
+  clockIcon: {
+    width: 18,
+    height: 18,
+    tintColor: theme.colors.primary,
+  },
+  iconFilled: {
+    tintColor: theme.colors.secondary,
   },
   dateDisplay: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.Arial,
     fontSize: theme.fontSizes.medium,
   },
+  dateDisplayFilled: {
+    color: theme.colors.secondary,
+    fontFamily: theme.fontFamily.ArialBold,
+  },
   label: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.ArialBold,
     fontSize: theme.fontSizes.small,
-    marginBottom: theme.spacing.tiny,
+    marginBottom: theme.spacing.xsmall,
   },
   titleText: {
     color: theme.colors.primary,
@@ -276,43 +286,91 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.small,
     fontFamily: theme.fontFamily.ArialBold,
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    padding: theme.spacing.medium,
   },
-  modalContent: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    width: width * 0.9,
-    maxWidth: 400,
-    paddingVertical: 20,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  iosPickerWrapper: {
+  modalCard: {
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
     width: "100%",
+    overflow: "hidden",
   },
-  iosButtonContainer: {
+  modalHeader: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+  },
+  modalTitle: {
+    textAlign: "center",
+    fontFamily: theme.fontFamily.ArialBold,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.secondary,
+  },
+  pickerWrapper: {
+    paddingVertical: theme.spacing.small,
+  },
+  pickerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing.medium,
   },
-  iosButton: {
-    padding: 10,
-  },
-  iosButtonText: {
+  picker: {
+    flex: 1,
     color: theme.colors.primary,
+  },
+  pickerItem: {
+    color: theme.colors.primary,
+    fontSize: theme.fontSizes.large,
+  },
+  pickerSeparator: {
+    fontSize: 24,
+    fontFamily: theme.fontFamily.ArialBold,
+    color: theme.colors.primary,
+    paddingHorizontal: theme.spacing.xsmall,
+  },
+  modalActions: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.primary + "33",
+  },
+  clearBtn: {
+    flex: 1,
+    paddingVertical: theme.spacing.medium,
+    alignItems: "center",
+    borderRightWidth: 1,
+    borderRightColor: theme.colors.primary + "33",
+  },
+  clearBtnText: {
     fontFamily: theme.fontFamily.Arial,
     fontSize: theme.fontSizes.medium,
+    color: theme.colors.gray,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: theme.spacing.medium,
+    alignItems: "center",
+    borderRightWidth: 1,
+    borderRightColor: theme.colors.primary + "33",
+  },
+  cancelBtnText: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.gray,
+  },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: theme.spacing.medium,
+    alignItems: "center",
+    backgroundColor: theme.colors.primary,
+  },
+  confirmBtnText: {
+    fontFamily: theme.fontFamily.ArialBold,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.secondary,
   },
 });

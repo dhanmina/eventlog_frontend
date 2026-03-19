@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   StyleSheet,
   Text,
@@ -389,6 +389,18 @@ const AddEvent = () => {
     setModal({ ...modal, visible: false });
   };
 
+  const addOneHour = (timeStr) => {
+    if (!timeStr) return null;
+    const parts = timeStr.split(":");
+    if (parts.length < 2) return null;
+    const h = parseInt(parts[0], 10) + 1;
+    const m = parseInt(parts[1], 10);
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
+  };
+
+  const amOutDefault = useMemo(() => addOneHour(formData.am_in), [formData.am_in]);
+  const pmOutDefault = useMemo(() => addOneHour(formData.pm_in), [formData.pm_in]);
+
   const handleDateChange = (date) => {
     handleChange("event_date", date);
   };
@@ -520,22 +532,19 @@ const AddEvent = () => {
               <View style={styles.timeContainer}>
                 <TimePickerComponent
                   title="AM Time In"
-                  mode="single"
                   onTimeChange={(time) => handleChange("am_in", time)}
                   selectedValue={formData.am_in}
                   allowPM={false}
                 />
               </View>
               <View style={styles.timeContainer}>
-                {formData.am_in && (
-                  <TimePickerComponent
-                    title="AM Time Out"
-                    mode="single"
-                    onTimeChange={(time) => handleChange("am_out", time)}
-                    selectedValue={formData.am_out}
-                    allowPM={false}
-                  />
-                )}
+                <TimePickerComponent
+                  title="AM Time Out"
+                  onTimeChange={(time) => handleChange("am_out", time)}
+                  selectedValue={formData.am_out}
+                  defaultValue={amOutDefault}
+                  allowPM={false}
+                />
               </View>
             </View>
           </View>
@@ -544,22 +553,19 @@ const AddEvent = () => {
               <View style={styles.timeContainer}>
                 <TimePickerComponent
                   title="PM Time In"
-                  mode="single"
                   onTimeChange={(time) => handleChange("pm_in", time)}
                   selectedValue={formData.pm_in}
                   allowAM={false}
                 />
               </View>
               <View style={styles.timeContainer}>
-                {formData.pm_in && (
-                  <TimePickerComponent
-                    title="PM Time Out"
-                    mode="single"
-                    onTimeChange={(time) => handleChange("pm_out", time)}
-                    selectedValue={formData.pm_out}
-                    allowAM={false}
-                  />
-                )}
+                <TimePickerComponent
+                  title="PM Time Out"
+                  onTimeChange={(time) => handleChange("pm_out", time)}
+                  selectedValue={formData.pm_out}
+                  defaultValue={pmOutDefault}
+                  allowAM={false}
+                />
               </View>
             </View>
             <TouchableOpacity
