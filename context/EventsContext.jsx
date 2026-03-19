@@ -1,10 +1,9 @@
-import React, {
+import {
   createContext,
   useContext,
   useEffect,
   useState,
   useCallback,
-  useRef,
 } from "react";
 import socketService from "../services/socketService";
 import { getStoredEvents } from "../database/queries";
@@ -17,15 +16,7 @@ export const EventsProvider = ({ children }) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState(0);
-  const updateNotificationTimeoutRef = useRef(null);
   const [lastEventUpdate, setLastEventUpdate] = useState(0);
-
-  const notifyEventUpdate = useCallback(() => {
-    if (updateNotificationTimeoutRef.current) clearTimeout(updateNotificationTimeoutRef.current);
-    updateNotificationTimeoutRef.current = setTimeout(() => {
-      setLastEventUpdate(Date.now());
-    }, 2000);
-  }, []);
 
   const canViewEvents = (userRoleId) => [1, 2, 3, 4].includes(userRoleId);
 
@@ -81,12 +72,11 @@ export const EventsProvider = ({ children }) => {
       const { fetchUpcomingEvents } = await import("../services/api/events");
       const { storeEvent, cleanupOutdatedEvents } = await import("../database/queries");
 
-      const blockIdToFetch = [1, 2, 3, 4].includes(user.role_id) && user.block_id ? user.block_id : null;
-      const response = await fetchUpcomingEvents(blockIdToFetch);
+      const response = await fetchUpcomingEvents(null);
 
       if (!response?.success) throw new Error("Failed to fetch events from API.");
 
-      const allEvents = response.events || [];
+      const allEvents = response.events || response.data || [];
       if (allEvents.length === 0) return;
 
       const allApiEventIds = allEvents.map((e) => e.event_id);
