@@ -34,8 +34,7 @@ const AddEventName = () => {
         return;
       }
 
-      const submitData = { name: formData.name.trim() };
-      await addEventName(submitData);
+      await addEventName(formData.name.trim());
 
       setModal({
         visible: true,

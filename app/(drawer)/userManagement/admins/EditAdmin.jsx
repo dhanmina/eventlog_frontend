@@ -121,7 +121,7 @@ const EditAdmin = () => {
       }
 
       const submitData = {
-        id_number: formData.id_number,
+        new_id_number: formData.id_number,
         first_name: formData.first_name,
         middle_name: formData.middle_name || null,
         last_name: formData.last_name,

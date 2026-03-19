@@ -88,7 +88,7 @@ export const editBlock = async (blockId, blockData) => {
 
 export const disableBlock = async (blockId) => {
   try {
-    const response = await axios.patch(`${API_URL}/api/blocks/${blockId}/status`);
+    const response = await axios.patch(`${API_URL}/api/blocks/${blockId}/status`, { status: "Disabled" });
     if (response.data.success) return response.data.message;
     throw new Error("Failed to disable block");
   } catch (error) {

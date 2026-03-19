@@ -60,7 +60,8 @@ export const editDepartment = async (departmentId, departmentData) => {
 export const disableDepartment = async (departmentId) => {
   try {
     const response = await axios.patch(
-      `${API_URL}/api/departments/${departmentId}/status`
+      `${API_URL}/api/departments/${departmentId}/status`,
+      { status: "Disabled" }
     );
     if (response.data.success) {
       return true;

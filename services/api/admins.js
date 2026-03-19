@@ -55,7 +55,8 @@ export const editAdmin = async (id_number, adminData) => {
 export const disableAdmin = async (id_number) => {
   try {
     const response = await axios.patch(
-      `${API_URL}/api/admins/${id_number}/status`
+      `${API_URL}/api/admins/${id_number}/status`,
+      { status: "Disabled" }
     );
 
     if (response.data.success) {

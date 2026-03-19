@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { router, useLocalSearchParams } from "expo-router";
-import axios from "axios";
 
 import FormField from "../../../components/FormField";
 import CustomButton from "../../../components/CustomButton";
@@ -11,7 +10,7 @@ import CustomModal from "../../../components/CustomModal";
 
 import globalStyles from "../../../constants/globalStyles";
 import theme from "../../../constants/theme";
-import { API_URL } from "../../../config/config";
+import { changeUserPassword } from "../../../services/api/users";
 
 const NewPassword = () => {
   const { email } = useLocalSearchParams();
@@ -39,34 +38,13 @@ const NewPassword = () => {
     }
 
     try {
-      const response = await axios.post(
-        `${API_URL}/api/users/change-password`,
-        {
-          email: email,
-          newPassword: password,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      await changeUserPassword(email, password);
 
-      if (response.status === 200) {
-        setModalType("success");
-        setModalTitle("Success");
-        setModalMessage("Password successfully reset. Please log in.");
-        setModalVisible(true);
-        setTimeout(() => router.push("/login"), 2000);
-      } else {
-        setModalType("error");
-        setModalTitle("Error");
-        setModalMessage(
-          response.data?.message ||
-            "Failed to reset password. Please try again."
-        );
-        setModalVisible(true);
-      }
+      setModalType("success");
+      setModalTitle("Success");
+      setModalMessage("Password successfully reset. Please log in.");
+      setModalVisible(true);
+      setTimeout(() => router.push("/login"), 2000);
     } catch (error) {
       setModalType("error");
       setModalTitle("Error");

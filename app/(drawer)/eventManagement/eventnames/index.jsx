@@ -11,7 +11,10 @@ import {
 import TabsComponent from "../../../../components/TabsComponent";
 
 import { StatusBar } from "expo-status-bar";
-import { fetchEventNames, disableEventName } from "../../../../services/api/events";
+import {
+  fetchEventNames,
+  disableEventName,
+} from "../../../../services/api/events";
 import { router, useFocusEffect } from "expo-router";
 import images from "../../../../constants/images";
 import SearchBar from "../../../../components/CustomSearch";
@@ -28,9 +31,10 @@ export default function EventNamesScreen() {
   const [eventNameToDisable, setEventNameToDisable] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadEventNames = async () => {
+  const loadEventNames = async (search = "") => {
     try {
-      const fetchedEventNames = await fetchEventNames();
+      const fetchedEventNames = await fetchEventNames(search, 1, 100);
+
       setEventNames(Array.isArray(fetchedEventNames) ? fetchedEventNames : []);
     } catch (err) {}
   };
@@ -38,7 +42,7 @@ export default function EventNamesScreen() {
   const refreshData = async () => {
     setRefreshing(true);
     try {
-      await loadEventNames();
+      await loadEventNames(searchQuery);
     } catch (error) {
     } finally {
       setRefreshing(false);
@@ -47,16 +51,11 @@ export default function EventNamesScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      loadEventNames();
-    }, [])
+      loadEventNames(searchQuery);
+    }, []),
   );
 
-  const filteredEventNames = Array.isArray(eventNames)
-    ? eventNames.filter((eventName) => {
-        const eventNameText = eventName.label?.toLowerCase() || "";
-        return eventNameText.includes(searchQuery.toLowerCase());
-      })
-    : [];
+  const filteredEventNames = Array.isArray(eventNames) ? eventNames : [];
 
   const handleDisablePress = (eventName) => {
     if (!eventName || !eventName.label) return;
@@ -77,8 +76,8 @@ export default function EventNamesScreen() {
         prevEventNames.map((eventName) =>
           eventName.value === eventNameToDisable.value
             ? { ...eventName, status: "Disabled" }
-            : eventName
-        )
+            : eventName,
+        ),
       );
       handleDisableModalClose();
       setIsSuccessModalVisible(true);
@@ -91,7 +90,10 @@ export default function EventNamesScreen() {
       <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
         <SearchBar
           placeholder="Search event names..."
-          onSearch={setSearchQuery}
+          onSearch={(query) => {
+            setSearchQuery(query);
+            loadEventNames(query);
+          }}
         />
       </View>
       <ScrollView
@@ -109,7 +111,7 @@ export default function EventNamesScreen() {
               style={styles.eventNameContainer}
               onPress={() =>
                 router.push(
-                  `/eventManagement/eventnames/EventNameDetails?id=${eventName.value}`
+                  `/eventManagement/eventnames/EventNameDetails?id=${eventName.value}`,
                 )
               }
             >
@@ -126,7 +128,7 @@ export default function EventNamesScreen() {
                   onPress={() => {
                     if (eventName.value) {
                       router.push(
-                        `/eventManagement/eventnames/EditEventName?id=${eventName.value}`
+                        `/eventManagement/eventnames/EditEventName?id=${eventName.value}`,
                       );
                     }
                   }}

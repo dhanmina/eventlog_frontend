@@ -58,7 +58,7 @@ export const disableUser = async (idNumber) => {
   try {
     const response = await axios.patch(
       `${API_URL}/api/users/${idNumber}/status`,
-      { status: "disabled" }
+      { status: "Disabled" }
     );
 
     if (response.data.success) {
@@ -70,11 +70,11 @@ export const disableUser = async (idNumber) => {
   }
 };
 
-export const changeUserPassword = async (idNumber, newPassword) => {
+export const changeUserPassword = async (email, newPassword) => {
   try {
     const response = await axios.patch(
-      `${API_URL}/api/users/${idNumber}/password`,
-      { newPassword }
+      `${API_URL}/api/users/${email}/password`,
+      { email, newPassword }
     );
     if (response.data.success) {
       return response.data;

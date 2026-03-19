@@ -80,7 +80,8 @@ export const editCourse = async (courseId, courseData) => {
 export const disableCourse = async (courseId) => {
   try {
     const response = await axios.patch(
-      `${API_URL}/api/courses/${courseId}/status`
+      `${API_URL}/api/courses/${courseId}/status`,
+      { status: "Disabled" }
     );
     if (response.data.success) {
       return response.data;

@@ -25,6 +25,19 @@ export const fetchEvents = async () => {
   }
 };
 
+export const fetchEditableEvents = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/api/events/editable`);
+
+    if (response.data.success) {
+      return response.data;
+    }
+    throw new Error("Failed to fetch editable events");
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const fetchApprovedOngoing = async () => {
   try {
     const response = await axios.get(`${API_URL}/api/events`);
@@ -37,7 +50,7 @@ export const fetchApprovedOngoing = async () => {
   } catch (error) {
     console.error(
       "Error fetching approved ongoing events:",
-      error.message || error
+      error.message || error,
     );
     throw error;
   }
@@ -60,10 +73,7 @@ export const fetchUpcomingEvents = async (blockId) => {
 
 export const addEvent = async (eventData) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/api/events/admin`,
-      eventData
-    );
+    const response = await axios.post(`${API_URL}/api/events/admin`, eventData);
 
     if (response.data.success) {
       return response.data;
@@ -79,7 +89,7 @@ export const updateEvent = async (eventId, eventData) => {
   try {
     const response = await axios.put(
       `${API_URL}/api/events/admin/${eventId}`,
-      eventData
+      eventData,
     );
     if (response.data.success) {
       return response.data;
@@ -106,7 +116,7 @@ export const approveEvent = async (eventId, adminId) => {
   try {
     const response = await axios.patch(
       `${API_URL}/api/events/admin/${eventId}/status`,
-      { admin_id_number: adminId }
+      { admin_id_number: adminId },
     );
 
     if (response.data.success) {
@@ -117,19 +127,27 @@ export const approveEvent = async (eventId, adminId) => {
   }
 };
 
-export const fetchEventNames = async () => {
+export const fetchEventNames = async (search = "", page = 1, limit = 10) => {
   try {
-    const response = await axios.get(`${API_URL}/api/event-names`);
+    const response = await axios.get(`${API_URL}/api/event-names`, {
+      params: { search, page, limit },
+    });
 
     if (response.data.success) {
-      return response.data.eventNames.map((event) => ({
+      const mapped = response.data.data.map((event) => ({
         label: event.name || event.event_name,
         value: event.id || event.event_name_id,
         status: event.status,
       }));
+
+      return mapped;
     }
     throw new Error("Failed to fetch event names");
   } catch (error) {
+    console.error(
+      "[fetchEventNames] error:",
+      error.response?.data || error.message,
+    );
     throw error;
   }
 };
@@ -170,22 +188,11 @@ export const editEventName = async (id, data) => {
   }
 };
 
-export const deleteEventName = async (id) => {
-  try {
-    const response = await axios.delete(`${API_URL}/api/event-names/${id}`);
-    if (response.data.success) {
-      return true;
-    }
-    throw new Error("Failed to delete event name");
-  } catch (error) {
-    throw error;
-  }
-};
-
 export const disableEventName = async (eventId) => {
   try {
     const response = await axios.patch(
-      `${API_URL}/api/event-names/${eventId}/status`
+      `${API_URL}/api/event-names/${eventId}/status`,
+      { status: "Disabled" },
     );
     if (response.data.success) {
       return response.data;
