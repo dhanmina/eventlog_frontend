@@ -81,7 +81,7 @@ const TimePickerComponent = ({
         label: String(i * 5).padStart(2, "0"),
         value: i * 5,
       })),
-    []
+    [],
   );
 
   const parseSelectedTime = useCallback((timeStr) => {
@@ -92,9 +92,7 @@ const TimePickerComponent = ({
     const h12 = parseInt(hStr, 10);
     const min = parseInt(mStr, 10);
     const isPM = parts[1] === "PM";
-    const h24 = isPM
-      ? h12 === 12 ? 12 : h12 + 12
-      : h12 === 12 ? 0 : h12;
+    const h24 = isPM ? (h12 === 12 ? 12 : h12 + 12) : h12 === 12 ? 0 : h12;
     return { h24, min };
   }, []);
 
@@ -126,7 +124,7 @@ const TimePickerComponent = ({
   const handleConfirm = () => {
     const { formattedTime, displayTime } = convertTo12HourFormat(
       pickerHour,
-      pickerMinute
+      pickerMinute,
     );
     setSelectedTime(displayTime);
     onTimeChange?.(formattedTime);
@@ -155,11 +153,14 @@ const TimePickerComponent = ({
         {label && <Text style={styles.label}>{label}</Text>}
         <View style={styles.buttonContent}>
           <Image
-            source={images.calendarStar}
+            source={images.clock}
             style={[styles.clockIcon, hasSelection && styles.iconFilled]}
           />
           <Text
-            style={[styles.dateDisplay, hasSelection && styles.dateDisplayFilled]}
+            style={[
+              styles.dateDisplay,
+              hasSelection && styles.dateDisplayFilled,
+            ]}
           >
             {selectedTime || "Select time"}
           </Text>
@@ -223,7 +224,10 @@ const TimePickerComponent = ({
               <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
+              <TouchableOpacity
+                style={styles.confirmBtn}
+                onPress={handleConfirm}
+              >
                 <Text style={styles.confirmBtnText}>Confirm</Text>
               </TouchableOpacity>
             </View>

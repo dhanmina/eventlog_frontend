@@ -39,6 +39,7 @@ import school from "../assets/icons/school.png";
 import calendarStar from "../assets/icons/calendar-star.png";
 import present from "../assets/icons/present.png";
 import absent from "../assets/icons/absent.png";
+import clock from "../assets/icons/clock.png";
 
 export default {
   logo,
@@ -81,4 +82,5 @@ export default {
   calendarStar,
   present,
   absent,
+  clock,
 };
