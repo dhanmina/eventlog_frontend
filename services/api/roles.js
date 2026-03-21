@@ -6,8 +6,8 @@ export const fetchRoles = async () => {
     const response = await axios.get(`${API_URL}/api/roles`);
     if (response.data.success) {
       return response.data.roles.map((role) => ({
-        role_id: role.role_id,
-        role_name: role.role_name,
+        role_id: role.id,
+        role_name: role.name,
       }));
     }
     throw new Error("Failed to fetch roles");
@@ -22,8 +22,8 @@ export const fetchYearLevels = async () => {
 
     if (response.data.success) {
       return response.data.yearlevel.map((yearlevel) => ({
-        year_level_id: yearlevel.year_level_id,
-        year_level_name: yearlevel.year_level_name,
+        year_level_id: yearlevel.id,
+        year_level_name: yearlevel.name,
       }));
     }
     throw new Error("Failed to fetch year levels");
