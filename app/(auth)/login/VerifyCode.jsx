@@ -110,7 +110,7 @@ const VerifyCode = () => {
 
       <View style={styles.buttonContainer}>
         <CustomButton
-          type="secondary"
+          type="primary"
           title="VERIFY CODE"
           onPress={handleVerifyCode}
         />
@@ -147,14 +147,14 @@ const styles = StyleSheet.create({
   forgotPassword: {
     fontFamily: "SquadaOne",
     fontSize: theme.fontSizes.huge,
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
   },
   headerContainer: {
     width: "80%",
     marginBottom: theme.spacing.medium,
   },
   info: {
-    color: theme.colors.secondary,
+    color: theme.colors.gray,
     fontFamily: "Arial",
   },
   resendContainer: {
@@ -163,17 +163,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   timerText: {
-    color: theme.colors.secondary,
+    color: theme.colors.gray,
     fontFamily: "Arial",
     fontSize: theme.fontSizes.small,
   },
   resendText: {
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
     fontFamily: "ArialBold",
     fontSize: theme.fontSizes.small,
   },
   question: {
-    color: theme.colors.secondary,
+    color: theme.colors.gray,
     fontFamily: "Arial",
     fontSize: theme.fontSizes.small,
   },

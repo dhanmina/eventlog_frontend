@@ -218,7 +218,7 @@ const Login = () => {
             fontFamily:
               Platform.OS === "web" ? "system-ui, sans-serif" : "System",
             fontSize: 18,
-            color: theme.colors.secondary,
+            color: theme.colors.primary,
             marginBottom: 10,
           }}
         >
@@ -264,7 +264,7 @@ const Login = () => {
             style={styles.checkbox}
             value={isChecked}
             onValueChange={setChecked}
-            color={isChecked ? "#81b0ff" : undefined}
+            color={isChecked ? theme.colors.primary : undefined}
           />
           <TouchableOpacity onPress={() => setChecked(!isChecked)}>
             <Text style={styles.rememberMe}>Remember Me</Text>
@@ -279,7 +279,7 @@ const Login = () => {
         </View>
       </View>
       <View style={styles.buttonContainer}>
-        <CustomButton type="secondary" title="Login" onPress={handleLogin} />
+        <CustomButton type="primary" title="Login" onPress={handleLogin} />
       </View>
 
       {Platform.OS !== "web" && (
@@ -308,23 +308,23 @@ export default Login;
 
 const styles = StyleSheet.create({
   header: {
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
     fontSize: theme.fontSizes.display,
     fontFamily: "SquadaOne",
     marginBottom: theme.spacing.medium,
   },
   checkbox: {
     marginRight: theme.spacing.small,
-    borderColor: theme.colors.secondary,
+    borderColor: theme.colors.primary,
     borderWidth: 2,
-    backgroundColor: "#FBF1E5",
+    backgroundColor: theme.colors.secondary,
     width: 20,
     height: 20,
   },
   rememberMe: {
     fontFamily: "Arial",
     fontSize: theme.fontSizes.small,
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
   },
   rememberMeContainer: {
     flexDirection: "row",
@@ -339,11 +339,11 @@ const styles = StyleSheet.create({
   },
   forgotPass: {
     fontSize: theme.fontSizes.small,
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
     fontFamily: "Arial",
   },
   registerQ: {
-    color: theme.colors.secondary,
+    color: theme.colors.gray,
     fontFamily: "Arial",
     paddingRight: theme.spacing.small,
   },
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.medium,
   },
   registerLink: {
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
     fontFamily: "ArialBold",
   },
   form: {

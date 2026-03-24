@@ -81,7 +81,7 @@ const NewPassword = () => {
       </View>
       <View style={styles.buttonContainer}>
         <CustomButton
-          type="secondary"
+          type="primary"
           title="RESET PASSWORD"
           onPress={handleResetPassword}
         />
@@ -107,13 +107,13 @@ const styles = StyleSheet.create({
   forgotPassword: {
     fontFamily: "SquadaOne",
     fontSize: theme.fontSizes.huge,
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
   },
   headerContainer: {
     paddingHorizontal: theme.spacing.medium,
   },
   info: {
-    color: theme.colors.secondary,
+    color: theme.colors.gray,
     fontFamily: "Arial",
   },
   buttonContainer: {

@@ -3,7 +3,7 @@ import theme from "./theme";
 
 const globalStyles = StyleSheet.create({
   primaryContainer: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.secondary,
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
