@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -34,9 +34,11 @@ const BlockList = ({
   const [departments, setDepartments] = useState([]);
   const [yearLevels, setYearLevels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const baseBlocksRef = useRef([]);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState({
@@ -51,7 +53,9 @@ const BlockList = ({
     const loadEventData = async () => {
       try {
         setLoading(true);
+        setFetchError(false);
         const event_id = Number(eventId);
+        if (isNaN(event_id) || event_id <= 0) return;
         const blocksData = await fetchBlocksOfEvents(event_id, "", "");
         if (!blocksData.success) throw new Error("Failed to load blocks");
         const eventTitle =
@@ -64,14 +68,16 @@ const BlockList = ({
               ? `${block.course_code} ${block.block_name}`
               : block.block_name,
           })) || [];
+        baseBlocksRef.current = mappedBlocks;
         setAllBlocks(mappedBlocks);
         setBlocks(mappedBlocks);
         const uniqueDepartments = [
           ...new Set(mappedBlocks.map((b) => b.department_id)),
         ];
         const deptOptions = uniqueDepartments.map((deptId) => ({
-          label: mappedBlocks.find((b) => b.department_id === deptId)
-            ?.course_code,
+          label:
+            mappedBlocks.find((b) => b.department_id === deptId)
+              ?.department_name || String(deptId),
           value: String(deptId),
         }));
         const departmentsWithAll = [
@@ -83,11 +89,18 @@ const BlockList = ({
           ...new Set(mappedBlocks.map((b) => b.year_level_id)),
         ];
         const yearOptions = uniqueYearLevels.map((yearId) => ({
-          label: `Year ${yearId}`,
+          label:
+            mappedBlocks.find((b) => b.year_level_id === yearId)
+              ?.year_level_name || `Year ${yearId}`,
           value: String(yearId),
         }));
-        setYearLevels(yearOptions);
+        const yearLevelsWithAll = [
+          { label: "All Year Levels", value: "" },
+          ...yearOptions,
+        ];
+        setYearLevels(yearLevelsWithAll);
       } catch (error) {
+        setFetchError(true);
         setAllBlocks([]);
         setBlocks([]);
       } finally {
@@ -98,11 +111,20 @@ const BlockList = ({
   }, [eventId]);
 
   useEffect(() => {
-    if (!eventId || (!selectedDepartment && !selectedYearLevel)) return;
+    if (!eventId) return;
+    if (!selectedDepartment && !selectedYearLevel) {
+      if (baseBlocksRef.current.length > 0) {
+        setAllBlocks(baseBlocksRef.current);
+        setBlocks(baseBlocksRef.current);
+      }
+      return;
+    }
     const fetchData = async () => {
       try {
         setLoading(true);
+        setFetchError(false);
         const event_id = Number(eventId);
+        if (isNaN(event_id) || event_id <= 0) return;
         const blocksData = await fetchBlocksOfEvents(
           event_id,
           selectedDepartment || undefined,
@@ -526,6 +548,8 @@ const BlockList = ({
       <ScrollView contentContainerStyle={styles.scrollviewContainer}>
         {loading ? (
           <Text style={styles.noDataText}>Loading blocks...</Text>
+        ) : fetchError ? (
+          <Text style={styles.noDataText}>Failed to load blocks.</Text>
         ) : blocks.length === 0 && searchQuery !== "" ? (
           <Text style={styles.noDataText}>No matching blocks found.</Text>
         ) : blocks.length === 0 ? (

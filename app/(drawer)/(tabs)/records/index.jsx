@@ -30,7 +30,6 @@ const Records = () => {
   const [ongoingEvents, setOngoingEvents] = useState([]);
   const [pastEvents, setPastEvents] = useState([]);
   const [studentId, setStudentId] = useState(null);
-  const [blockId, setBlockId] = useState(null);
 
   const canViewRecords = (userRoleId) => {
     return [1, 2, 3].includes(userRoleId);
@@ -47,7 +46,6 @@ const Records = () => {
       let ongoingEventsData = [];
       let pastEventsData = [];
       let userIdNumber = null;
-      let userBlockNumber = null;
 
       if (user.role_id === 1 || user.role_id === 2) {
         const storedUser = await getStoredUser();
@@ -55,9 +53,7 @@ const Records = () => {
           return;
         }
         userIdNumber = storedUser.id_number;
-        userBlockNumber = storedUser.block_id || null;
         setStudentId(userIdNumber);
-        setBlockId(userBlockNumber);
         const [ongoingResponse, pastResponse] = await Promise.all([
           fetchUserOngoingEvents(userIdNumber),
           fetchUserPastEvents(userIdNumber),
@@ -213,13 +209,13 @@ const Records = () => {
     (eventId) => {
       if (user?.role_id === 1 || user?.role_id === 2) {
         router.push(
-          `/records/Attendance?eventId=${eventId}&studentId=${studentId}&blockId=${blockId}`
+          `/records/Attendance?eventId=${eventId}&studentId=${studentId}`
         );
       } else if (user?.role_id === 3) {
         router.push(`/records/BlockList?eventId=${eventId}`);
       }
     },
-    [user?.role_id, studentId, blockId]
+    [user?.role_id, studentId]
   );
 
   const renderEventSection = useCallback(

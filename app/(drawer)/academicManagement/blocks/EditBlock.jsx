@@ -154,7 +154,6 @@ const EditBlock = () => {
         name: formData.block_name,
         course_id: formData.course,
         year_level_id: formData.year_level,
-        department_id: formData.department,
         status: formData.status,
       };
 

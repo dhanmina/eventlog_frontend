@@ -57,7 +57,7 @@ export const fetchAllPastEvents = async (page = 1, limit = 10, search = "") => {
   try {
     const response = await axios.get(
       `${API_URL}/api/attendance/admin/events/past`,
-      { params: { page, limit } }
+      { params: { page, limit, search } }
     );
 
     if (response.data.success) {

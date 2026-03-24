@@ -83,15 +83,14 @@ export const RecordsProvider = ({ children }) => {
 
       const groupedEvents = {};
       [...ongoingEventsData, ...pastEventsData].forEach((record) => {
-        const { event_id, event_name, event_date } = record;
+        const { event_id, event_name, event_dates } = record;
         if (!groupedEvents[event_id]) {
           groupedEvents[event_id] = {
             event_id,
             event_name,
-            event_dates: [],
+            event_dates: event_dates ? event_dates.split(",") : [],
           };
         }
-        groupedEvents[event_id].event_dates.push(event_date);
       });
 
       const allEventsData = Object.values(groupedEvents);

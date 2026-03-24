@@ -53,6 +53,45 @@ const AddEvent = () => {
   });
   const [isDurationPickerVisible, setIsDurationPickerVisible] = useState(false);
 
+  const fetchDepartmentData = async () => {
+    setLoadingDepartments(true);
+    setErrorDepartments(null);
+    try {
+      const response = await fetchDepartments();
+      if (!response || !Array.isArray(response.departments)) {
+        throw new Error(
+          "Invalid data format from API: Expected 'departments' array."
+        );
+      }
+      const departmentsData = response.departments;
+      const activeDepartmentsData = departmentsData.filter(
+        (dept) => dept.status === "Active"
+      );
+      const formattedDepartments = activeDepartmentsData.map((dept) => ({
+        label: dept.department_name,
+        value: dept.department_id,
+      }));
+      if (
+        formattedDepartments.some(
+          (dept) => !dept.label || dept.value === undefined
+        )
+      ) {
+        throw new Error("Invalid department data.");
+      }
+      setDepartmentOptions(formattedDepartments);
+    } catch (err) {
+      setErrorDepartments(err);
+      setModal({
+        visible: true,
+        title: "Error",
+        message: "Failed to load departments. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
+
   useEffect(() => {
     const initializeData = async () => {
       try {
@@ -96,44 +135,6 @@ const AddEvent = () => {
         setIsLoading(false);
       }
     };
-    const fetchDepartmentData = async () => {
-      setLoadingDepartments(true);
-      setErrorDepartments(null);
-      try {
-        const response = await fetchDepartments();
-        if (!response || !Array.isArray(response.departments)) {
-          throw new Error(
-            "Invalid data format from API: Expected 'departments' array."
-          );
-        }
-        const departmentsData = response.departments;
-        const activeDepartmentsData = departmentsData.filter(
-          (dept) => dept.status === "Active"
-        );
-        const formattedDepartments = activeDepartmentsData.map((dept) => ({
-          label: dept.department_name,
-          value: dept.department_id,
-        }));
-        if (
-          formattedDepartments.some(
-            (dept) => !dept.label || dept.value === undefined
-          )
-        ) {
-          throw new Error("Invalid department data.");
-        }
-        setDepartmentOptions(formattedDepartments);
-      } catch (err) {
-        setErrorDepartments(err);
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load departments. Please try again.",
-          type: "error",
-        });
-      } finally {
-        setLoadingDepartments(false);
-      }
-    };
     initializeData();
     fetchEventNamesData();
     fetchDepartmentData();
@@ -156,10 +157,13 @@ const AddEvent = () => {
           (block) => block.status === "Active"
         );
 
-        const formattedBlocks = activeBlocks.map((block) => ({
-          label: `${block.course_code || ""}  ${block.block_name}`,
-          value: block.block_id,
-        }));
+        const formattedBlocks = activeBlocks.map((block) => {
+          const blockName = block.block_name || block.name || "";
+          const label = block.course_code
+            ? `${block.course_code} ${blockName}`
+            : blockName;
+          return { label, value: block.block_id };
+        });
 
         setBlockOptions(formattedBlocks);
       } catch (error) {

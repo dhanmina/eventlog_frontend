@@ -57,6 +57,43 @@ const EditEvent = () => {
   const [isDurationPickerVisible, setIsDurationPickerVisible] = useState(false);
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState([]);
 
+  const fetchDepartmentData = async () => {
+    setLoadingDepartments(true);
+    setErrorDepartments(null);
+    try {
+      const response = await fetchDepartments();
+
+      if (!response || !Array.isArray(response.departments)) {
+        throw new Error(
+          "Invalid data format from API: Expected 'departments' array."
+        );
+      }
+
+      const departmentsData = response.departments;
+
+      const activeDepartmentsData = departmentsData.filter(
+        (dept) => dept.status === "Active"
+      );
+
+      const formattedDepartments = activeDepartmentsData.map((dept) => ({
+        label: dept.department_name,
+        value: dept.department_id,
+      }));
+
+      setDepartmentOptions(formattedDepartments);
+    } catch (err) {
+      setErrorDepartments(err);
+      setModal({
+        visible: true,
+        title: "Error",
+        message: "Failed to load departments. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
+
   useEffect(() => {
     const initializeData = async () => {
       try {
@@ -95,8 +132,8 @@ const EditEvent = () => {
         const blockIds = eventData.block_ids
           ? eventData.block_ids.split(",").map(Number)
           : [];
-        const blockNames = eventData.block_names_list
-          ? eventData.block_names_list.split(",")
+        const blockNames = eventData.block_names
+          ? eventData.block_names.split(",")
           : [];
         const formattedBlocks = blockIds.map((id, index) => ({
           label: blockNames[index] || `Unnamed Block (${id})`,
@@ -124,7 +161,7 @@ const EditEvent = () => {
           pm_out: eventData.pm_out || null,
           event_date: formattedEventDates,
           duration: eventData.duration || 0,
-          created_by: eventData.created_by_admin_id || "",
+          created_by: eventData.created_by_id || "",
         });
         setBlockOptions(formattedBlocks);
         setSelectedDepartmentIds(departmentIds);
@@ -168,43 +205,6 @@ const EditEvent = () => {
       }
     };
 
-    const fetchDepartmentData = async () => {
-      setLoadingDepartments(true);
-      setErrorDepartments(null);
-      try {
-        const response = await fetchDepartments();
-
-        if (!response || !Array.isArray(response.departments)) {
-          throw new Error(
-            "Invalid data format from API: Expected 'departments' array."
-          );
-        }
-
-        const departmentsData = response.departments;
-
-        const activeDepartmentsData = departmentsData.filter(
-          (dept) => dept.status === "Active"
-        );
-
-        const formattedDepartments = activeDepartmentsData.map((dept) => ({
-          label: dept.department_name,
-          value: dept.department_id,
-        }));
-
-        setDepartmentOptions(formattedDepartments);
-      } catch (err) {
-        setErrorDepartments(err);
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load departments. Please try again.",
-          type: "error",
-        });
-      } finally {
-        setLoadingDepartments(false);
-      }
-    };
-
     initializeData();
     fetchEventData();
     fetchEventNamesData();
@@ -229,9 +229,10 @@ const EditEvent = () => {
           (block) => block.status === "Active"
         );
         const formattedBlocks = activeBlocks.map((block) => {
+          const blockName = block.block_name || block.name || "";
           const label = block.course_code
-            ? `${block.course_code} ${block.block_name}`
-            : block.block_name;
+            ? `${block.course_code} ${blockName}`
+            : blockName;
 
           return { label, value: block.block_id };
         });

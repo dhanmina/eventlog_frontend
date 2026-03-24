@@ -180,7 +180,7 @@ export const editEventName = async (id, data) => {
   try {
     const response = await axios.put(`${API_URL}/api/event-names/${id}`, data);
     if (response.data.success) {
-      return response.data.eventName;
+      return response.data.data;
     }
     throw new Error("Failed to update event name");
   } catch (error) {
