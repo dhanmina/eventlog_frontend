@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import theme from "../constants/theme";
-import images from "../constants/images";
+import icons from "../constants/icons";
 
 const DatePickerComponent = ({
   label,
@@ -190,7 +190,7 @@ const DatePickerComponent = ({
         {label && <Text style={styles.label}>{label}</Text>}
         <View style={styles.buttonContent}>
           <Image
-            source={images.calendar}
+            source={icons.calendar}
             style={[styles.calendarIcon, hasSelection && styles.iconFilled]}
           />
           <Text
@@ -273,7 +273,7 @@ const DatePickerComponent = ({
                             onPress={() => handleRemovePending(date)}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Image source={images.close} style={styles.removeIcon} />
+                            <Image source={icons.close} style={styles.removeIcon} />
                           </TouchableOpacity>
                         </View>
                       ))
@@ -312,7 +312,7 @@ const DatePickerComponent = ({
                 onPress={() => handleRemoveDate(date)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Image source={images.close} style={styles.removeIcon} />
+                <Image source={icons.close} style={styles.removeIcon} />
               </TouchableOpacity>
             </View>
           ))}

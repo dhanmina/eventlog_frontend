@@ -3,6 +3,7 @@ import React from "react";
 import { router } from "expo-router";
 
 import images from "../constants/images";
+import icons from "../constants/icons";
 import theme from "../constants/theme";
 
 const WebHeader = ({ title }) => {
@@ -20,7 +21,7 @@ const WebHeader = ({ title }) => {
               router.replace("/web");
             }}
           >
-            <Image source={images.home} style={styles.headerIcon} />
+            <Image source={icons.home} style={styles.headerIcon} />
             <Text style={styles.navTitle}>HOME</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -32,7 +33,7 @@ const WebHeader = ({ title }) => {
               router.replace("web/Account");
             }}
           >
-            <Image source={images.user} style={styles.headerIcon} />
+            <Image source={icons.user} style={styles.headerIcon} />
             <Text style={styles.navTitle}>ACCOUNT</Text>
           </TouchableOpacity>
         </View>

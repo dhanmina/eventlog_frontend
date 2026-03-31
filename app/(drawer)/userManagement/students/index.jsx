@@ -13,7 +13,7 @@ import TabsComponent from "../../../../components/TabsComponent";
 import { StatusBar } from "expo-status-bar";
 import { fetchUsers, disableUser } from "../../../../services/api/users";
 import { router, useFocusEffect } from "expo-router";
-import images from "../../../../constants/images";
+import icons from "../../../../constants/icons";
 import SearchBar from "../../../../components/CustomSearch";
 import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
@@ -144,14 +144,14 @@ export default function StudentsScreen() {
                     )
                   }
                 >
-                  <Image source={images.edit} style={styles.icon} />
+                  <Image source={icons.edit} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDisablePress(student)}
                   disabled={student.status === "Disabled"}
                   style={{ opacity: student.status === "Disabled" ? 0.5 : 1 }}
                 >
-                  <Image source={images.disabled} style={styles.icon} />
+                  <Image source={icons.disabled} style={styles.icon} />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -168,7 +168,7 @@ export default function StudentsScreen() {
       style={{ opacity: currentPage === 1 ? 0.5 : 1 }}
     >
       <Image
-        source={images.arrowLeft}
+        source={icons.arrowLeft}
         style={[
           styles.pageIconNav,
           {
@@ -189,7 +189,7 @@ export default function StudentsScreen() {
       style={{ opacity: currentPage === totalPages ? 0.5 : 1 }}
     >
       <Image
-        source={images.arrowRight}
+        source={icons.arrowRight}
         style={[
           styles.pageIconNav,
           {

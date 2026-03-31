@@ -16,7 +16,7 @@ import {
   deleteEvent,
 } from "../../../../services/api/events";
 import { router } from "expo-router";
-import images from "../../../../constants/images";
+import icons from "../../../../constants/icons";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import CustomModal from "../../../../components/CustomModal";
@@ -157,12 +157,12 @@ export default function PendingEvents() {
                 <TouchableOpacity
                   onPress={() => handleOpenModal("approve", event)}
                 >
-                  <Image source={images.check} style={styles.icon} />
+                  <Image source={icons.check} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleOpenModal("delete", event)}
                 >
-                  <Image source={images.trash} style={styles.icon} />
+                  <Image source={icons.trash} style={styles.icon} />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

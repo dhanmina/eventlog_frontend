@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { getRoleID } from "../../../database/queries";
 
 import images from "../../../constants/images";
+import icons from "../../../constants/icons";
 import theme from "../../../constants/theme";
 
 const TabsLayout = () => {
@@ -48,7 +49,7 @@ const TabsLayout = () => {
       <TabList style={styles.tabList}>
         <TabTrigger name="Home" href="/(tabs)/home">
           <View style={styles.tabItem}>
-            <Image source={images.home} style={styles.tabIcon} />
+            <Image source={icons.home} style={styles.tabIcon} />
             <Text style={styles.tabText}>Home</Text>
           </View>
         </TabTrigger>
@@ -63,7 +64,7 @@ const TabsLayout = () => {
 
         <TabTrigger name="QR Code" href={getQRRoute()}>
           <View style={styles.tabItem}>
-            <Image source={images.scanner} style={styles.tabIcon} />
+            <Image source={icons.scanner} style={styles.tabIcon} />
             <Text style={styles.tabText}>QR Code</Text>
           </View>
         </TabTrigger>
@@ -75,14 +76,14 @@ const TabsLayout = () => {
       <TabList style={styles.tabList}>
         <TabTrigger name="Home" href="/(tabs)/home">
           <View style={styles.tabItem}>
-            <Image source={images.home} style={styles.tabIcon} />
+            <Image source={icons.home} style={styles.tabIcon} />
             <Text style={styles.tabText}>Home</Text>
           </View>
         </TabTrigger>
 
         <TabTrigger name="QR Code" href={getQRRoute()}>
           <View style={styles.tabItem}>
-            <Image source={images.scanner} style={styles.tabIcon} />
+            <Image source={icons.scanner} style={styles.tabIcon} />
             <Text style={styles.tabText}>QR Code</Text>
           </View>
         </TabTrigger>
@@ -97,14 +98,14 @@ const TabsLayout = () => {
 
         <TabTrigger name="records" href="/(tabs)/records">
           <View style={styles.tabItem}>
-            <Image source={images.calendar} style={styles.tabIcon} />
+            <Image source={icons.calendar} style={styles.tabIcon} />
             <Text style={styles.tabText}>Records</Text>
           </View>
         </TabTrigger>
 
         <TabTrigger name="Account" href="/(tabs)/account">
           <View style={styles.tabItem}>
-            <Image source={images.user} style={styles.tabIcon} />
+            <Image source={icons.user} style={styles.tabIcon} />
             <Text style={styles.tabText}>Account</Text>
           </View>
         </TabTrigger>

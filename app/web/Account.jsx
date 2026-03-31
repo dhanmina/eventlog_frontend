@@ -14,7 +14,7 @@ import CustomButton from "../../components/CustomButton";
 import globalStyles from "../../constants/globalStyles";
 import theme from "../../constants/theme";
 import WebHeader from "../../components/WebHeader";
-import images from "../../constants/images";
+import icons from "../../constants/icons";
 import useUserAccount from "../../hooks/useUserAccount";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -231,13 +231,13 @@ const Account = () => {
 
           <View>
             <View style={styles.socialsContainer}>
-              <Image source={images.email} style={styles.icon} />
+              <Image source={icons.email} style={styles.icon} />
               <Text style={styles.socialText}>
                 cit_eventlogsupport@gmail.com
               </Text>
             </View>
             <View style={styles.socialsContainer}>
-              <Image source={images.facebook} style={styles.icon} />
+              <Image source={icons.facebook} style={styles.icon} />
               <Text style={styles.socialText}>CITofficial.UCV</Text>
             </View>
           </View>

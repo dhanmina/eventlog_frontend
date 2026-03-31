@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import theme from "../../../../constants/theme";
 import globalStyles from "../../../../constants/globalStyles";
-import images from "../../../../constants/images";
+import icons from "../../../../constants/icons";
 import { useLocalSearchParams } from "expo-router";
 import moment from "moment";
 import CustomButton from "../../../../components/CustomButton";
@@ -36,7 +36,7 @@ const SessionLog = ({ label, data, sessionType = "am" }) => {
   const renderAttendanceStatus = (time, attendance) => {
     try {
       if (isAttendanceTimePassed(time)) {
-        const iconSource = attendance ? images.present : images.absent;
+        const iconSource = attendance ? icons.present : icons.absent;
         const iconStyle = attendance ? styles.presentIcon : styles.absentIcon;
         return <Image source={iconSource} style={iconStyle} />;
       }

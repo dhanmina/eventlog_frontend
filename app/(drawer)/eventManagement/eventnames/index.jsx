@@ -16,7 +16,7 @@ import {
   disableEventName,
 } from "../../../../services/api/events";
 import { router, useFocusEffect } from "expo-router";
-import images from "../../../../constants/images";
+import icons from "../../../../constants/icons";
 import SearchBar from "../../../../components/CustomSearch";
 import CustomModal from "../../../../components/CustomModal";
 import CustomButton from "../../../../components/CustomButton";
@@ -133,7 +133,7 @@ export default function EventNamesScreen() {
                     }
                   }}
                 >
-                  <Image source={images.edit} style={styles.icon} />
+                  <Image source={icons.edit} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDisablePress(eventName)}
@@ -142,7 +142,7 @@ export default function EventNamesScreen() {
                     opacity: eventName.status === "Disabled" ? 0.5 : 1,
                   }}
                 >
-                  <Image source={images.disabled} style={styles.icon} />
+                  <Image source={icons.disabled} style={styles.icon} />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

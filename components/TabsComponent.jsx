@@ -1,6 +1,7 @@
 import { Link, useRouter } from "expo-router";
 import { View, Image, Text, StyleSheet, TouchableOpacity } from "react-native";
 import images from "../constants/images";
+import icons from "../constants/icons";
 import theme from "../constants/theme";
 import { getRoleID } from "../database/queries";
 import { useState, useEffect } from "react";
@@ -27,7 +28,7 @@ export default function TabsComponent() {
         style={styles.tabItem}
         onPress={() => router.push("/(drawer)/(tabs)/home")}
       >
-        <Image source={images.home} style={styles.tabIcon} />
+        <Image source={icons.home} style={styles.tabIcon} />
         <Text style={styles.tabText}>Home</Text>
       </TouchableOpacity>
 
@@ -35,7 +36,7 @@ export default function TabsComponent() {
         style={styles.tabItem}
         onPress={() => router.push("/(drawer)/(tabs)/qr")}
       >
-        <Image source={images.scanner} style={styles.tabIcon} />
+        <Image source={icons.scanner} style={styles.tabIcon} />
         <Text style={styles.tabText}>QR Code</Text>
       </TouchableOpacity>
 
@@ -51,7 +52,7 @@ export default function TabsComponent() {
         style={styles.tabItem}
         onPress={() => router.push("/(drawer)/(tabs)/Records")}
       >
-        <Image source={images.calendar} style={styles.tabIcon} />
+        <Image source={icons.calendar} style={styles.tabIcon} />
         <Text style={styles.tabText}>Records</Text>
       </TouchableOpacity>
 
@@ -59,7 +60,7 @@ export default function TabsComponent() {
         style={styles.tabItem}
         onPress={() => router.push("/(drawer)/(tabs)/Accounts")}
       >
-        <Image source={images.user} style={styles.tabIcon} />
+        <Image source={icons.user} style={styles.tabIcon} />
         <Text style={styles.tabText}>Account</Text>
       </TouchableOpacity>
     </View>
@@ -69,7 +70,7 @@ export default function TabsComponent() {
         style={styles.tabItem}
         onPress={() => router.push("/(drawer)/(tabs)/home")}
       >
-        <Image source={images.home} style={styles.tabIcon} />
+        <Image source={icons.home} style={styles.tabIcon} />
         <Text style={styles.tabText}>Home</Text>
       </TouchableOpacity>
 
@@ -85,7 +86,7 @@ export default function TabsComponent() {
         style={styles.tabItem}
         onPress={() => router.push("/(drawer)/(tabs)/qr")}
       >
-        <Image source={images.scanner} style={styles.tabIcon} />
+        <Image source={icons.scanner} style={styles.tabIcon} />
         <Text style={styles.tabText}>QR Code</Text>
       </TouchableOpacity>
     </View>

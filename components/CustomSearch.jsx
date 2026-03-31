@@ -6,7 +6,7 @@ import {
   Image,
 } from "react-native";
 import { useState, useEffect, useCallback } from "react";
-import images from "../constants/images";
+import icons from "../constants/icons";
 import theme from "../constants/theme";
 
 const CustomSearch = ({ placeholder = "Search...", onSearch }) => {
@@ -29,7 +29,7 @@ const CustomSearch = ({ placeholder = "Search...", onSearch }) => {
 
   return (
     <View style={styles.container}>
-      <Image source={images.search} style={styles.icon} />
+      <Image source={icons.search} style={styles.icon} />
       <TextInput
         style={styles.input}
         placeholder={placeholder}
@@ -42,7 +42,7 @@ const CustomSearch = ({ placeholder = "Search...", onSearch }) => {
       />
       {hasText && (
         <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-          <Image source={images.close} style={styles.icon} />
+          <Image source={icons.close} style={styles.icon} />
         </TouchableOpacity>
       )}
     </View>

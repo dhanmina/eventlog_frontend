@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import theme from "../constants/theme";
-import images from "../constants/images";
+import icons from "../constants/icons";
 
 const TimePickerComponent = ({
   label,
@@ -153,7 +153,7 @@ const TimePickerComponent = ({
         {label && <Text style={styles.label}>{label}</Text>}
         <View style={styles.buttonContent}>
           <Image
-            source={images.clock}
+            source={icons.clock}
             style={[styles.clockIcon, hasSelection && styles.iconFilled]}
           />
           <Text

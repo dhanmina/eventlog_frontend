@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from "react-native";
 import theme from "../constants/theme";
-import images from "../constants/images";
+import icons from "../constants/icons";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -40,11 +40,11 @@ const CustomModal = ({
 
   let iconSource;
   if (type === "success") {
-    iconSource = images.success;
+    iconSource = icons.success;
   } else if (type === "error") {
-    iconSource = images.error;
+    iconSource = icons.error;
   } else if (type === "warning") {
-    iconSource = images.warning;
+    iconSource = icons.warning;
   }
 
   const modalWidth = screenWidth * 0.8;

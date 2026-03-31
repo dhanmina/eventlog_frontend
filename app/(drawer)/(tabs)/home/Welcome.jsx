@@ -6,7 +6,7 @@ import { getRoleID } from "../../../../database/queries";
 
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
-import images from "../../../../constants/images";
+import icons from "../../../../constants/icons";
 
 const Welcome = () => {
   const [roleID, setRoleID] = useState(null);
@@ -54,15 +54,15 @@ const Welcome = () => {
 
           <View style={styles.contactsContainer}>
             <View style={styles.emailContainer}>
-              <Image source={images.email} style={styles.icon} />
+              <Image source={icons.email} style={styles.icon} />
               <Text style={styles.infoText}>cit_eventlogsupport@gmail.com</Text>
             </View>
             <View style={styles.facebookContainer}>
-              <Image source={images.facebook} style={styles.icon} />
+              <Image source={icons.facebook} style={styles.icon} />
               <Text style={styles.infoText}>CITofficial.UCV</Text>
             </View>
             <View style={styles.locationContainer}>
-              <Image source={images.location} style={styles.icon} />
+              <Image source={icons.location} style={styles.icon} />
               <Text style={styles.infoText}>
                 CIT Office - VHNPB Building 4th Floor
               </Text>

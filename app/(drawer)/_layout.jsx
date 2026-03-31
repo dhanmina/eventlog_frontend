@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { clearAllTablesData } from "../../database/queries";
 
-import images from "../../constants/images";
+import icons from "../../constants/icons";
 import theme from "../../constants/theme";
 import { stopSync } from "../../services/api/sync";
 
@@ -56,26 +56,26 @@ const CustomDrawerContent = (props) => {
           label="Home"
           onPress={() => router.push("/(drawer)/(tabs)/home")}
           labelStyle={styles.navItemLabel}
-          icon={() => <Image source={images.home} style={styles.icon} />}
+          icon={() => <Image source={icons.home} style={styles.icon} />}
         />
         <DrawerItem
           label="User Management"
           onPress={() => router.push("/(drawer)/userManagement")}
           labelStyle={styles.navItemLabel}
-          icon={() => <Image source={images.role} style={styles.icon} />}
+          icon={() => <Image source={icons.role} style={styles.icon} />}
         />
         <DrawerItem
           label="Academic Management"
           onPress={() => router.push("/(drawer)/academicManagement")}
           labelStyle={styles.navItemLabel}
-          icon={() => <Image source={images.school} style={styles.icon} />}
+          icon={() => <Image source={icons.school} style={styles.icon} />}
         />
         <DrawerItem
           label="Event Management"
           onPress={() => router.push("/(drawer)/eventManagement")}
           labelStyle={styles.navItemLabel}
           icon={() => (
-            <Image source={images.calendarStar} style={styles.icon} />
+            <Image source={icons.calendarStar} style={styles.icon} />
           )}
         />
       </View>
@@ -84,7 +84,7 @@ const CustomDrawerContent = (props) => {
           label="Account"
           onPress={() => router.push("/(drawer)/sAdminAcc")}
           labelStyle={styles.navItemLabel}
-          icon={() => <Image source={images.user} style={styles.icon} />}
+          icon={() => <Image source={icons.user} style={styles.icon} />}
         />
         <DrawerItem
           label="Logout"
@@ -92,7 +92,7 @@ const CustomDrawerContent = (props) => {
           labelStyle={[styles.navItemLabel, { color: "red" }]}
           icon={() => (
             <Image
-              source={images.logout}
+              source={icons.logout}
               style={[styles.icon, { tintColor: "red" }]}
             />
           )}

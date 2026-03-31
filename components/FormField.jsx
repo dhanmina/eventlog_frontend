@@ -10,7 +10,7 @@ import React, { useState, useRef, useCallback } from "react";
 
 import theme from "../constants/theme.js";
 import globalStyles from "../constants/globalStyles.js";
-import images from "../constants/images.js";
+import icons from "../constants/icons.js";
 
 const FormField = ({
   type,
@@ -73,11 +73,11 @@ const FormField = ({
   const getIcon = () => {
     switch (type) {
       case "id":
-        return images.idBadge;
+        return icons.idBadge;
       case "email":
-        return images.email2;
+        return icons.email2;
       case "password":
-        return images.lock;
+        return icons.lock;
       default:
         return null;
     }
@@ -193,7 +193,7 @@ const FormField = ({
         {type === "password" && (
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
             <Image
-              source={showPassword ? images.view : images.hide}
+              source={showPassword ? icons.view : icons.hide}
               style={globalStyles.icons}
             />
           </TouchableOpacity>

@@ -12,7 +12,7 @@ import { fetchStudentAttendanceByEventAndBlock } from "../../../../services/api/
 
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
-import images from "../../../../constants/images";
+import icons from "../../../../constants/icons";
 
 import CustomSearch from "../../../../components/CustomSearch";
 import TabsComponent from "../../../../components/TabsComponent";
@@ -138,7 +138,7 @@ const StudentsList = ({
                 <Text style={styles.studentId}>{student.student_id}</Text>
               </View>
               <View style={styles.imageContainer}>
-                <Image source={images.arrowRight} style={styles.icon} />
+                <Image source={icons.arrowRight} style={styles.icon} />
               </View>
             </TouchableOpacity>
           ))

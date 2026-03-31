@@ -17,7 +17,7 @@ import { router } from "expo-router";
 
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
-import images from "../../../../constants/images";
+import icons from "../../../../constants/icons";
 import { API_URL } from "../../../../config/config";
 
 import CustomSearch from "../../../../components/CustomSearch";
@@ -141,7 +141,7 @@ const EventsList = () => {
                     {formatDates(event.dates)}
                   </Text>
                 </View>
-                <Image source={images.arrowRight} style={styles.icon} />
+                <Image source={icons.arrowRight} style={styles.icon} />
               </TouchableOpacity>
             ))
           ) : (

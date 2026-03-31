@@ -12,7 +12,7 @@ import TabsComponent from "../../../../components/TabsComponent";
 import { StatusBar } from "expo-status-bar";
 import { fetchEvents, deleteEvent } from "../../../../services/api/events";
 import { router, useFocusEffect } from "expo-router";
-import images from "../../../../constants/images";
+import icons from "../../../../constants/icons";
 import SearchBar from "../../../../components/CustomSearch";
 import CustomModal from "../../../../components/CustomModal";
 import CustomButton from "../../../../components/CustomButton";
@@ -159,7 +159,7 @@ export default function EventsList() {
                   disabled={event.status === "Archived"}
                   style={{ opacity: event.status === "Archived" ? 0.5 : 1 }}
                 >
-                  <Image source={images.edit} style={styles.icon} />
+                  <Image source={icons.edit} style={styles.icon} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -167,7 +167,7 @@ export default function EventsList() {
                   disabled={event.status === "Archived"}
                   style={{ opacity: event.status === "Archived" ? 0.5 : 1 }}
                 >
-                  <Image source={images.trash} style={styles.icon} />
+                  <Image source={icons.trash} style={styles.icon} />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

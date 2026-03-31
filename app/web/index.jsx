@@ -15,7 +15,7 @@ import theme from "../../constants/theme";
 import globalStyles from "../../constants/globalStyles";
 import WebHeader from "../../components/WebHeader";
 import CustomSearch from "../../components/CustomSearch";
-import images from "../../constants/images";
+import icons from "../../constants/icons";
 import { router } from "expo-router";
 import {
   fetchAllPastEvents,
@@ -306,7 +306,7 @@ const Web = () => {
                     style={styles.eventContainer}
                     onPress={() => handleEventPress(event.event_id)}
                   >
-                    <Image source={images.calendar} style={styles.icon} />
+                    <Image source={icons.calendar} style={styles.icon} />
                     <View style={styles.eventTextContainer}>
                       <Text style={styles.eventTitle} numberOfLines={1}>
                         {event.event_name}
@@ -340,7 +340,7 @@ const Web = () => {
                     style={styles.eventContainer}
                     onPress={() => handleEventPress(event.event_id)}
                   >
-                    <Image source={images.calendar} style={styles.icon} />
+                    <Image source={icons.calendar} style={styles.icon} />
                     <View style={styles.eventTextContainer}>
                       <Text style={styles.eventTitle} numberOfLines={1}>
                         {event.event_name}

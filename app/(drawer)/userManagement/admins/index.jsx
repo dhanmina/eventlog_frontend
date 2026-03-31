@@ -12,7 +12,7 @@ import TabsComponent from "../../../../components/TabsComponent";
 import { StatusBar } from "expo-status-bar";
 import { fetchAdmins, disableAdmin } from "../../../../services/api/admins";
 import { router, useFocusEffect } from "expo-router";
-import images from "../../../../constants/images";
+import icons from "../../../../constants/icons";
 import SearchBar from "../../../../components/CustomSearch";
 import CustomModal from "../../../../components/CustomModal";
 import CustomButton from "../../../../components/CustomButton";
@@ -150,14 +150,14 @@ export default function AdminsScreen() {
                     )
                   }
                 >
-                  <Image source={images.edit} style={styles.icon} />
+                  <Image source={icons.edit} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDisablePress(admin)}
                   disabled={admin.status === "Disabled"}
                   style={{ opacity: admin.status === "Disabled" ? 0.5 : 1 }}
                 >
-                  <Image source={images.disabled} style={styles.icon} />
+                  <Image source={icons.disabled} style={styles.icon} />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

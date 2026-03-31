@@ -13,7 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { fetchCourses, disableCourse } from "../../../../services/api/courses";
 import { router, useFocusEffect } from "expo-router";
 
-import images from "../../../../constants/images";
+import icons from "../../../../constants/icons";
 import SearchBar from "../../../../components/CustomSearch";
 import CustomModal from "../../../../components/CustomModal";
 import CustomButton from "../../../../components/CustomButton";
@@ -141,14 +141,14 @@ export default function CoursesScreen() {
                     }
                   }}
                 >
-                  <Image source={images.edit} style={styles.icon} />
+                  <Image source={icons.edit} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDisablePress(course)}
                   disabled={course.status === "Disabled"}
                   style={{ opacity: course.status === "Disabled" ? 0.5 : 1 }}
                 >
-                  <Image source={images.disabled} style={styles.icon} />
+                  <Image source={icons.disabled} style={styles.icon} />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
