@@ -4,11 +4,12 @@ import {
   View,
   TouchableOpacity,
   Platform,
+  Image,
 } from "react-native";
 import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import Checkbox from "expo-checkbox";
+import icons from "../../../constants/icons";
 import axios from "axios";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -260,12 +261,14 @@ const Login = () => {
       </View>
       <View style={styles.rememberForgotContainer}>
         <View style={styles.rememberMeContainer}>
-          <Checkbox
-            style={styles.checkbox}
-            value={isChecked}
-            onValueChange={setChecked}
-            color={isChecked ? "#81b0ff" : undefined}
-          />
+          <TouchableOpacity
+            style={[styles.checkbox, isChecked && styles.checkboxChecked]}
+            onPress={() => setChecked(!isChecked)}
+          >
+            {isChecked && (
+              <Image source={icons.check} style={styles.checkIcon} />
+            )}
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => setChecked(!isChecked)}>
             <Text style={styles.rememberMe}>Remember Me</Text>
           </TouchableOpacity>
@@ -317,9 +320,20 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.small,
     borderColor: theme.colors.secondary,
     borderWidth: 2,
-    backgroundColor: "#FBF1E5",
-    width: 20,
-    height: 20,
+    backgroundColor: "transparent",
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: theme.colors.secondary,
+  },
+  checkIcon: {
+    width: 14,
+    height: 14,
+    tintColor: theme.colors.primary,
   },
   rememberMe: {
     fontFamily: "Arial",
