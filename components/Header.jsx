@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
   topBarPrimary: {
     width: "80%",
     height: 40,
-    backgroundColor: "#C07070",
+    backgroundColor: "#74ACD3",
     position: "absolute",
     top: 20,
     alignSelf: "flex-start",
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   bottomBarPrimary: {
     width: "80%",
     height: 40,
-    backgroundColor: "#C07070",
+    backgroundColor: "#74ACD3",
     position: "absolute",
     bottom: 20,
     alignSelf: "flex-end",
