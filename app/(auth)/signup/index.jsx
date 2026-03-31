@@ -167,28 +167,28 @@ const SignUp = () => {
           title="ID Number"
           value={formData.id_number}
           onChangeText={(value) => handleInputChange("id_number", value)}
-          titleColor="primary"
+          titleColor="secondary"
         />
         <FormField
           title="First Name"
           example="Juan Miguel"
           value={formData.first_name}
           onChangeText={(value) => handleInputChange("first_name", value)}
-          titleColor="primary"
+          titleColor="secondary"
         />
         <FormField
           title="Middle Name"
           example="Reyes"
           value={formData.middle_name}
           onChangeText={(value) => handleInputChange("middle_name", value)}
-          titleColor="primary"
+          titleColor="secondary"
         />
         <FormField
           title="Last Name"
           example="Santos"
           value={formData.last_name}
           onChangeText={(value) => handleInputChange("last_name", value)}
-          titleColor="primary"
+          titleColor="secondary"
         />
         <FormField
           title="Suffix Name"
@@ -196,7 +196,7 @@ const SignUp = () => {
           optional
           value={formData.suffix}
           onChangeText={(value) => handleInputChange("suffix", value)}
-          titleColor="primary"
+          titleColor="secondary"
         />
         <FormField
           type="email"
@@ -205,7 +205,7 @@ const SignUp = () => {
           title="Email"
           value={formData.email}
           onChangeText={(value) => handleInputChange("email", value)}
-          titleColor="primary"
+          titleColor="secondary"
         />
 
         {loading ? (
@@ -214,7 +214,7 @@ const SignUp = () => {
           <CustomDropdown
             placeholder="Select Department"
             title="Department"
-            titleColor="primary"
+            titleColor="secondary"
             data={departments}
             selectedValue={formData.department_id}
             onSelect={(selected) =>
@@ -231,7 +231,7 @@ const SignUp = () => {
           secureTextEntry
           value={formData.password}
           onChangeText={(value) => handleInputChange("password", value)}
-          titleColor="primary"
+          titleColor="secondary"
           errorMessage={
             formData.password && formData.password.length < 8
               ? "Password must be at least 8 characters long."
@@ -246,7 +246,7 @@ const SignUp = () => {
           secureTextEntry
           value={formData.confirm_password}
           onChangeText={(value) => handleInputChange("confirm_password", value)}
-          titleColor="primary"
+          titleColor="secondary"
         />
         <View style={styles.agreementContainer}>
           <Text style={styles.agreement}>
@@ -288,7 +288,7 @@ const SignUp = () => {
         onClose={() => setModalVisible(false)}
       />
 
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
     </SafeAreaView>
   );
 };
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontFamily: "SquadaOne",
     fontSize: theme.fontSizes.display,
-    color: theme.colors.primary,
+    color: theme.colors.secondary,
   },
   scrollview: {
     justifyContent: "center",
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   },
   agreement: {
     fontFamily: "Arial",
-    color: theme.colors.gray,
+    color: theme.colors.secondary,
     fontSize: theme.fontSizes.extraSmall,
     textAlign: "center",
   },
@@ -329,12 +329,12 @@ const styles = StyleSheet.create({
   },
   prompt: {
     fontFamily: "Arial",
-    color: theme.colors.gray,
+    color: theme.colors.secondary,
     fontSize: theme.fontSizes.small,
   },
   loginText: {
     fontFamily: "ArialBold",
-    color: theme.colors.primary,
+    color: theme.colors.secondary,
     fontSize: theme.fontSizes.small,
   },
   button: {
