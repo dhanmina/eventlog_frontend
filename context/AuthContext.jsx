@@ -99,12 +99,11 @@ export const AuthProvider = ({ children }) => {
     }
 
     const handleUserDisabled = (eventData) => {
+      const userIdStr = String(user.id_number);
       const isCurrentUser =
-        eventData.userId === user.id_number?.toString() ||
-        eventData.id_number === user.id_number?.toString() ||
-        eventData.email === user.email ||
-        parseInt(eventData.userId) === parseInt(user.id_number) ||
-        parseInt(eventData.id_number) === parseInt(user.id_number);
+        eventData.userId === userIdStr ||
+        eventData.id_number === userIdStr ||
+        eventData.email === user.email;
 
       if (isCurrentUser) {
         handleSessionExpired("Please log in again.");

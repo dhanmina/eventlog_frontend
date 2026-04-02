@@ -69,12 +69,16 @@ export const startSync = async () => {
 
   try {
     await syncAttendance();
-  } catch {}
+  } catch (error) {
+    console.warn("[sync] Initial sync failed:", error?.message || error);
+  }
 
   syncInterval = setInterval(async () => {
     try {
       await syncAttendance();
-    } catch {}
+    } catch (error) {
+      console.warn("[sync] Periodic sync failed:", error?.message || error);
+    }
   }, 30000);
 };
 
