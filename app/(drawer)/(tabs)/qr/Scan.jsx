@@ -97,7 +97,8 @@ const Scan = () => {
       if (!event) throw new Error("QR not valid for current events.");
 
       const { am_in, am_out, pm_in, pm_out, duration, event_name } = event;
-      const calcWindow = (t) => t ? moment(t, "HH:mm:ss").add(duration, "minutes").format("HH:mm:ss") : null;
+      const effectiveDuration = duration > 0 ? duration : 1;
+      const calcWindow = (t) => t ? moment(t, "HH:mm:ss").add(effectiveDuration, "minutes").format("HH:mm:ss") : null;
       const amInEnd = calcWindow(am_in);
       const amOutEnd = calcWindow(am_out);
       const pmInEnd = calcWindow(pm_in);

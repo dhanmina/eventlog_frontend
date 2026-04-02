@@ -42,6 +42,7 @@ const EventDetails = () => {
       if (!eventData) throw new Error("Event details not found");
       setEventDetails(eventData);
     } catch (error) {
+      console.error("[EventDetails] Failed to fetch event details:", error);
     } finally {
       setIsLoading(false);
     }
@@ -92,6 +93,7 @@ const EventDetails = () => {
   };
 
   const handleConfirmApprove = async () => {
+    if (!storedUser) return;
     try {
       await approveEvent(eventDetails.event_id, storedUser.id_number);
       setIsApproveModalVisible(false);

@@ -130,7 +130,7 @@ const EditEvent = () => {
         }
 
         const blockIds = eventData.block_ids
-          ? eventData.block_ids.split(",").map(Number)
+          ? eventData.block_ids.split(",").map(Number).filter((n) => !isNaN(n))
           : [];
         const blockNames = eventData.block_names
           ? eventData.block_names.split(",")
@@ -141,7 +141,7 @@ const EditEvent = () => {
         }));
 
         const departmentIds = eventData.department_ids
-          ? eventData.department_ids.split(",").map(Number)
+          ? eventData.department_ids.split(",").map(Number).filter((n) => !isNaN(n))
           : [];
 
         const formattedEventDates = eventData.event_dates

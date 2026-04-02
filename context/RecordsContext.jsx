@@ -105,6 +105,7 @@ export const RecordsProvider = ({ children }) => {
       setOngoingEvents(ongoingList);
       setPastEvents(pastList);
     } catch (error) {
+      console.error("[RecordsContext] Error fetching records:", error);
     } finally {
       setLoading(false);
     }

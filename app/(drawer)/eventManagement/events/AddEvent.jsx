@@ -399,6 +399,7 @@ const AddEvent = () => {
     if (parts.length < 2) return null;
     const h = parseInt(parts[0], 10) + 1;
     const m = parseInt(parts[1], 10);
+    if (h >= 24) return null;
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
   };
 
