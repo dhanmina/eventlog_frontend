@@ -125,34 +125,8 @@ const Records = () => {
       let processedOngoing = [];
       let processedPast = [];
 
-      if (
-        ongoingEvents.length > 0 &&
-        typeof ongoingEvents[0].event_dates === "string"
-      ) {
-        processedOngoing = processEvents(ongoingEvents);
-        processedPast = processEvents(pastEvents);
-      } else {
-        const groupedEvents = {};
-        [...ongoingEvents, ...pastEvents].forEach((record) => {
-          const { event_id, event_name, event_date } = record;
-          if (!groupedEvents[event_id]) {
-            groupedEvents[event_id] = {
-              event_id,
-              event_name,
-              event_dates: [],
-            };
-          }
-          groupedEvents[event_id].event_dates.push(event_date);
-        });
-
-        const allGroupedEvents = Object.values(groupedEvents);
-        processedOngoing = allGroupedEvents.filter((event) =>
-          ongoingEvents.some((e) => e.event_id === event.event_id)
-        );
-        processedPast = allGroupedEvents.filter((event) =>
-          pastEvents.some((e) => e.event_id === event.event_id)
-        );
-      }
+      processedOngoing = processEvents(ongoingEvents);
+      processedPast = processEvents(pastEvents);
 
       const allEvents = [...processedOngoing, ...processedPast];
 
