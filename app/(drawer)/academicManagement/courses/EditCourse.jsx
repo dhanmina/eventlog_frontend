@@ -50,7 +50,7 @@ const EditCourse = () => {
         }
 
         const departments = await fetchDepartments();
-        setDepartmentOptions(departments);
+        setDepartmentOptions(departments.departments || []);
 
         const courseDetails = await fetchCourseById(course_id);
 

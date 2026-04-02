@@ -49,11 +49,11 @@ const DatePickerComponent = ({
               if (
                 mode === "multiple" &&
                 !initiallyFetchedDates.some(
-                  (d) => formatDateValue(d) === formattedFetchedDate
+                  (d) => formatDateValue(d) === formattedFetchedDate,
                 )
               ) {
                 const newInit = [...initiallyFetchedDates, fetchedDate].sort(
-                  (a, b) => a - b
+                  (a, b) => a - b,
                 );
                 setInitiallyFetchedDates(newInit);
 
@@ -98,7 +98,7 @@ const DatePickerComponent = ({
   const openModal = () => {
     setPendingDates([...selectedDatesInternal]);
     setTempDate(
-      selectedDatesInternal.length > 0 ? selectedDatesInternal[0] : new Date()
+      selectedDatesInternal.length > 0 ? selectedDatesInternal[0] : new Date(),
     );
     setShowPicker(true);
   };
@@ -118,7 +118,7 @@ const DatePickerComponent = ({
     if (isDateInPast(tempDate)) return;
     const formattedValue = formatDateValue(tempDate);
     const alreadyAdded = pendingDates.some(
-      (d) => formatDateValue(d) === formattedValue
+      (d) => formatDateValue(d) === formattedValue,
     );
     if (!alreadyAdded) {
       setPendingDates([...pendingDates, tempDate].sort((a, b) => a - b));
@@ -128,8 +128,8 @@ const DatePickerComponent = ({
   const handleRemovePending = (dateToRemove) => {
     setPendingDates(
       pendingDates.filter(
-        (d) => formatDateValue(d) !== formatDateValue(dateToRemove)
-      )
+        (d) => formatDateValue(d) !== formatDateValue(dateToRemove),
+      ),
     );
   };
 
@@ -143,7 +143,6 @@ const DatePickerComponent = ({
     setShowPicker(false);
   };
 
-  // For single mode — confirm immediately
   const handleSingleConfirm = () => {
     if (!tempDate) return;
     setSelectedDatesInternal([tempDate]);
@@ -153,7 +152,7 @@ const DatePickerComponent = ({
 
   const handleRemoveDate = (dateToRemove) => {
     const newDates = selectedDatesInternal.filter(
-      (d) => formatDateValue(d) !== formatDateValue(dateToRemove)
+      (d) => formatDateValue(d) !== formatDateValue(dateToRemove),
     );
     setSelectedDatesInternal(newDates);
     onDateChange?.(newDates.map(formatDateValue));
@@ -167,8 +166,8 @@ const DatePickerComponent = ({
         ? `${count} date${count > 1 ? "s" : ""} selected`
         : "Select dates"
       : count > 0
-      ? formatDisplayDate(selectedDatesInternal[0])
-      : "Select date";
+        ? formatDisplayDate(selectedDatesInternal[0])
+        : "Select date";
 
   const hasSelection = count > 0;
 
@@ -194,7 +193,10 @@ const DatePickerComponent = ({
             style={[styles.calendarIcon, hasSelection && styles.iconFilled]}
           />
           <Text
-            style={[styles.dateDisplay, hasSelection && styles.dateDisplayFilled]}
+            style={[
+              styles.dateDisplay,
+              hasSelection && styles.dateDisplayFilled,
+            ]}
           >
             {buttonLabel}
           </Text>
@@ -236,19 +238,25 @@ const DatePickerComponent = ({
                     isAlreadyPending && styles.removeDateBtn,
                     isPastDate && styles.addDateBtnPast,
                   ]}
-                  onPress={isAlreadyPending ? () => handleRemovePending(tempDate) : handleAddDate}
+                  onPress={
+                    isAlreadyPending
+                      ? () => handleRemovePending(tempDate)
+                      : handleAddDate
+                  }
                   disabled={isPastDate}
                 >
-                  <Text style={[
-                    styles.addDateBtnText,
-                    isAlreadyPending && styles.removeDateBtnText,
-                    isPastDate && styles.addDateBtnPastText,
-                  ]}>
+                  <Text
+                    style={[
+                      styles.addDateBtnText,
+                      isAlreadyPending && styles.removeDateBtnText,
+                      isPastDate && styles.addDateBtnPastText,
+                    ]}
+                  >
                     {isPastDate
                       ? "Past dates cannot be added"
                       : isAlreadyPending
-                      ? "− Remove Selected Date"
-                      : "+ Add Selected Date"}
+                        ? "− Remove Selected Date"
+                        : "+ Add Selected Date"}
                   </Text>
                 </TouchableOpacity>
 
@@ -262,7 +270,9 @@ const DatePickerComponent = ({
                     nestedScrollEnabled
                   >
                     {pendingDates.length === 0 ? (
-                      <Text style={styles.pendingEmpty}>No dates added yet</Text>
+                      <Text style={styles.pendingEmpty}>
+                        No dates added yet
+                      </Text>
                     ) : (
                       pendingDates.map((date) => (
                         <View key={date.toISOString()} style={styles.dateRow}>
@@ -273,7 +283,10 @@ const DatePickerComponent = ({
                             onPress={() => handleRemovePending(date)}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Image source={icons.close} style={styles.removeIcon} />
+                            <Image
+                              source={icons.close}
+                              style={styles.removeIcon}
+                            />
                           </TouchableOpacity>
                         </View>
                       ))

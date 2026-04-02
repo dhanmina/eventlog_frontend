@@ -74,16 +74,43 @@ const createTables = async (database) => {
   await database.execAsync(`
     CREATE TABLE IF NOT EXISTS attendance (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      event_date_id INTEGER,
-      student_id_number TEXT,
-      event_name TEXT,
+      event_date_id INTEGER NOT NULL,
+      student_id_number TEXT NOT NULL,
       am_in TEXT,
       am_out TEXT,
       pm_in TEXT,
       pm_out TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(event_date_id, student_id_number)
     );
   `);
+
+  try {
+    const tableInfo = await database.getFirstAsync(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='attendance'",
+    );
+    if (tableInfo?.sql && !tableInfo.sql.includes("UNIQUE")) {
+      await database.execAsync(`
+        CREATE TABLE IF NOT EXISTS attendance_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_date_id INTEGER NOT NULL,
+          student_id_number TEXT NOT NULL,
+          am_in TEXT,
+          am_out TEXT,
+          pm_in TEXT,
+          pm_out TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(event_date_id, student_id_number)
+        );
+        INSERT OR IGNORE INTO attendance_new
+          (id, event_date_id, student_id_number, am_in, am_out, pm_in, pm_out, created_at)
+          SELECT id, event_date_id, student_id_number, am_in, am_out, pm_in, pm_out, created_at
+          FROM attendance;
+        DROP TABLE attendance;
+        ALTER TABLE attendance_new RENAME TO attendance;
+      `);
+    }
+  } catch {}
 
   await database.execAsync(`
     CREATE TABLE IF NOT EXISTS records (
@@ -118,7 +145,7 @@ const validateDatabaseConnection = async (database) => {
   try {
     await database.execAsync("SELECT 1");
     await database.getFirstAsync(
-      "SELECT name FROM sqlite_master WHERE type='table' LIMIT 1"
+      "SELECT name FROM sqlite_master WHERE type='table' LIMIT 1",
     );
     return true;
   } catch {
@@ -188,7 +215,7 @@ export const insertUserIfMissing = async (user) => {
       user.last_name,
       user.role_id || 1,
       user.role_name || "User",
-    ]
+    ],
   );
 };
 
@@ -228,7 +255,7 @@ export const storeEvent = async (event) => {
       event.pm_out,
       event.duration,
       blockIdsText,
-    ]
+    ],
   );
 };
 

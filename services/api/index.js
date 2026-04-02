@@ -1,10 +1,19 @@
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../config/config";
 
 console.log("[API] Base URL:", API_URL);
 
 axios.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    try {
+      const token = await AsyncStorage.getItem("userToken");
+      if (token) {
+        config.headers = config.headers || {};
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
+    } catch {}
+
     const params = config.params ? JSON.stringify(config.params) : "";
     const body = config.data ? JSON.stringify(config.data) : "";
     console.log(

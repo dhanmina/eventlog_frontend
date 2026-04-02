@@ -24,7 +24,7 @@ const useUserAccount = () => {
     try {
       stopSync();
       await clearAllTablesData();
-      await AsyncStorage.multiRemove(["userToken", "id_number"]);
+      await AsyncStorage.multiRemove(["userToken", "id_number", "email", "role_id", "full_name", "user", "userData"]);
       router.replace("/login");
     } catch (error) {
       console.error("Error logging out:", error);

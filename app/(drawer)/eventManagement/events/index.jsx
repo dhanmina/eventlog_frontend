@@ -67,7 +67,10 @@ export default function EventsList() {
   });
 
   const approvedOrArchivedEvents = filteredEvents.filter(
-    (event) => event.status === "Approved" || event.status === "Archived"
+    (event) =>
+      event.status === "Approved" ||
+      event.status === "Archived" ||
+      event.status === "Pending"
   );
 
   const pendingEventsCount = events.filter(
@@ -91,7 +94,7 @@ export default function EventsList() {
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
           event.event_id === eventToDelete.event_id
-            ? { ...event, status: "deleted" }
+            ? { ...event, status: "Deleted" }
             : event
         )
       );

@@ -53,9 +53,6 @@ const TimePickerComponent = ({
     return { formattedTime, displayTime };
   }, []);
 
-  // AM only: 12(midnight)=0, 01–11
-  // PM only: 12(noon)=12, 01 PM=13, … 11 PM=23
-  // Both:    01–12 (value = display hour, AM/PM determined separately)
   const hourOptions = useMemo(() => {
     if (finalAllowAM && !finalAllowPM) {
       return Array.from({ length: 12 }, (_, i) => ({

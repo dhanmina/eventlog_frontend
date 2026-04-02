@@ -38,7 +38,7 @@ const AddCourse = () => {
       setIsLoading(true);
       try {
         const departments = await fetchDepartments();
-        setDepartmentOptions(departments);
+        setDepartmentOptions(departments.departments || []);
       } catch (error) {
         setModal({
           visible: true,

@@ -1,7 +1,6 @@
 import { Platform } from "react-native";
 import initDB from "./database";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-let isTransactionInProgress = false;
 
 export const storeUser = async (user) => {
   if (Platform.OS !== "web") {
@@ -29,8 +28,8 @@ export const storeUser = async (user) => {
         user.block_id || null,
         user.block_name || null,
         user.department_id || null,
-        user.department_code || null,
         user.department_name || null,
+        user.department_code || null,
         user.course_id || null,
         user.course_name || null,
         user.course_code || null,
@@ -69,7 +68,7 @@ export const getRoleID = async () => {
 
       const result = await dbInstance.getFirstAsync(
         "SELECT role_id FROM users WHERE id_number = ?",
-        [idNumber]
+        [idNumber],
       );
       return result?.role_id;
     } catch {
@@ -91,7 +90,7 @@ export const getStoredUser = async () => {
 
       const result = await dbInstance.getFirstAsync(
         "SELECT id_number, first_name, middle_name, last_name, suffix, email, role_id, role_name, block_id, block_name, department_id, department_name, department_code, course_id, course_name, year_level_id, year_level_name, course_code FROM users WHERE id_number = ?",
-        [idNumber]
+        [idNumber],
       );
 
       return result;
@@ -99,7 +98,23 @@ export const getStoredUser = async () => {
       return null;
     }
   } else {
-    return null;
+    try {
+      const idNumber = await AsyncStorage.getItem("id_number");
+      if (!idNumber) return null;
+      const [email, roleId, fullName] = await Promise.all([
+        AsyncStorage.getItem("email"),
+        AsyncStorage.getItem("role_id"),
+        AsyncStorage.getItem("full_name"),
+      ]);
+      return {
+        id_number: idNumber,
+        email,
+        role_id: roleId ? parseInt(roleId, 10) : null,
+        full_name: fullName || null,
+      };
+    } catch {
+      return null;
+    }
   }
 };
 
@@ -112,7 +127,8 @@ export const storeEvent = async (event, allApiEventIds = []) => {
       return { success: false, error: "Invalid event object provided" };
     }
 
-    if (event.status !== "Approved") return { success: true, skipped: true };
+    if (event.status !== "Approved" && event.status !== "Archived")
+      return { success: true, skipped: true };
 
     const db = await initDB();
     if (!db) return { success: false, error: "Failed to initialize database" };
@@ -121,14 +137,14 @@ export const storeEvent = async (event, allApiEventIds = []) => {
       if (!userId) return;
       const existingUser = await db.getFirstAsync(
         "SELECT id_number FROM users WHERE id_number = ?",
-        [userId]
+        [userId],
       );
       if (!existingUser) {
         const [firstName, ...rest] = fullName?.split(" ") || ["N/A"];
         const lastName = rest.join(" ") || "N/A";
         await db.runAsync(
           `INSERT INTO users (id_number, first_name, last_name, role_id, role_name) VALUES (?, ?, ?, ?, ?)`,
-          [userId, firstName, lastName, 1, "User"]
+          [userId, firstName, lastName, 1, "User"],
         );
       }
     };
@@ -136,17 +152,11 @@ export const storeEvent = async (event, allApiEventIds = []) => {
     await ensureUserExists(event.created_by_id, event.created_by);
     await ensureUserExists(event.approved_by_id, event.approved_by);
 
-    let startedTransaction = false;
-    if (!isTransactionInProgress) {
-      isTransactionInProgress = true;
-      await db.execAsync("BEGIN TRANSACTION");
-      startedTransaction = true;
-    }
-
+    await db.execAsync("BEGIN TRANSACTION");
     try {
       const existingEvent = await db.getFirstAsync(
         "SELECT id FROM events WHERE id = ?",
-        [event.event_id]
+        [event.event_id],
       );
 
       const eventParams = [
@@ -174,7 +184,7 @@ export const storeEvent = async (event, allApiEventIds = []) => {
            status = ?, am_in = ?, am_out = ?, pm_in = ?, pm_out = ?, scan_personnel = ?,
            approved_by = ?, approved_by_id = ?, duration = ?, block_ids = ?
          WHERE id = ?`,
-          [...eventParams, event.event_id]
+          [...eventParams, event.event_id],
         );
       } else {
         await db.runAsync(
@@ -182,7 +192,7 @@ export const storeEvent = async (event, allApiEventIds = []) => {
            (id, event_name, venue, description, created_by_id, created_by, status,
            am_in, am_out, pm_in, pm_out, scan_personnel, approved_by, approved_by_id, duration, block_ids)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [event.event_id, ...eventParams]
+          [event.event_id, ...eventParams],
         );
       }
 
@@ -206,23 +216,16 @@ export const storeEvent = async (event, allApiEventIds = []) => {
           for (let i = 0; i < eventDatesArray.length; i++) {
             await db.runAsync(
               "INSERT INTO event_dates (id, event_id, event_date) VALUES (?, ?, ?)",
-              [eventDateIdsArray[i], event.event_id, eventDatesArray[i]]
+              [eventDateIdsArray[i], event.event_id, eventDatesArray[i]],
             );
           }
         }
       }
 
-      if (startedTransaction) {
-        await db.execAsync("COMMIT");
-        isTransactionInProgress = false;
-      }
-
+      await db.execAsync("COMMIT");
       return { success: true };
     } catch (err) {
-      if (startedTransaction) {
-        await db.execAsync("ROLLBACK");
-        isTransactionInProgress = false;
-      }
+      await db.execAsync("ROLLBACK");
       throw err;
     }
   } catch (error) {
@@ -239,31 +242,29 @@ export const cleanupOutdatedEvents = async (allApiEventIds = []) => {
   if (Platform.OS === "web")
     return { success: false, error: "Web platform not supported" };
 
+  if (!allApiEventIds || allApiEventIds.length === 0) {
+    return { success: true, skipped: true };
+  }
+
   try {
     const db = await initDB();
     if (!db) return { success: false, error: "Failed to initialize database" };
 
-    if (!allApiEventIds || allApiEventIds.length === 0) {
-      await db.runAsync("DELETE FROM event_dates");
-      await db.runAsync("DELETE FROM events");
-      return { success: true, cleared: true };
-    }
-
     const storedEvents = await db.getAllAsync("SELECT id FROM events");
     const storedEventIds = storedEvents.map((e) => e.id.toString());
     const idsToDelete = storedEventIds.filter(
-      (id) => !allApiEventIds.includes(parseInt(id))
+      (id) => !allApiEventIds.includes(parseInt(id)),
     );
 
     if (idsToDelete.length > 0) {
       const placeholders = idsToDelete.map(() => "?").join(",");
       await db.runAsync(
         `DELETE FROM event_dates WHERE event_id IN (${placeholders})`,
-        idsToDelete
+        idsToDelete,
       );
       await db.runAsync(
         `DELETE FROM events WHERE id IN (${placeholders})`,
-        idsToDelete
+        idsToDelete,
       );
     }
 
@@ -350,37 +351,36 @@ export const logAttendance = async (attendanceData) => {
     const dbInstance = await initDB();
     if (!dbInstance) return;
 
-    await dbInstance.runAsync(`
-      CREATE TABLE IF NOT EXISTS attendance (
-        event_date_id INTEGER PRIMARY KEY,
-        student_id_number INTEGER NOT NULL,
-        am_in BOOLEAN DEFAULT FALSE,
-        am_out BOOLEAN DEFAULT FALSE,
-        pm_in BOOLEAN DEFAULT FALSE,
-        pm_out BOOLEAN DEFAULT FALSE
-      )
-    `);
-
     const existingRecord = await dbInstance.getFirstAsync(
       "SELECT * FROM attendance WHERE event_date_id = ? AND student_id_number = ?",
-      [attendanceData.event_date_id, attendanceData.student_id_number]
+      [attendanceData.event_date_id, attendanceData.student_id_number],
     );
 
     const typeColumn = attendanceData.type.toLowerCase();
+    const now = new Date();
+    const timestamp = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
 
     if (existingRecord) {
       if (existingRecord[typeColumn])
         throw new Error(
-          `Attendance for ${attendanceData.type} has already been logged.`
+          `Attendance for ${attendanceData.type} has already been logged.`,
         );
       await dbInstance.runAsync(
-        `UPDATE attendance SET ${typeColumn} = TRUE WHERE event_date_id = ? AND student_id_number = ?`,
-        [attendanceData.event_date_id, attendanceData.student_id_number]
+        `UPDATE attendance SET ${typeColumn} = ? WHERE event_date_id = ? AND student_id_number = ?`,
+        [
+          timestamp,
+          attendanceData.event_date_id,
+          attendanceData.student_id_number,
+        ],
       );
     } else {
       await dbInstance.runAsync(
-        `INSERT INTO attendance (event_date_id, student_id_number, ${typeColumn}) VALUES (?, ?, TRUE)`,
-        [attendanceData.event_date_id, attendanceData.student_id_number]
+        `INSERT INTO attendance (event_date_id, student_id_number, ${typeColumn}) VALUES (?, ?, ?)`,
+        [
+          attendanceData.event_date_id,
+          attendanceData.student_id_number,
+          timestamp,
+        ],
       );
     }
   }
@@ -389,7 +389,7 @@ export const logAttendance = async (attendanceData) => {
 export const isAlreadyLogged = async (
   event_date_id,
   student_id_number,
-  type
+  type,
 ) => {
   if (Platform.OS !== "web") {
     try {
@@ -399,7 +399,7 @@ export const isAlreadyLogged = async (
       const typeColumn = type.toLowerCase();
       const existingRecord = await dbInstance.getFirstAsync(
         "SELECT * FROM attendance WHERE event_date_id = ? AND student_id_number = ?",
-        [event_date_id, student_id_number]
+        [event_date_id, student_id_number],
       );
 
       return existingRecord?.[typeColumn] || false;
