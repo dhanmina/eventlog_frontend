@@ -160,7 +160,7 @@ const EditEvent = () => {
           pm_in: eventData.pm_in || null,
           pm_out: eventData.pm_out || null,
           event_date: formattedEventDates,
-          duration: eventData.duration || 0,
+          duration: parseInt(eventData.duration, 10) || 0,
           created_by: eventData.created_by_id || "",
         });
         setBlockOptions(formattedBlocks);
