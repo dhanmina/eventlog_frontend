@@ -24,12 +24,15 @@ export default function RolesScreen() {
   }, []);
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0, paddingBottom: 100}]}>
+    <View style={[globalStyles.secondaryContainer, { paddingBottom: 80 }]}>
       <Text style={styles.headerText}>ROLES</Text>
-      <View style={{width: "100%" }}>
+      <View style={styles.listContainer}>
         {roles.length > 0 ? (
           roles.map((role) => (
             <View key={role.role_id} style={styles.roleContainer}>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleBadgeText}>{role.role_id}</Text>
+              </View>
               <Text style={styles.roleName}>{role.role_name}</Text>
             </View>
           ))
@@ -48,19 +51,35 @@ const styles = StyleSheet.create({
   headerText: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.display,
+    fontSize: theme.fontSizes.title,
     textAlign: "center",
     marginBottom: theme.spacing.medium,
+  },
+  listContainer: {
+    width: "100%",
   },
   roleContainer: {
     borderWidth: 2,
     borderColor: theme.colors.primary,
     flexDirection: "row",
-    height: 50,
-    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
     marginBottom: theme.spacing.small,
+    gap: theme.spacing.small,
+  },
+  roleBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.borderRadius.small,
+    backgroundColor: theme.colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  roleBadgeText: {
+    fontFamily: theme.fontFamily.ArialBold,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.secondary,
   },
   roleName: {
     fontFamily: theme.fontFamily.SquadaOne,

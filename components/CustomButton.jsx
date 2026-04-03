@@ -6,6 +6,7 @@ const CustomButton = ({
   type = "primary",
   title = "Button",
   onPress,
+  disabled = false,
   otherStyles,
 }) => {
   return (
@@ -18,9 +19,12 @@ const CustomButton = ({
             : type === "secondary"
             ? styles.secondary
             : styles.default,
+          disabled && styles.disabled,
           otherStyles,
         ]}
         onPress={onPress}
+        disabled={disabled}
+        activeOpacity={0.7}
       >
         <Text
           style={[
@@ -40,7 +44,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   buttonBase: {
-    borderRadius: 12,
+    borderRadius: theme.borderRadius.medium,
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
@@ -55,11 +59,14 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   default: {
-    backgroundColor: "gray",
+    backgroundColor: theme.colors.gray,
+  },
+  disabled: {
+    opacity: 0.4,
   },
   text: {
-    fontFamily: "SquadaOne",
-    fontSize: 25,
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
   },
   textPrimary: {
     color: theme.colors.secondary,

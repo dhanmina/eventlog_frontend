@@ -116,18 +116,18 @@ export default function PendingEvents() {
 
   if (loading) {
     return (
-      <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+      <View style={globalStyles.secondaryContainer}>
         <Text style={styles.loadingText}>Loading pending events...</Text>
       </View>
     );
   }
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={globalStyles.secondaryContainer}>
       <Text style={styles.headerText}>PENDING EVENTS</Text>
       <ScrollView
-        style={{ flex: 1, width: "100%", marginBottom: 70 }}
-        contentContainerStyle={[styles.scrollview, { paddingBottom: 80 }]}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
@@ -154,11 +154,13 @@ export default function PendingEvents() {
               </View>
               <View style={styles.iconContainer}>
                 <TouchableOpacity
+                  style={styles.iconBtn}
                   onPress={() => handleOpenModal("approve", event)}
                 >
                   <Image source={icons.check} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
+                  style={styles.iconBtn}
                   onPress={() => handleOpenModal("delete", event)}
                 >
                   <Image source={icons.trash} style={styles.icon} />
@@ -224,32 +226,40 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.medium,
     color: theme.colors.primary,
     textAlign: "center",
-    marginTop: theme.spacing.large,
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+    marginTop: theme.spacing.small,
+  },
+  scrollview: {
+    flexGrow: 1,
+    paddingBottom: 110,
   },
   eventContainer: {
     borderWidth: 2,
     borderColor: theme.colors.primary,
     flexDirection: "row",
-    height: 50,
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
     marginBottom: theme.spacing.small,
   },
   textContainer: {
     flex: 1,
     flexDirection: "column",
     justifyContent: "center",
-  },
-  scrollview: {
-    padding: theme.spacing.medium,
-    flexGrow: 1,
+    marginRight: theme.spacing.small,
   },
   icon: {
     width: 20,
     height: 20,
     tintColor: theme.colors.primary,
-    marginLeft: theme.spacing.small,
+  },
+  iconBtn: {
+    padding: theme.spacing.xsmall,
+    marginLeft: theme.spacing.xsmall,
   },
   iconContainer: {
     flexDirection: "row",

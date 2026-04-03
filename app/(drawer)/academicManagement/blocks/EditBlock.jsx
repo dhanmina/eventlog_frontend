@@ -183,7 +183,7 @@ const EditBlock = () => {
     );
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={globalStyles.secondaryContainer}>
       <CustomModal
         visible={modal.visible}
         title={modal.title}
@@ -193,13 +193,10 @@ const EditBlock = () => {
         cancelTitle="CLOSE"
       />
 
-      <Text style={styles.textHeader}>EVENTLOG</Text>
-      <View style={styles.titleContainer}>
-        <Text style={styles.textTitle}>EDIT BLOCK</Text>
-      </View>
+      <Text style={styles.headerText}>EDIT BLOCK</Text>
 
       <ScrollView
-        style={styles.scrollviewContainer}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
       >
@@ -258,36 +255,19 @@ const EditBlock = () => {
 export default EditBlock;
 
 const styles = StyleSheet.create({
-  textHeader: {
+  headerText: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.title,
     textAlign: "center",
     marginBottom: theme.spacing.small,
   },
-  scrollviewContainer: {
+  scrollView: {
+    flex: 1,
     width: "100%",
-    marginBottom: 90,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderTopWidth: 0,
   },
   scrollview: {
     flexGrow: 1,
-    padding: theme.spacing.medium,
-    justifyContent: "space-between",
-  },
-  titleContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-  },
-  textTitle: {
-    fontSize: theme.fontSizes.extraLarge,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
+    paddingBottom: 120,
   },
 });

@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.medium,
-    color: theme.colors.error,
+    color: theme.colors.primary,
     textAlign: "center",
     marginTop: theme.spacing.medium,
   },

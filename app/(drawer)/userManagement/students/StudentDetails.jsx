@@ -77,15 +77,14 @@ const StudentDetails = () => {
   };
 
   return (
-    <View
-      style={[
-        globalStyles.secondaryContainer,
-        { paddingTop: 0, paddingBottom: 110 },
-      ]}
-    >
+    <View style={globalStyles.secondaryContainer}>
       <Text style={styles.textHeader}>Student Details</Text>
 
-      <ScrollView contentContainerStyle={styles.detailsWrapper}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.detailsWrapper}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.detailsContainer}>
           <Text style={styles.detailTitle}>ID Number:</Text>
           <Text style={styles.detail}>{studentDetails.id_number}</Text>
@@ -117,7 +116,7 @@ const StudentDetails = () => {
           <Text style={styles.detail}>{studentDetails.suffix || "-"}</Text>
         </View>
         <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Email: </Text>
+          <Text style={styles.detailTitle}>Email:</Text>
           <Text style={styles.detail}>{studentDetails.email || "-"}</Text>
         </View>
         <View style={styles.detailsContainer}>
@@ -137,7 +136,7 @@ const StudentDetails = () => {
             }
           />
         </View>
-        {studentDetails.status === "Disabled" ? null : (
+        {studentDetails.status !== "Disabled" && (
           <View style={styles.button}>
             <CustomButton
               title="DISABLE"
@@ -182,19 +181,25 @@ const styles = StyleSheet.create({
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.title,
     textAlign: "center",
+    marginBottom: theme.spacing.small,
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
   },
   detailsWrapper: {
     flexGrow: 1,
-    paddingHorizontal: theme.spacing.medium,
     paddingVertical: theme.spacing.small,
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: theme.spacing.medium,
+    gap: theme.spacing.small,
+    paddingTop: theme.spacing.medium,
+    paddingBottom: 80 + theme.spacing.medium,
+    width: "100%",
   },
   button: {
-    marginHorizontal: theme.spacing.small,
     flex: 1,
   },
   detailsContainer: {
@@ -220,15 +225,15 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.Regular,
+    fontFamily: theme.fontFamily.Arial,
     color: theme.colors.primary,
     textAlign: "center",
     marginTop: theme.spacing.medium,
   },
   errorText: {
     fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.Regular,
-    color: theme.colors.error,
+    fontFamily: theme.fontFamily.Arial,
+    color: theme.colors.primary,
     textAlign: "center",
     marginTop: theme.spacing.medium,
   },

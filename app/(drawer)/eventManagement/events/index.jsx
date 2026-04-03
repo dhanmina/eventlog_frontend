@@ -104,16 +104,16 @@ export default function EventsList() {
   };
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={globalStyles.secondaryContainer}>
       <Text style={styles.headerText}>EVENTS</Text>
 
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={{ width: "100%" }}>
         <SearchBar placeholder="Search events..." onSearch={setSearchQuery} />
       </View>
 
       {pendingEventsCount > 0 && (
         <TouchableOpacity
-          style={{ width: "100%" }}
+          style={{ width: "100%", marginTop: theme.spacing.small }}
           onPress={() => router.push(`/eventManagement/events/PendingEvents`)}
         >
           <View style={styles.pendingContainer}>
@@ -126,8 +126,8 @@ export default function EventsList() {
       )}
 
       <ScrollView
-        style={{ flex: 1, width: "100%", marginBottom: 70 }}
-        contentContainerStyle={[styles.scrollview, { paddingBottom: 80 }]}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
@@ -154,21 +154,20 @@ export default function EventsList() {
               </View>
               <View style={styles.iconContainer}>
                 <TouchableOpacity
+                  style={[styles.iconBtn, { opacity: event.status === "Archived" ? 0.3 : 1 }]}
                   onPress={() =>
                     router.push(
                       `/eventManagement/events/EditEvent?id=${event.event_id}`
                     )
                   }
                   disabled={event.status === "Archived"}
-                  style={{ opacity: event.status === "Archived" ? 0.5 : 1 }}
                 >
                   <Image source={icons.edit} style={styles.icon} />
                 </TouchableOpacity>
-
                 <TouchableOpacity
+                  style={[styles.iconBtn, { opacity: event.status === "Archived" ? 0.3 : 1 }]}
                   onPress={() => handleDeletePress(event)}
                   disabled={event.status === "Archived"}
-                  style={{ opacity: event.status === "Archived" ? 0.5 : 1 }}
                 >
                   <Image source={icons.trash} style={styles.icon} />
                 </TouchableOpacity>
@@ -186,6 +185,7 @@ export default function EventsList() {
           onPress={() => router.push("/eventManagement/events/AddEvent")}
         />
       </View>
+      <View style={styles.tabSpacer} />
 
       <CustomModal
         visible={isDeleteModalVisible}
@@ -223,42 +223,48 @@ const styles = StyleSheet.create({
   pendingContainer: {
     borderWidth: 2,
     borderColor: theme.colors.primary,
-    flexDirection: "row",
-    height: 50,
+    paddingVertical: theme.spacing.small,
     justifyContent: "center",
     alignItems: "center",
-    marginHorizontal: theme.spacing.medium,
-    marginTop: theme.spacing.medium,
   },
   pendingText: {
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.extraLarge,
     color: theme.colors.primary,
   },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+    marginTop: theme.spacing.small,
+  },
+  scrollview: {
+    flexGrow: 1,
+    paddingBottom: 200,
+  },
   eventContainer: {
     borderWidth: 2,
     borderColor: theme.colors.primary,
     flexDirection: "row",
-    height: 50,
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
     marginBottom: theme.spacing.small,
   },
   textContainer: {
     flex: 1,
     flexDirection: "column",
     justifyContent: "center",
-  },
-  scrollview: {
-    padding: theme.spacing.medium,
-    flexGrow: 1,
+    marginRight: theme.spacing.small,
   },
   icon: {
     width: 20,
     height: 20,
     tintColor: theme.colors.primary,
-    marginLeft: theme.spacing.small,
+  },
+  iconBtn: {
+    padding: theme.spacing.xsmall,
+    marginLeft: theme.spacing.xsmall,
   },
   iconContainer: {
     flexDirection: "row",
@@ -284,11 +290,11 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.medium,
   },
   buttonContainer: {
-    position: "absolute",
-    bottom: theme.spacing.medium,
     alignSelf: "center",
     width: "80%",
-    padding: theme.spacing.medium,
-    marginBottom: 80,
+    paddingVertical: theme.spacing.small,
+  },
+  tabSpacer: {
+    height: 110,
   },
 });

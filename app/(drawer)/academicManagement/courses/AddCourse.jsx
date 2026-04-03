@@ -114,7 +114,7 @@ const AddCourse = () => {
   }
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={globalStyles.secondaryContainer}>
       <CustomModal
         visible={modal.visible}
         title={modal.title}
@@ -124,39 +124,32 @@ const AddCourse = () => {
         cancelTitle="CLOSE"
       />
 
-      <Text style={styles.textHeader}>EVENTLOG</Text>
-      <View style={styles.titleContainer}>
-        <Text style={styles.textTitle}>ADD COURSE</Text>
-      </View>
+      <Text style={styles.headerText}>ADD COURSE</Text>
       <ScrollView
-        style={styles.scrollviewContainer}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
       >
-        <View>
-          <FormField
-            title="Course Name"
-            placeholder="Enter course name"
-            value={formData.course_name}
-            onChangeText={(text) => handleChange("course_name", text)}
-          />
-
-          <FormField
-            title="Course Code"
-            placeholder="Enter course code"
-            value={formData.course_code}
-            onChangeText={(text) => handleChange("course_code", text)}
-          />
-
-          <CustomDropdown
-            title="Department"
-            data={departmentOptions}
-            placeholder="Select a department"
-            value={formData.department_id}
-            onSelect={(item) => handleChange("department_id", item.value)}
-          />
-        </View>
-        <View>
+        <FormField
+          title="Course Name"
+          placeholder="Enter course name"
+          value={formData.course_name}
+          onChangeText={(text) => handleChange("course_name", text)}
+        />
+        <FormField
+          title="Course Code"
+          placeholder="Enter course code"
+          value={formData.course_code}
+          onChangeText={(text) => handleChange("course_code", text)}
+        />
+        <CustomDropdown
+          title="Department"
+          data={departmentOptions}
+          placeholder="Select a department"
+          value={formData.department_id}
+          onSelect={(item) => handleChange("department_id", item.value)}
+        />
+        <View style={styles.buttonWrapper}>
           <CustomButton title="ADD" onPress={handleSubmit} />
         </View>
       </ScrollView>
@@ -170,36 +163,22 @@ const AddCourse = () => {
 export default AddCourse;
 
 const styles = StyleSheet.create({
-  textHeader: {
+  headerText: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.title,
     textAlign: "center",
     marginBottom: theme.spacing.small,
   },
-  scrollviewContainer: {
+  scrollView: {
+    flex: 1,
     width: "100%",
-    marginBottom: 90,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderTopWidth: 0,
   },
   scrollview: {
-    justifyContent: "space-between",
     flexGrow: 1,
-    padding: theme.spacing.medium,
+    paddingBottom: 120,
   },
-  titleContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-  },
-  textTitle: {
-    fontSize: theme.fontSizes.extraLarge,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
+  buttonWrapper: {
+    marginTop: theme.spacing.medium,
   },
 });

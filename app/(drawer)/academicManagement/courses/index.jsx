@@ -98,14 +98,14 @@ export default function CoursesScreen() {
   };
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={globalStyles.secondaryContainer}>
       <Text style={styles.headerText}>COURSES</Text>
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={{ width: "100%" }}>
         <SearchBar placeholder="Search courses..." onSearch={setSearchQuery} />
       </View>
       <ScrollView
-        style={{ flex: 1, width: "100%", marginBottom: 70 }}
-        contentContainerStyle={[styles.scrollview, { paddingBottom: 80 }]}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
@@ -133,6 +133,7 @@ export default function CoursesScreen() {
 
               <View style={styles.iconContainer}>
                 <TouchableOpacity
+                  style={styles.iconBtn}
                   onPress={() => {
                     if (course.course_id) {
                       router.push(
@@ -144,9 +145,9 @@ export default function CoursesScreen() {
                   <Image source={icons.edit} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
+                  style={[styles.iconBtn, { opacity: course.status === "Disabled" ? 0.3 : 1 }]}
                   onPress={() => handleDisablePress(course)}
                   disabled={course.status === "Disabled"}
-                  style={{ opacity: course.status === "Disabled" ? 0.5 : 1 }}
                 >
                   <Image source={icons.disabled} style={styles.icon} />
                 </TouchableOpacity>
@@ -164,6 +165,7 @@ export default function CoursesScreen() {
           onPress={() => router.push("/academicManagement/courses/AddCourse")}
         />
       </View>
+      <View style={styles.tabSpacer} />
 
       <CustomModal
         visible={isDisableModalVisible}
@@ -199,34 +201,43 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: theme.spacing.small,
   },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+    marginTop: theme.spacing.small,
+  },
+  scrollview: {
+    flexGrow: 1,
+    paddingBottom: 200,
+  },
   courseContainer: {
     borderWidth: 2,
     borderColor: theme.colors.primary,
     flexDirection: "row",
-    height: 50,
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
     marginBottom: theme.spacing.small,
   },
   textContainer: {
     flex: 1,
     flexDirection: "column",
     justifyContent: "center",
-  },
-  scrollview: {
-    padding: theme.spacing.medium,
-    flexGrow: 1,
+    marginRight: theme.spacing.small,
   },
   icon: {
     width: 20,
     height: 20,
     tintColor: theme.colors.primary,
-    marginLeft: theme.spacing.small,
   },
   iconContainer: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  iconBtn: {
+    padding: theme.spacing.xsmall,
+    marginLeft: theme.spacing.xsmall,
   },
   name: {
     fontFamily: theme.fontFamily.SquadaOne,
@@ -248,11 +259,11 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.medium,
   },
   buttonContainer: {
-    position: "absolute",
-    bottom: theme.spacing.medium,
     alignSelf: "center",
     width: "80%",
-    padding: theme.spacing.medium,
-    marginBottom: 80,
+    paddingVertical: theme.spacing.small,
+  },
+  tabSpacer: {
+    height: 110,
   },
 });

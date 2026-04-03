@@ -115,12 +115,13 @@ export default function AdminsScreen() {
   return (
     <View style={globalStyles.secondaryContainer}>
       <Text style={styles.headerText}>ADMINS</Text>
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={{ width: "100%" }}>
         <SearchBar placeholder="Search admins..." onSearch={setSearchQuery} />
       </View>
       <ScrollView
-        style={{ flex: 1, width: "100%" }}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
         }
@@ -136,14 +137,17 @@ export default function AdminsScreen() {
                 )
               }
             >
-              <View>
-                <Text style={styles.name}>
+              <View style={styles.textContainer}>
+                <Text style={styles.name} numberOfLines={1}>
                   {admin.first_name} {admin.last_name}
                 </Text>
-                <Text style={styles.status}>{admin.status}</Text>
+                <Text style={styles.status} numberOfLines={1}>
+                  {admin.status}
+                </Text>
               </View>
               <View style={styles.iconContainer}>
                 <TouchableOpacity
+                  style={styles.iconBtn}
                   onPress={() =>
                     router.push(
                       `/userManagement/admins/EditAdmin?id_number=${admin.id_number}`
@@ -153,9 +157,9 @@ export default function AdminsScreen() {
                   <Image source={icons.edit} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
+                  style={[styles.iconBtn, { opacity: admin.status === "Disabled" ? 0.3 : 1 }]}
                   onPress={() => handleDisablePress(admin)}
                   disabled={admin.status === "Disabled"}
-                  style={{ opacity: admin.status === "Disabled" ? 0.5 : 1 }}
                 >
                   <Image source={icons.disabled} style={styles.icon} />
                 </TouchableOpacity>
@@ -172,6 +176,7 @@ export default function AdminsScreen() {
           onPress={() => router.push("/userManagement/admins/AddAdmin")}
         />
       </View>
+      <View style={styles.tabSpacer} />
       <CustomModal
         visible={isDisableModalVisible}
         title="Confirm Disable"
@@ -213,40 +218,55 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: theme.spacing.small,
   },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+    marginTop: theme.spacing.small,
+  },
+  scrollview: {
+    paddingBottom: 200,
+    flexGrow: 1,
+  },
   adminContainer: {
     borderWidth: 2,
     borderColor: theme.colors.primary,
     flexDirection: "row",
-    height: 50,
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
     marginBottom: theme.spacing.small,
   },
-  scrollview: {
-    padding: theme.spacing.medium,
-    flexGrow: 1,
+  textContainer: {
+    flex: 1,
+    flexDirection: "column",
+    justifyContent: "center",
+    marginRight: theme.spacing.small,
   },
   icon: {
     width: 20,
     height: 20,
     tintColor: theme.colors.primary,
-    marginLeft: theme.spacing.small,
+  },
+  iconBtn: {
+    padding: theme.spacing.xsmall,
+    marginLeft: theme.spacing.xsmall,
   },
   iconContainer: {
-    justifyContent: "center",
-    alignItems: "center",
     flexDirection: "row",
+    alignItems: "center",
   },
   name: {
     fontFamily: theme.fontFamily.SquadaOne,
     color: theme.colors.primary,
     fontSize: theme.fontSizes.large,
+    flexShrink: 1,
   },
   status: {
     fontFamily: theme.fontFamily.SquadaOne,
     color: theme.colors.primary,
     fontSize: theme.fontSizes.small,
+    flexShrink: 1,
   },
   noResults: {
     textAlign: "center",
@@ -256,9 +276,11 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.medium,
   },
   buttonContainer: {
-    position: "absolute",
-    bottom: "15%",
+    alignSelf: "center",
     width: "80%",
-    padding: theme.spacing.medium,
+    paddingVertical: theme.spacing.small,
+  },
+  tabSpacer: {
+    height: 110,
   },
 });

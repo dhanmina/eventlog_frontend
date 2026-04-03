@@ -145,7 +145,7 @@ const AddStudent = () => {
   }
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={globalStyles.secondaryContainer}>
       <CustomModal
         visible={modal.visible}
         title={modal.title}
@@ -155,58 +155,49 @@ const AddStudent = () => {
         cancelTitle="CLOSE"
       />
 
-      <Text style={styles.textHeader}>EVENTLOG</Text>
-      <View style={styles.titleContainer}>
-        <Text style={styles.textTitle}>ADD STUDENT</Text>
-      </View>
+      <Text style={styles.headerText}>ADD STUDENT</Text>
       <ScrollView
-        style={styles.scrollviewContainer}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
       >
-        <View>
-          <FormField
-            type="id"
-            iconShow={false}
-            title="ID Number"
-            example="1234567"
-            exampleColor="primary"
-            value={formData.id_number}
-            onChangeText={(text) => handleChange("id_number", text)}
-          />
-
-          <FormField
-            title="First Name"
-            example="Juan Miguel"
-            exampleColor="primary"
-            value={formData.first_name}
-            onChangeText={(text) => handleChange("first_name", text)}
-          />
-
-          <FormField
-            title="Middle Name (Optional)"
-            example="Reyes"
-            exampleColor="primary"
-            value={formData.middle_name}
-            onChangeText={(text) => handleChange("middle_name", text)}
-          />
-
-          <FormField
-            title="Last Name"
-            example="Santos"
-            exampleColor="primary"
-            value={formData.last_name}
-            onChangeText={(text) => handleChange("last_name", text)}
-          />
-
-          <FormField
-            title="Suffix (Optional)"
-            example="Jr"
-            exampleColor="primary"
-            value={formData.suffix}
-            onChangeText={(text) => handleChange("suffix", text)}
-          />
-        </View>
+        <FormField
+          type="id"
+          iconShow={false}
+          title="ID Number"
+          example="1234567"
+          exampleColor="primary"
+          value={formData.id_number}
+          onChangeText={(text) => handleChange("id_number", text)}
+        />
+        <FormField
+          title="First Name"
+          example="Juan Miguel"
+          exampleColor="primary"
+          value={formData.first_name}
+          onChangeText={(text) => handleChange("first_name", text)}
+        />
+        <FormField
+          title="Middle Name (Optional)"
+          example="Reyes"
+          exampleColor="primary"
+          value={formData.middle_name}
+          onChangeText={(text) => handleChange("middle_name", text)}
+        />
+        <FormField
+          title="Last Name"
+          example="Santos"
+          exampleColor="primary"
+          value={formData.last_name}
+          onChangeText={(text) => handleChange("last_name", text)}
+        />
+        <FormField
+          title="Suffix (Optional)"
+          example="Jr"
+          exampleColor="primary"
+          value={formData.suffix}
+          onChangeText={(text) => handleChange("suffix", text)}
+        />
         <CustomDropdown
           title="Block"
           data={blocks}
@@ -221,7 +212,7 @@ const AddStudent = () => {
           value={formData.role_id}
           onSelect={(item) => handleChange("role_id", item.value)}
         />
-        <View>
+        <View style={styles.buttonWrapper}>
           <CustomButton title="ADD STUDENT" onPress={handleSubmit} />
         </View>
       </ScrollView>
@@ -235,35 +226,22 @@ const AddStudent = () => {
 export default AddStudent;
 
 const styles = StyleSheet.create({
-  textHeader: {
+  headerText: {
+    color: theme.colors.primary,
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.title,
-    color: theme.colors.primary,
     textAlign: "center",
+    marginBottom: theme.spacing.small,
   },
-  scrollviewContainer: {
+  scrollView: {
+    flex: 1,
     width: "100%",
-    marginBottom: 90,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderTopWidth: 0,
   },
   scrollview: {
-    justifyContent: "space-between",
     flexGrow: 1,
-    padding: theme.spacing.medium,
+    paddingBottom: 120,
   },
-  titleContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-  },
-  textTitle: {
-    fontSize: theme.fontSizes.extraLarge,
-    fontFamily: theme.fontFamily.SquladaOne,
-    color: theme.colors.primary,
+  buttonWrapper: {
+    marginTop: theme.spacing.medium,
   },
 });

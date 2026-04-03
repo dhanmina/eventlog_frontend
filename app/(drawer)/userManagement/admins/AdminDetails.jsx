@@ -108,17 +108,14 @@ const AdminDetails = () => {
   };
 
   return (
-    <View
-      style={[
-        globalStyles.secondaryContainer,
-        { paddingTop: 0, paddingBottom: 110 },
-      ]}
-    >
-      <View style={styles.headerContainer}>
-        <Text style={styles.title}>Admin Details</Text>
-      </View>
+    <View style={globalStyles.secondaryContainer}>
+      <Text style={styles.headerText}>Admin Details</Text>
 
-      <ScrollView contentContainerStyle={styles.detailsWrapper}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.detailsWrapper}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.detailsContainer}>
           <Text style={styles.detailTitle}>ID Number:</Text>
           <Text style={styles.detail}>{adminDetails.id_number}</Text>
@@ -143,7 +140,6 @@ const AdminDetails = () => {
           <Text style={styles.detailTitle}>Email Address:</Text>
           <Text style={styles.detail}>{adminDetails.email}</Text>
         </View>
-
         <View style={styles.detailsContainer}>
           <Text style={styles.detailTitle}>Role:</Text>
           <Text style={styles.detail}>{adminDetails.role_name || "-"}</Text>
@@ -215,29 +211,30 @@ const AdminDetails = () => {
 export default AdminDetails;
 
 const styles = StyleSheet.create({
-  headerContainer: {
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: theme.spacing.medium,
-  },
-  title: {
+  headerText: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.title,
     textAlign: "center",
     marginBottom: theme.spacing.small,
   },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+  },
   detailsWrapper: {
     flexGrow: 1,
-    paddingHorizontal: theme.spacing.medium,
+    paddingVertical: theme.spacing.small,
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "center",
+    gap: theme.spacing.small,
+    paddingTop: theme.spacing.medium,
+    paddingBottom: 80 + theme.spacing.medium,
+    width: "100%",
   },
   button: {
-    marginHorizontal: theme.spacing.small,
     flex: 1,
   },
   detailsContainer: {
@@ -263,15 +260,15 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.Regular,
+    fontFamily: theme.fontFamily.Arial,
     color: theme.colors.primary,
     textAlign: "center",
     marginTop: theme.spacing.medium,
   },
   errorText: {
     fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.Regular,
-    color: theme.colors.error,
+    fontFamily: theme.fontFamily.Arial,
+    color: theme.colors.primary,
     textAlign: "center",
     marginTop: theme.spacing.medium,
   },

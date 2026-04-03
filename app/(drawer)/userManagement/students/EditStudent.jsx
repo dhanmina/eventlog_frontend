@@ -225,7 +225,7 @@ const EditStudent = () => {
   }
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={globalStyles.secondaryContainer}>
       <CustomModal
         visible={modal.visible}
         title={modal.title}
@@ -234,77 +234,72 @@ const EditStudent = () => {
         onClose={() => setModal({ ...modal, visible: false })}
         cancelTitle="CLOSE"
       />
-      <Text style={styles.textHeader}>EVENTLOG</Text>
-      <View style={styles.titleContainer}>
-        <Text style={styles.textTitle}>EDIT STUDENT DETAILS</Text>
-      </View>
+      <Text style={styles.headerText}>EDIT STUDENT</Text>
       <ScrollView
-        style={styles.scrollviewContainer}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
       >
-        <View>
-          <FormField
-            title="First Name"
-            example="Juan Miguel"
-            exampleColor="primary"
-            value={formData.first_name}
-            onChangeText={(text) => handleChange("first_name", text)}
-          />
-          <FormField
-            title="Middle Name (Optional)"
-            example="Reyes"
-            exampleColor="primary"
-            value={formData.middle_name}
-            onChangeText={(text) => handleChange("middle_name", text)}
-          />
-          <FormField
-            title="Last Name"
-            example="Santos"
-            exampleColor="primary"
-            value={formData.last_name}
-            onChangeText={(text) => handleChange("last_name", text)}
-          />
-          <FormField
-            title="Suffix (Optional)"
-            example="Jr"
-            exampleColor="primary"
-            value={formData.suffix}
-            onChangeText={(text) => handleChange("suffix", text)}
-          />
-          <FormField
-            title="Email"
-            example="example@gmail.com"
-            exampleColor="primary"
-            value={formData.email || ""}
-            onChangeText={(text) => handleChange("email", text)}
-            editable={
-              formData.status !== "Unregistered" &&
-              formData.status !== "Not Enrolled"
-            }
-          />
-          <CustomDropdown
-            title="Block"
-            data={blocks}
-            placeholder="Select a block"
-            value={formData.block_id}
-            onSelect={(item) => handleChange("block_id", item.value)}
-          />
-          <CustomDropdown
-            title="Role"
-            data={roles}
-            placeholder="Select a role"
-            value={formData.role_id}
-            onSelect={(item) => handleChange("role_id", item.value)}
-          />
-          <CustomDropdown
-            title="Status"
-            data={getStatusOptions()}
-            value={formData.status}
-            onSelect={(item) => handleChange("status", item.value)}
-          />
-        </View>
-        <View>
+        <FormField
+          title="First Name"
+          example="Juan Miguel"
+          exampleColor="primary"
+          value={formData.first_name}
+          onChangeText={(text) => handleChange("first_name", text)}
+        />
+        <FormField
+          title="Middle Name (Optional)"
+          example="Reyes"
+          exampleColor="primary"
+          value={formData.middle_name}
+          onChangeText={(text) => handleChange("middle_name", text)}
+        />
+        <FormField
+          title="Last Name"
+          example="Santos"
+          exampleColor="primary"
+          value={formData.last_name}
+          onChangeText={(text) => handleChange("last_name", text)}
+        />
+        <FormField
+          title="Suffix (Optional)"
+          example="Jr"
+          exampleColor="primary"
+          value={formData.suffix}
+          onChangeText={(text) => handleChange("suffix", text)}
+        />
+        <FormField
+          title="Email"
+          example="example@gmail.com"
+          exampleColor="primary"
+          value={formData.email || ""}
+          onChangeText={(text) => handleChange("email", text)}
+          editable={
+            formData.status !== "Unregistered" &&
+            formData.status !== "Not Enrolled"
+          }
+        />
+        <CustomDropdown
+          title="Block"
+          data={blocks}
+          placeholder="Select a block"
+          value={formData.block_id}
+          onSelect={(item) => handleChange("block_id", item.value)}
+        />
+        <CustomDropdown
+          title="Role"
+          data={roles}
+          placeholder="Select a role"
+          value={formData.role_id}
+          onSelect={(item) => handleChange("role_id", item.value)}
+        />
+        <CustomDropdown
+          title="Status"
+          data={getStatusOptions()}
+          value={formData.status}
+          onSelect={(item) => handleChange("status", item.value)}
+        />
+        <View style={styles.buttonWrapper}>
           <CustomButton title="UPDATE" onPress={handleSubmit} />
         </View>
       </ScrollView>
@@ -317,35 +312,22 @@ const EditStudent = () => {
 export default EditStudent;
 
 const styles = StyleSheet.create({
-  textHeader: {
+  headerText: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.title,
     textAlign: "center",
+    marginBottom: theme.spacing.small,
   },
-  scrollviewContainer: {
+  scrollView: {
+    flex: 1,
     width: "100%",
-    marginBottom: 90,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderTopWidth: 0,
   },
   scrollview: {
     flexGrow: 1,
-    padding: theme.spacing.medium,
-    justifyContent: "space-between",
+    paddingBottom: 120,
   },
-  titleContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-  },
-  textTitle: {
-    fontSize: theme.fontSizes.extraLarge,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
+  buttonWrapper: {
+    marginTop: theme.spacing.medium,
   },
 });

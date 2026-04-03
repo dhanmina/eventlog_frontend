@@ -95,9 +95,9 @@ export default function StudentsScreen() {
   };
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={globalStyles.secondaryContainer}>
       <Text style={styles.headerText}>STUDENTS</Text>
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={{ width: "100%" }}>
         <SearchBar
           placeholder="Search students..."
           onSearch={(query) => {
@@ -108,8 +108,8 @@ export default function StudentsScreen() {
         />
       </View>
       <ScrollView
-        style={{ flex: 1, width: "100%" }}
-        contentContainerStyle={[styles.scrollview]}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
@@ -161,48 +161,26 @@ export default function StudentsScreen() {
         )}
       </ScrollView>
       {totalPages > 1 && (
-  <View style={styles.pageNav}>
-    <TouchableOpacity
-      onPress={() => handlePageChange(currentPage - 1)}
-      disabled={currentPage === 1}
-      style={{ opacity: currentPage === 1 ? 0.5 : 1 }}
-    >
-      <Image
-        source={icons.arrowLeft}
-        style={[
-          styles.pageIconNav,
-          {
-            tintColor:
-              currentPage === 1
-                ? theme.colors.secondary
-                : theme.colors.primary,
-          },
-        ]}
-      />
-    </TouchableOpacity>
-    <View style={styles.textPage}>
-      <Text style={styles.page}>{currentPage.toString()}</Text>
-    </View>
-    <TouchableOpacity
-      onPress={() => handlePageChange(currentPage + 1)}
-      disabled={currentPage === totalPages}
-      style={{ opacity: currentPage === totalPages ? 0.5 : 1 }}
-    >
-      <Image
-        source={icons.arrowRight}
-        style={[
-          styles.pageIconNav,
-          {
-            tintColor:
-              currentPage === totalPages
-                ? theme.colors.secondary
-                : theme.colors.primary,
-          },
-        ]}
-      />
-    </TouchableOpacity>
-  </View>
-)}
+        <View style={styles.pageNav}>
+          <TouchableOpacity
+            onPress={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            style={[styles.pageArrowBtn, { opacity: currentPage === 1 ? 0.3 : 1 }]}
+          >
+            <Image source={icons.arrowLeft} style={styles.pageIconNav} />
+          </TouchableOpacity>
+          <View style={styles.textPage}>
+            <Text style={styles.page}>{`${currentPage} / ${totalPages}`}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            style={[styles.pageArrowBtn, { opacity: currentPage === totalPages ? 0.3 : 1 }]}
+          >
+            <Image source={icons.arrowRight} style={styles.pageIconNav} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.buttonContainer}>
         <CustomButton
@@ -248,10 +226,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: theme.colors.primary,
     flexDirection: "row",
-    height: 50,
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
     marginBottom: theme.spacing.small,
   },
   textContainer: {
@@ -259,9 +237,13 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     justifyContent: "center",
   },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+    marginTop: theme.spacing.small,
+  },
   scrollview: {
-    padding: theme.spacing.medium,
-    paddingBottom: 0,
+    paddingBottom: 200,
     flexGrow: 1,
   },
   icon: {
@@ -295,35 +277,45 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     position: "absolute",
-    bottom: theme.spacing.medium,
+    bottom: "15%",
     alignSelf: "center",
     width: "80%",
     padding: theme.spacing.medium,
-    marginBottom: 80,
   },
   pageNav: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: theme.spacing.medium,
-    marginBottom: 170,
+    marginVertical: theme.spacing.medium,
+    marginBottom: 180,
+    gap: theme.spacing.small,
   },
-  pageIconNav: {
-    width: 30,
-    height: 30,
-    marginHorizontal: theme.spacing.small,
-  },
-  textPage: {
-    height: 30,
-    width: 50,
-    borderWidth: 1,
+  pageArrowBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.borderRadius.small,
+    borderWidth: 2,
     borderColor: theme.colors.primary,
     justifyContent: "center",
     alignItems: "center",
   },
+  pageIconNav: {
+    width: 18,
+    height: 18,
+    tintColor: theme.colors.primary,
+  },
+  textPage: {
+    height: 36,
+    minWidth: 80,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.small,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: theme.spacing.medium,
+  },
   page: {
-    fontFamily: theme.fontFamily.Arial,
-    color: theme.colors.primary,
-    fontSize: theme.fontSizes.medium,
+    fontFamily: theme.fontFamily.ArialBold,
+    color: theme.colors.secondary,
+    fontSize: theme.fontSizes.small,
   },
 });
