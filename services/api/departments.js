@@ -1,6 +1,14 @@
 import axios from "axios";
 import { API_URL } from "../../config/config";
 
+export const fetchPublicDepartments = async () => {
+  const response = await axios.get(`${API_URL}/api/auth/departments`);
+  if (response.data.departments) {
+    return response.data.departments;
+  }
+  throw new Error("Failed to fetch departments");
+};
+
 export const fetchDepartments = async () => {
   try {
     const response = await axios.get(`${API_URL}/api/departments`);
@@ -16,7 +24,7 @@ export const fetchDepartments = async () => {
 export const fetchDepartmentById = async (departmentId) => {
   try {
     const response = await axios.get(
-      `${API_URL}/api/departments/${departmentId}`
+      `${API_URL}/api/departments/${departmentId}`,
     );
     if (response.data.success) {
       return response.data.department;
@@ -31,7 +39,7 @@ export const addDepartment = async (departmentData) => {
   try {
     const response = await axios.post(
       `${API_URL}/api/departments`,
-      departmentData
+      departmentData,
     );
     if (response.data.success) {
       return response.data.department;
@@ -46,7 +54,7 @@ export const editDepartment = async (departmentId, departmentData) => {
   try {
     const response = await axios.put(
       `${API_URL}/api/departments/${departmentId}`,
-      departmentData
+      departmentData,
     );
     if (response.data.success) {
       return response.data.department;
@@ -61,7 +69,7 @@ export const disableDepartment = async (departmentId) => {
   try {
     const response = await axios.patch(
       `${API_URL}/api/departments/${departmentId}/status`,
-      { status: "Disabled" }
+      { status: "Disabled" },
     );
     if (response.data.success) {
       return true;

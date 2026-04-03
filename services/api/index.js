@@ -56,6 +56,7 @@ axios.interceptors.response.use(
   },
 );
 
+export * from "./auth";
 export * from "./departments";
 export * from "./blocks";
 export * from "./events";
