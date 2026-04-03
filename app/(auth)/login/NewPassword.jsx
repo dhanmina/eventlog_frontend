@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import React, { useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { router, useLocalSearchParams } from "expo-router";
@@ -8,6 +8,7 @@ import CustomButton from "../../../components/CustomButton";
 import CustomModal from "../../../components/CustomModal";
 
 import globalStyles from "../../../constants/globalStyles";
+import theme from "../../../constants/theme";
 import { changeUserPassword } from "../../../services/api/users";
 
 const NewPassword = () => {
@@ -50,23 +51,28 @@ const NewPassword = () => {
   };
 
   return (
-    <View style={globalStyles.primaryContainer}>
-      <View style={globalStyles.authContent}>
-        <Text style={globalStyles.authTitle} numberOfLines={1} adjustsFontSizeToFit>
-          SET NEW PASSWORD
-        </Text>
-        <Text style={globalStyles.authInfo}>
-          Your password should be at least 8 characters long
-        </Text>
-        <View style={styles.form}>
+    <View style={[globalStyles.primaryContainer, styles.container]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.card}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollview}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+            SET NEW PASSWORD
+          </Text>
+          <Text style={styles.subtitle}>
+            Your new password must be at least 8 characters long.
+          </Text>
           <FormField
             type="password"
-            placeholder="Enter your new password"
+            placeholder="New password"
             value={password}
             onChangeText={setPassword}
             title="New Password"
-            titleColor="secondary"
-            borderColor="secondary"
           />
           <FormField
             type="password"
@@ -74,16 +80,10 @@ const NewPassword = () => {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             title="Confirm Password"
-            titleColor="secondary"
-            borderColor="secondary"
           />
-          <CustomButton
-            type="secondary"
-            title="RESET PASSWORD"
-            onPress={handleResetPassword}
-          />
-        </View>
-      </View>
+          <CustomButton title="RESET PASSWORD" onPress={handleResetPassword} />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <CustomModal
         visible={modal.visible}
@@ -94,7 +94,7 @@ const NewPassword = () => {
         onClose={closeModal}
       />
 
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </View>
   );
 };
@@ -102,7 +102,34 @@ const NewPassword = () => {
 export default NewPassword;
 
 const styles = StyleSheet.create({
-  form: {
+  container: {
+    justifyContent: "flex-start",
+  },
+  card: {
+    flex: 1,
     width: "100%",
+    backgroundColor: theme.colors.secondary,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  scrollview: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.xlarge,
+    paddingTop: theme.spacing.large,
+    paddingBottom: 60,
+    gap: theme.spacing.medium,
+  },
+  title: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.title,
+    color: theme.colors.primary,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.gray,
+    textAlign: "center",
+    marginTop: -theme.spacing.small,
   },
 });

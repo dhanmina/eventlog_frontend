@@ -5,24 +5,29 @@ import {
   TouchableOpacity,
   Platform,
   Image,
+  KeyboardAvoidingView,
+  ScrollView,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import icons from "../../../constants/icons";
-import axios from "axios";
 import { router } from "expo-router";
+import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFonts } from "expo-font";
-import { storeUser } from "../../../database/queries";
-import CustomModal from "../../../components/CustomModal";
+
+import icons from "../../../constants/icons";
 import theme from "../../../constants/theme";
 import globalStyles from "../../../constants/globalStyles";
+
 import Header from "../../../components/Header";
 import FormField from "../../../components/FormField";
 import CustomButton from "../../../components/CustomButton";
+import CustomModal from "../../../components/CustomModal";
+
 import { API_URL } from "../../../config/config";
 import { useAuth } from "../../../context/AuthContext";
+import { storeUser } from "../../../database/queries";
 
 import ArialFont from "../../../assets/fonts/Arial.ttf";
 import ArialBoldFont from "../../../assets/fonts/ArialBold.ttf";
@@ -42,13 +47,13 @@ const Login = () => {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [isChecked, setChecked] = useState(false);
+  const [fontsReady, setFontsReady] = useState(false);
   const [modal, setModal] = useState({
     visible: false,
     title: "",
     message: "",
     type: "",
   });
-  const [fontsReady, setFontsReady] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -84,17 +89,13 @@ const Login = () => {
         document.head.appendChild(style);
       }
 
-      setTimeout(() => {
-        setFontsReady(true);
-      }, 500);
+      setTimeout(() => setFontsReady(true), 500);
     }
   }, []);
 
   useEffect(() => {
-    if (Platform.OS !== "web") {
-      if (fontsLoaded || fontError) {
-        setFontsReady(true);
-      }
+    if (Platform.OS !== "web" && (fontsLoaded || fontError)) {
+      setFontsReady(true);
     }
   }, [fontsLoaded, fontError]);
 
@@ -104,18 +105,10 @@ const Login = () => {
     const loadRememberedCredentials = async () => {
       try {
         const rememberedId = await AsyncStorage.getItem("rememberedId");
-        const rememberedPassword = await AsyncStorage.getItem(
-          "rememberedPassword"
-        );
-        const rememberedChecked = await AsyncStorage.getItem(
-          "rememberedChecked"
-        );
+        const rememberedPassword = await AsyncStorage.getItem("rememberedPassword");
+        const rememberedChecked = await AsyncStorage.getItem("rememberedChecked");
 
-        if (
-          rememberedId &&
-          rememberedPassword &&
-          rememberedChecked === "true"
-        ) {
+        if (rememberedId && rememberedPassword && rememberedChecked === "true") {
           setId(rememberedId);
           setPassword(rememberedPassword);
           setChecked(true);
@@ -124,12 +117,15 @@ const Login = () => {
         console.warn("[Login] Failed to load remembered credentials:", error);
       }
     };
+
     loadRememberedCredentials();
   }, [fontsReady]);
 
   const showModal = (title, message) => {
     setModal({ visible: true, title, message, type: "error" });
   };
+
+  const closeModal = () => setModal((m) => ({ ...m, visible: false }));
 
   const handleLogin = async () => {
     if (!id || !password) {
@@ -140,7 +136,7 @@ const Login = () => {
     try {
       const response = await axios.post(`${API_URL}/api/auth/login`, {
         id_number: id,
-        password: password,
+        password,
       });
 
       if (response.status === 200) {
@@ -153,22 +149,16 @@ const Login = () => {
 
         const userData = {
           ...response.data.user,
-          full_name: `${response.data.user.first_name} ${
-            response.data.user.middle_name ?? ""
-          } ${response.data.user.last_name}`
+          full_name: `${response.data.user.first_name} ${response.data.user.middle_name ?? ""} ${response.data.user.last_name}`
             .replace(/\s+/g, " ")
             .trim(),
         };
 
         await authLogin(userData, response.data.token);
-
         await AsyncStorage.setItem("userToken", response.data.token);
         await AsyncStorage.setItem("id_number", response.data.user.id_number);
         await AsyncStorage.setItem("email", response.data.user.email);
-        await AsyncStorage.setItem(
-          "role_id",
-          String(response.data.user.role_id)
-        );
+        await AsyncStorage.setItem("role_id", String(response.data.user.role_id));
         await AsyncStorage.setItem("full_name", userData.full_name);
 
         try {
@@ -191,82 +181,97 @@ const Login = () => {
       } else {
         showModal(
           "Login Failed",
-          response.data.message || "Invalid credentials. Please try again."
+          response.data.message || "Invalid credentials. Please try again.",
         );
       }
     } catch (error) {
       showModal(
         "Login Error",
-        error.response?.data?.message || "An error occurred during login."
+        error.response?.data?.message || "An error occurred during login.",
       );
     }
   };
 
   if (!fontsReady) {
     return (
-      <SafeAreaView style={[globalStyles.primaryContainer, { padding: 0 }]}>
+      <SafeAreaView style={globalStyles.primaryContainer} edges={["top"]}>
         <Text style={styles.loadingText}>Loading...</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[globalStyles.primaryContainer, { padding: 0 }]}>
-      <Header type="primary" />
-      <Text style={styles.header}>WELCOME!</Text>
-      <View style={styles.form}>
-        <FormField
-          type="id"
-          value={id}
-          onChangeText={setId}
-          placeholder="ID Number"
-        />
-        <FormField
-          type="password"
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Password"
-        />
-      </View>
-      <View style={styles.rememberForgotContainer}>
-        <View style={styles.rememberMeContainer}>
-          <TouchableOpacity
-            style={[styles.checkbox, isChecked && styles.checkboxChecked]}
-            onPress={() => setChecked(!isChecked)}
-          >
-            {isChecked && (
-              <Image source={icons.check} style={styles.checkIcon} />
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setChecked(!isChecked)}>
-            <Text style={styles.rememberMe}>Remember Me</Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity onPress={() => router.push("/login/ForgotPassword")}>
-          <Text style={styles.forgotPass}>Forgot Password?</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.buttonContainer}>
-        <CustomButton type="secondary" title="Login" onPress={handleLogin} />
+    <SafeAreaView style={[globalStyles.primaryContainer, styles.safeArea]} edges={["top"]}>
+      <View style={styles.logoSection}>
+        <Header type="primary" style={styles.header} />
       </View>
 
-      {Platform.OS !== "web" && (
-        <View style={styles.registerContainer}>
-          <Text style={styles.registerQ}>Don't have an account?</Text>
-          <TouchableOpacity onPress={() => router.push("/signup")}>
-            <Text style={styles.registerLink}>Register</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.card}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollview}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.welcomeText}>LOG IN</Text>
 
-      <StatusBar style="auto" />
+          <View style={styles.fields}>
+            <FormField
+              type="id"
+              value={id}
+              onChangeText={setId}
+              placeholder="ID Number"
+            />
+            <FormField
+              type="password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+            />
+          </View>
+
+          <View style={styles.rememberForgotContainer}>
+            <View style={styles.rememberMeContainer}>
+              <TouchableOpacity
+                style={[styles.checkbox, isChecked && styles.checkboxChecked]}
+                onPress={() => setChecked(!isChecked)}
+              >
+                {isChecked && (
+                  <Image source={icons.check} style={styles.checkIcon} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setChecked(!isChecked)}>
+                <Text style={styles.rememberMe}>Remember Me</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={() => router.push("/login/ForgotPassword")}>
+              <Text style={styles.forgotPass}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
+
+          <CustomButton title="LOG IN" onPress={handleLogin} />
+
+          {Platform.OS !== "web" && (
+            <View style={styles.registerContainer}>
+              <Text style={styles.registerQ}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => router.push("/signup")}>
+                <Text style={styles.registerLink}>Register</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <StatusBar style="light" />
       <CustomModal
         cancelTitle="CLOSE"
         visible={modal.visible}
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
       />
     </SafeAreaView>
   );
@@ -280,23 +285,46 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.large,
     color: theme.colors.secondary,
   },
-  header: {
-    color: theme.colors.secondary,
-    fontSize: theme.fontSizes.title,
-    fontFamily: theme.fontFamily.SquadaOne,
-    marginTop: theme.spacing.large,
-    marginBottom: theme.spacing.medium,
+  safeArea: {
+    justifyContent: "flex-start",
   },
-  form: {
-    width: "80%",
-    marginBottom: theme.spacing.small,
+  logoSection: {
+    flex: 1,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  header: {
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  card: {
+    width: "100%",
+    backgroundColor: theme.colors.secondary,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  scrollview: {
+    paddingHorizontal: theme.spacing.xlarge,
+    paddingTop: theme.spacing.large,
+    paddingBottom: 60,
+    gap: theme.spacing.medium,
+  },
+  welcomeText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.title,
+    color: theme.colors.primary,
+    textAlign: "center",
+  },
+  fields: {
+    width: "100%",
   },
   rememberForgotContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    width: "80%",
-    marginBottom: theme.spacing.large,
+    width: "100%",
+    marginTop: -theme.spacing.small,
   },
   rememberMeContainer: {
     flexDirection: "row",
@@ -304,7 +332,7 @@ const styles = StyleSheet.create({
   },
   checkbox: {
     marginRight: theme.spacing.small,
-    borderColor: theme.colors.secondary,
+    borderColor: theme.colors.primary,
     borderWidth: 2,
     backgroundColor: "transparent",
     width: 22,
@@ -314,37 +342,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkboxChecked: {
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: theme.colors.primary,
   },
   checkIcon: {
     width: 14,
     height: 14,
-    tintColor: theme.colors.primary,
+    tintColor: theme.colors.secondary,
   },
   rememberMe: {
     fontFamily: theme.fontFamily.Arial,
     fontSize: theme.fontSizes.small,
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
   },
   forgotPass: {
-    fontSize: theme.fontSizes.small,
-    color: theme.colors.secondary,
     fontFamily: theme.fontFamily.Arial,
-  },
-  buttonContainer: {
-    width: "80%",
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.primary,
   },
   registerContainer: {
     flexDirection: "row",
-    marginTop: theme.spacing.medium,
+    justifyContent: "center",
+    alignItems: "center",
   },
   registerQ: {
-    color: theme.colors.secondary,
+    color: theme.colors.gray,
     fontFamily: theme.fontFamily.Arial,
-    marginRight: theme.spacing.small,
+    fontSize: theme.fontSizes.small,
   },
   registerLink: {
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
     fontFamily: theme.fontFamily.ArialBold,
+    fontSize: theme.fontSizes.small,
   },
 });

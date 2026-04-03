@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import React, { useState, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, router } from "expo-router";
@@ -80,34 +80,41 @@ const VerifyCode = () => {
   };
 
   return (
-    <View style={globalStyles.primaryContainer}>
-      <View style={globalStyles.authContent}>
-        <Text style={globalStyles.authTitle} numberOfLines={1} adjustsFontSizeToFit>CHECK YOUR EMAIL</Text>
-        <Text style={globalStyles.authInfo}>
-          Enter the 5-digit code sent to {email}
-        </Text>
-        <FormField
-          type="code"
-          value={code}
-          onChangeText={setCode}
-          error={!isCodeValid ? "Invalid code, please try again." : ""}
-        />
-        <CustomButton
-          type="secondary"
-          title="VERIFY CODE"
-          onPress={handleVerifyCode}
-        />
-        <View style={styles.resendContainer}>
-          <Text style={styles.question}>Didn't receive the code?</Text>
-          {timer > 0 ? (
-            <Text style={styles.timerText}>Resend code in {timer}s</Text>
-          ) : (
-            <TouchableOpacity onPress={handleResend}>
-              <Text style={styles.resendText}>Resend code</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+    <View style={[globalStyles.primaryContainer, styles.container]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.card}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollview}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+            CHECK YOUR EMAIL
+          </Text>
+          <Text style={styles.subtitle}>
+            Enter the 5-digit code sent to {email}
+          </Text>
+          <FormField
+            type="code"
+            value={code}
+            onChangeText={setCode}
+            error={!isCodeValid ? "Invalid code, please try again." : ""}
+          />
+          <CustomButton title="VERIFY CODE" onPress={handleVerifyCode} />
+          <View style={styles.resendContainer}>
+            <Text style={styles.question}>Didn't receive the code?</Text>
+            {timer > 0 ? (
+              <Text style={styles.timerText}>Resend code in {timer}s</Text>
+            ) : (
+              <TouchableOpacity onPress={handleResend}>
+                <Text style={styles.resendText}>Resend code</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <CustomModal
         visible={modal.visible}
@@ -118,7 +125,7 @@ const VerifyCode = () => {
         cancelTitle="CLOSE"
       />
 
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </View>
   );
 };
@@ -126,23 +133,54 @@ const VerifyCode = () => {
 export default VerifyCode;
 
 const styles = StyleSheet.create({
+  container: {
+    justifyContent: "flex-start",
+  },
+  card: {
+    flex: 1,
+    width: "100%",
+    backgroundColor: theme.colors.secondary,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  scrollview: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.xlarge,
+    paddingTop: theme.spacing.large,
+    paddingBottom: 60,
+    gap: theme.spacing.medium,
+  },
+  title: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.title,
+    color: theme.colors.primary,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.gray,
+    textAlign: "center",
+    marginTop: -theme.spacing.small,
+  },
   resendContainer: {
     alignItems: "center",
     alignSelf: "center",
+    gap: theme.spacing.xsmall,
+  },
+  question: {
+    color: theme.colors.gray,
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
   },
   timerText: {
-    color: theme.colors.secondary,
+    color: theme.colors.gray,
     fontFamily: theme.fontFamily.Arial,
     fontSize: theme.fontSizes.small,
   },
   resendText: {
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
     fontFamily: theme.fontFamily.ArialBold,
-    fontSize: theme.fontSizes.small,
-  },
-  question: {
-    color: theme.colors.secondary,
-    fontFamily: theme.fontFamily.Arial,
     fontSize: theme.fontSizes.small,
   },
 });

@@ -5,7 +5,7 @@ import theme from "../constants/theme";
 
 const ACCENT_COLOR = "#74ACD3";
 
-const Header = ({ type = "primary" }) => {
+const Header = ({ type = "primary", style }) => {
   const isPrimary = type === "primary";
 
   return (
@@ -13,6 +13,7 @@ const Header = ({ type = "primary" }) => {
       style={[
         styles.container,
         isPrimary ? styles.containerPrimary : styles.containerSecondary,
+        style,
       ]}
     >
       <View style={styles.topBar} />
@@ -35,6 +36,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    marginTop: 40,
     marginBottom: 50,
   },
   containerPrimary: {

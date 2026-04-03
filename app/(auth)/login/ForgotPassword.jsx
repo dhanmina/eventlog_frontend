@@ -1,4 +1,4 @@
-import { Text, View } from "react-native";
+import { Text, View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import React, { useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
@@ -9,6 +9,7 @@ import CustomButton from "../../../components/CustomButton";
 import CustomModal from "../../../components/CustomModal";
 
 import globalStyles from "../../../constants/globalStyles";
+import theme from "../../../constants/theme";
 import { API_URL } from "../../../config/config";
 
 const validateEmail = (email) => {
@@ -57,26 +58,31 @@ const ForgotPassword = () => {
   };
 
   return (
-    <View style={globalStyles.primaryContainer}>
-      <View style={globalStyles.authContent}>
-        <Text style={globalStyles.authTitle} numberOfLines={1} adjustsFontSizeToFit>
-          FORGOT PASSWORD
-        </Text>
-        <Text style={globalStyles.authInfo}>
-          Please enter your email to reset your password.
-        </Text>
-        <FormField
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <CustomButton
-          type="secondary"
-          title="RESET PASSWORD"
-          onPress={handleResetPassword}
-        />
-      </View>
+    <View style={[globalStyles.primaryContainer, styles.container]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.card}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollview}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+            FORGOT PASSWORD
+          </Text>
+          <Text style={styles.subtitle}>
+            Enter your email address and we'll send you a reset code.
+          </Text>
+          <FormField
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <CustomButton title="SEND CODE" onPress={handleResetPassword} />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <CustomModal
         visible={modal.visible}
@@ -87,9 +93,42 @@ const ForgotPassword = () => {
         cancelTitle="CLOSE"
       />
 
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </View>
   );
 };
 
 export default ForgotPassword;
+
+const styles = StyleSheet.create({
+  container: {
+    justifyContent: "flex-start",
+  },
+  card: {
+    flex: 1,
+    width: "100%",
+    backgroundColor: theme.colors.secondary,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  scrollview: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.xlarge,
+    paddingTop: theme.spacing.large,
+    paddingBottom: 60,
+    gap: theme.spacing.medium,
+  },
+  title: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.title,
+    color: theme.colors.primary,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.gray,
+    textAlign: "center",
+    marginTop: -theme.spacing.small,
+  },
+});
