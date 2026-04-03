@@ -1,8 +1,7 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import React, { useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { useRouter } from "expo-router";
+import { router } from "expo-router";
 import axios from "axios";
 
 import FormField from "../../../components/FormField";
@@ -10,7 +9,6 @@ import CustomButton from "../../../components/CustomButton";
 import CustomModal from "../../../components/CustomModal";
 
 import globalStyles from "../../../constants/globalStyles";
-import theme from "../../../constants/theme";
 import { API_URL } from "../../../config/config";
 
 const validateEmail = (email) => {
@@ -20,99 +18,78 @@ const validateEmail = (email) => {
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalTitle, setModalTitle] = useState("");
-  const [modalType, setModalType] = useState("");
-  const router = useRouter();
+  const [modal, setModal] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    type: "",
+  });
+
+  const showModal = (title, message) => {
+    setModal({ visible: true, title, message, type: "error" });
+  };
+
+  const closeModal = () => setModal((m) => ({ ...m, visible: false }));
 
   const handleResetPassword = async () => {
     if (!validateEmail(email)) {
-      setModalType("error");
-      setModalTitle("Invalid Email");
-      setModalMessage(
-        "The email address provided is not valid. Please check and try again."
+      showModal(
+        "Invalid Email",
+        "The email address provided is not valid. Please check and try again.",
       );
-      setModalVisible(true);
       return;
     }
 
     try {
       const response = await axios.post(`${API_URL}/api/auth/reset-password`, {
-        email: email,
+        email,
       });
 
       if (response.status === 200) {
         router.push(`/login/VerifyCode?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {
-      setModalType("error");
-      setModalTitle("Error");
-      setModalMessage(
-        "No account found with this email. Please check your email or register."
+      showModal(
+        "Error",
+        "No account found with this email. Please check your email or register.",
       );
-      setModalVisible(true);
     }
   };
 
   return (
-    <SafeAreaView style={[globalStyles.primaryContainer, { paddingTop: 0 }]}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.forgotPassword}>FORGOT PASSWORD</Text>
-        <Text style={styles.info}>
+    <View style={globalStyles.primaryContainer}>
+      <View style={globalStyles.authContent}>
+        <Text style={globalStyles.authTitle} numberOfLines={1} adjustsFontSizeToFit>
+          FORGOT PASSWORD
+        </Text>
+        <Text style={globalStyles.authInfo}>
           Please enter your email to reset your password.
         </Text>
-      </View>
-      <View style={styles.inputContainer}>
         <FormField
           type="email"
           placeholder="Email"
           value={email}
           onChangeText={setEmail}
         />
-      </View>
-      <View style={styles.buttonContainer}>
         <CustomButton
-          type="primary"
+          type="secondary"
           title="RESET PASSWORD"
           onPress={handleResetPassword}
         />
       </View>
 
       <CustomModal
-        visible={modalVisible}
-        title={modalTitle}
-        message={modalMessage}
-        type={modalType}
-        onClose={() => setModalVisible(false)}
+        visible={modal.visible}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        onClose={closeModal}
+        cancelTitle="CLOSE"
       />
 
       <StatusBar style="auto" />
-    </SafeAreaView>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  forgotPassword: {
-    fontFamily: "SquadaOne",
-    fontSize: theme.fontSizes.huge,
-    color: theme.colors.primary,
-  },
-  info: {
-    color: theme.colors.gray,
-    fontFamily: "Arial",
-  },
-  buttonContainer: {
-    marginTop: theme.spacing.medium,
-    marginBottom: theme.spacing.xlarge,
-    width: "80%",
-    paddingHorizontal: theme.spacing.medium,
-  },
-  inputContainer: {
-    marginTop: theme.spacing.medium,
-    width: "100%",
-    paddingHorizontal: theme.spacing.medium,
-  },
-});
 
 export default ForgotPassword;

@@ -71,16 +71,12 @@ export const disableUser = async (idNumber) => {
 };
 
 export const changeUserPassword = async (email, newPassword) => {
-  try {
-    const response = await axios.patch(
-      `${API_URL}/api/users/${email}/password`,
-      { email, newPassword }
-    );
-    if (response.data.success) {
-      return response.data;
-    }
-    throw new Error(response.data.message || "Failed to change password");
-  } catch (error) {
-    throw error;
+  const response = await axios.patch(
+    `${API_URL}/api/auth/reset-password/change`,
+    { email, newPassword },
+  );
+  if (response.data.success) {
+    return response.data;
   }
+  throw new Error(response.data.message || "Failed to change password");
 };

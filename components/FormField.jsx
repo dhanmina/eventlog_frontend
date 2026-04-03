@@ -249,11 +249,11 @@ const styles = StyleSheet.create({
   },
   codeContainer: {
     flexDirection: "row",
-    justifyContent: "center",
+    width: "100%",
     gap: theme.spacing.small,
   },
   codeInput: {
-    width: 50,
+    flex: 1,
     height: 60,
     textAlign: "center",
     fontSize: theme.fontSizes.huge,

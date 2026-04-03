@@ -42,10 +42,12 @@ const Login = () => {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [isChecked, setChecked] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState("");
-  const [modalTitle, setModalTitle] = useState("");
+  const [modal, setModal] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    type: "",
+  });
   const [fontsReady, setFontsReady] = useState(false);
 
   useEffect(() => {
@@ -119,18 +121,19 @@ const Login = () => {
           setChecked(true);
         }
       } catch (error) {
-        console.error("Error loading remembered credentials:", error);
+        console.warn("[Login] Failed to load remembered credentials:", error);
       }
     };
     loadRememberedCredentials();
   }, [fontsReady]);
 
+  const showModal = (title, message) => {
+    setModal({ visible: true, title, message, type: "error" });
+  };
+
   const handleLogin = async () => {
     if (!id || !password) {
-      setModalTitle("Login Error");
-      setModalMessage("Please enter your credentials.");
-      setModalType("error");
-      setModalVisible(true);
+      showModal("Login Error", "Please enter your credentials.");
       return;
     }
 
@@ -144,10 +147,7 @@ const Login = () => {
         const roleId = parseInt(response.data.user.role_id);
 
         if (Platform.OS === "web" && roleId !== 3 && roleId !== 4) {
-          setModalTitle("Access Denied");
-          setModalMessage("Invalid account.");
-          setModalType("error");
-          setModalVisible(true);
+          showModal("Access Denied", "Invalid account.");
           return;
         }
 
@@ -174,7 +174,7 @@ const Login = () => {
         try {
           await storeUser(response.data.user);
         } catch (dbError) {
-          console.error("Error storing user in local database:", dbError);
+          console.warn("[Login] Failed to store user locally:", dbError);
         }
 
         if (isChecked) {
@@ -189,54 +189,23 @@ const Login = () => {
 
         router.replace(Platform.OS === "web" ? "/web" : "/(tabs)/home");
       } else {
-        setModalTitle("Login Failed");
-        setModalMessage(
+        showModal(
+          "Login Failed",
           response.data.message || "Invalid credentials. Please try again."
         );
-        setModalType("error");
-        setModalVisible(true);
       }
     } catch (error) {
-      setModalTitle("Login Error");
-      setModalMessage(
+      showModal(
+        "Login Error",
         error.response?.data?.message || "An error occurred during login."
       );
-      setModalType("error");
-      setModalVisible(true);
     }
   };
 
   if (!fontsReady) {
     return (
-      <SafeAreaView
-        style={[
-          globalStyles.primaryContainer,
-          { padding: 0, justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <Text
-          style={{
-            fontFamily:
-              Platform.OS === "web" ? "system-ui, sans-serif" : "System",
-            fontSize: 18,
-            color: theme.colors.secondary,
-            marginBottom: 10,
-          }}
-        >
-          Loading...
-        </Text>
-        {Platform.OS === "web" && (
-          <Text
-            style={{
-              fontFamily: "system-ui, sans-serif",
-              fontSize: 14,
-              color: "#666",
-              textAlign: "center",
-            }}
-          >
-            Preparing custom fonts
-          </Text>
-        )}
+      <SafeAreaView style={[globalStyles.primaryContainer, { padding: 0 }]}>
+        <Text style={styles.loadingText}>Loading...</Text>
       </SafeAreaView>
     );
   }
@@ -273,13 +242,9 @@ const Login = () => {
             <Text style={styles.rememberMe}>Remember Me</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.forgotPassContainer}>
-          <TouchableOpacity
-            onPress={() => router.push("/login/ForgotPassword")}
-          >
-            <Text style={styles.forgotPass}>Forgot Password?</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => router.push("/login/ForgotPassword")}>
+          <Text style={styles.forgotPass}>Forgot Password?</Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.buttonContainer}>
         <CustomButton type="secondary" title="Login" onPress={handleLogin} />
@@ -297,11 +262,11 @@ const Login = () => {
       <StatusBar style="auto" />
       <CustomModal
         cancelTitle="CLOSE"
-        visible={modalVisible}
-        title={modalTitle}
-        message={modalMessage}
-        type={modalType}
-        onClose={() => setModalVisible(false)}
+        visible={modal.visible}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        onClose={() => setModal({ ...modal, visible: false })}
       />
     </SafeAreaView>
   );
@@ -310,11 +275,32 @@ const Login = () => {
 export default Login;
 
 const styles = StyleSheet.create({
+  loadingText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.secondary,
+  },
   header: {
     color: theme.colors.secondary,
-    fontSize: theme.fontSizes.display,
-    fontFamily: "SquadaOne",
+    fontSize: theme.fontSizes.title,
+    fontFamily: theme.fontFamily.SquadaOne,
+    marginTop: theme.spacing.large,
     marginBottom: theme.spacing.medium,
+  },
+  form: {
+    width: "80%",
+    marginBottom: theme.spacing.small,
+  },
+  rememberForgotContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "80%",
+    marginBottom: theme.spacing.large,
+  },
+  rememberMeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   checkbox: {
     marginRight: theme.spacing.small,
@@ -336,43 +322,29 @@ const styles = StyleSheet.create({
     tintColor: theme.colors.primary,
   },
   rememberMe: {
-    fontFamily: "Arial",
+    fontFamily: theme.fontFamily.Arial,
     fontSize: theme.fontSizes.small,
     color: theme.colors.secondary,
-  },
-  rememberMeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  rememberForgotContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    width: "80%",
-    marginBottom: theme.spacing.large,
   },
   forgotPass: {
     fontSize: theme.fontSizes.small,
     color: theme.colors.secondary,
-    fontFamily: "Arial",
+    fontFamily: theme.fontFamily.Arial,
   },
-  registerQ: {
-    color: theme.colors.secondary,
-    fontFamily: "Arial",
-    paddingRight: theme.spacing.small,
+  buttonContainer: {
+    width: "80%",
   },
   registerContainer: {
     flexDirection: "row",
     marginTop: theme.spacing.medium,
   },
+  registerQ: {
+    color: theme.colors.secondary,
+    fontFamily: theme.fontFamily.Arial,
+    marginRight: theme.spacing.small,
+  },
   registerLink: {
     color: theme.colors.secondary,
-    fontFamily: "ArialBold",
-  },
-  form: {
-    width: "80%",
-  },
-  buttonContainer: {
-    width: "80%",
+    fontFamily: theme.fontFamily.ArialBold,
   },
 });

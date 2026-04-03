@@ -192,13 +192,11 @@ export default function App() {
       <Text style={styles.tagline}>Every CIT Event's Companion</Text>
 
       <View style={styles.buttons}>
-        <View style={styles.loginContainer}>
-          <CustomButton
-            type="primary"
-            title="LOG IN"
-            onPress={handleLoginPress}
-          />
-        </View>
+        <CustomButton
+          type="primary"
+          title="LOG IN"
+          onPress={handleLoginPress}
+        />
         <CustomButton
           type="secondary"
           title="REGISTER"
@@ -224,29 +222,24 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: theme.fontSizes.display,
     textAlign: "center",
-    marginTop: 20,
+  },
+  logoContainer: {
+    paddingVertical: theme.spacing.medium,
   },
   logo: {
     width: 200,
     height: 200,
     alignSelf: "center",
   },
-  logoContainer: {
-    padding: 20,
-  },
   tagline: {
     fontFamily: "SquadaOne",
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.huge,
+    fontSize: theme.fontSizes.extraLarge,
     textAlign: "center",
   },
   buttons: {
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    width: "70%",
-  },
-  loginContainer: {
-    marginBottom: theme.spacing.medium,
-    marginTop: theme.spacing.medium,
+    width: "80%",
+    marginTop: theme.spacing.large,
+    gap: theme.spacing.medium,
   },
 });

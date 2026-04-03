@@ -1,8 +1,7 @@
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import React, { useState, useEffect } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import axios from "axios";
 
 import FormField from "../../../components/FormField";
@@ -18,11 +17,12 @@ const VerifyCode = () => {
   const [code, setCode] = useState(["", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
   const [isCodeValid, setIsCodeValid] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalTitle, setModalTitle] = useState("");
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState("");
-  const router = useRouter();
+  const [modal, setModal] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    type: "",
+  });
 
   useEffect(() => {
     if (timer > 0) {
@@ -31,30 +31,30 @@ const VerifyCode = () => {
     }
   }, [timer]);
 
+  const showModal = (title, message, type = "error") => {
+    setModal({ visible: true, title, message, type });
+  };
+
+  const closeModal = () => setModal((m) => ({ ...m, visible: false }));
+
   const handleResend = async () => {
     try {
       setTimer(60);
-
       const response = await axios.post(`${API_URL}/api/auth/reset-password`, {
         email,
       });
 
       if (response.status === 200) {
-        setModalType("success");
-        setModalTitle("Success");
-        setModalMessage("A new code has been sent to your email.");
-        setModalVisible(true);
+        showModal("Success", "A new code has been sent to your email.", "success");
       } else {
         throw new Error("Failed to resend the code. Please try again later.");
       }
     } catch (error) {
-      setModalType("error");
-      setModalTitle("Error");
-      setModalMessage(
+      showModal(
+        "Error",
         error.response?.data?.message ||
-          "Failed to resend the code. Please try again later."
+          "Failed to resend the code. Please try again later.",
       );
-      setModalVisible(true);
     }
   };
 
@@ -63,122 +63,86 @@ const VerifyCode = () => {
     try {
       const response = await axios.post(
         `${API_URL}/api/auth/reset-password/confirm`,
-        {
-          email,
-          reset_code: enteredCode,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        { email, reset_code: enteredCode },
+        { headers: { "Content-Type": "application/json" } },
       );
 
       if (response.status === 200) {
-        setTimeout(() =>
-          router.push(`/login/NewPassword?email=${encodeURIComponent(email)}`)
-        );
+        router.push(`/login/NewPassword?email=${encodeURIComponent(email)}`);
       } else {
         setIsCodeValid(false);
-        setModalType("error");
-        setModalTitle("Error");
-        setModalMessage("Invalid code, please try again.");
-        setModalVisible(true);
+        showModal("Error", "Invalid code, please try again.");
       }
     } catch (error) {
       setIsCodeValid(false);
-      setModalType("error");
-      setModalTitle("Error");
-      setModalMessage("Please check the code and try again.");
-      setModalVisible(true);
+      showModal("Error", "Please check the code and try again.");
     }
   };
 
   return (
-    <SafeAreaView style={globalStyles.primaryContainer}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.forgotPassword}>CHECK YOUR EMAIL</Text>
-        <Text style={styles.info}>Enter the 5-digit code sent to {email}</Text>
-      </View>
-
-      <FormField
-        type="code"
-        value={code}
-        onChangeText={setCode}
-        error={!isCodeValid ? "Invalid code, please try again." : ""}
-      />
-
-      <View style={styles.buttonContainer}>
+    <View style={globalStyles.primaryContainer}>
+      <View style={globalStyles.authContent}>
+        <Text style={globalStyles.authTitle} numberOfLines={1} adjustsFontSizeToFit>CHECK YOUR EMAIL</Text>
+        <Text style={globalStyles.authInfo}>
+          Enter the 5-digit code sent to {email}
+        </Text>
+        <FormField
+          type="code"
+          value={code}
+          onChangeText={setCode}
+          error={!isCodeValid ? "Invalid code, please try again." : ""}
+        />
         <CustomButton
-          type="primary"
+          type="secondary"
           title="VERIFY CODE"
           onPress={handleVerifyCode}
         />
-      </View>
-
-      <View style={styles.resendContainer}>
-        <Text style={styles.question}>Didn't receive the code?</Text>
-        {timer > 0 ? (
-          <Text style={styles.timerText}>Resend code in {timer}s</Text>
-        ) : (
-          <TouchableOpacity onPress={handleResend}>
-            <Text style={styles.resendText}>Resend code</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.resendContainer}>
+          <Text style={styles.question}>Didn't receive the code?</Text>
+          {timer > 0 ? (
+            <Text style={styles.timerText}>Resend code in {timer}s</Text>
+          ) : (
+            <TouchableOpacity onPress={handleResend}>
+              <Text style={styles.resendText}>Resend code</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <CustomModal
-        visible={modalVisible}
-        title={modalTitle}
-        message={modalMessage}
-        type={modalType}
-        onClose={() => setModalVisible(false)}
+        visible={modal.visible}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 
       <StatusBar style="auto" />
-    </SafeAreaView>
+    </View>
   );
 };
 
 export default VerifyCode;
 
 const styles = StyleSheet.create({
-  forgotPassword: {
-    fontFamily: "SquadaOne",
-    fontSize: theme.fontSizes.huge,
-    color: theme.colors.primary,
-  },
-  headerContainer: {
-    width: "80%",
-    marginBottom: theme.spacing.medium,
-  },
-  info: {
-    color: theme.colors.gray,
-    fontFamily: "Arial",
-  },
   resendContainer: {
-    marginTop: theme.spacing.medium,
-    marginBottom: theme.spacing.xlarge,
     alignItems: "center",
+    alignSelf: "center",
   },
   timerText: {
-    color: theme.colors.gray,
-    fontFamily: "Arial",
+    color: theme.colors.secondary,
+    fontFamily: theme.fontFamily.Arial,
     fontSize: theme.fontSizes.small,
   },
   resendText: {
-    color: theme.colors.primary,
-    fontFamily: "ArialBold",
+    color: theme.colors.secondary,
+    fontFamily: theme.fontFamily.ArialBold,
     fontSize: theme.fontSizes.small,
   },
   question: {
-    color: theme.colors.gray,
-    fontFamily: "Arial",
+    color: theme.colors.secondary,
+    fontFamily: theme.fontFamily.Arial,
     fontSize: theme.fontSizes.small,
-  },
-  buttonContainer: {
-    width: "80%",
-    paddingHorizontal: theme.spacing.medium,
   },
 });

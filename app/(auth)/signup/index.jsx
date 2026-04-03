@@ -10,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import axios from "axios";
 import { API_URL } from "../../../config/config";
-import { useRouter } from "expo-router";
+import { router } from "expo-router";
 
 import theme from "../../../constants/theme";
 import globalStyles from "../../../constants/globalStyles";
@@ -39,8 +39,6 @@ const SignUp = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState("error");
-
-  const router = useRouter();
 
   useEffect(() => {
     fetchDepartments();
@@ -151,10 +149,8 @@ const SignUp = () => {
 
   return (
     <SafeAreaView style={[globalStyles.primaryContainer, { padding: 0 }]}>
-      <View style={styles.headerContainer}>
-        <Header type="primary" />
-        <Text style={styles.headerText}>REGISTER</Text>
-      </View>
+      <Header type="primary" />
+      <Text style={styles.headerText}>REGISTER</Text>
 
       <ScrollView
         contentContainerStyle={styles.scrollview}
@@ -270,11 +266,7 @@ const SignUp = () => {
 
         <View style={styles.accountPromptContainer}>
           <Text style={styles.prompt}>Already have an account? </Text>
-          <TouchableOpacity
-            onPress={() => {
-              router.push("/login");
-            }}
-          >
+          <TouchableOpacity onPress={() => router.push("/login")}>
             <Text style={styles.loginText}>Log In</Text>
           </TouchableOpacity>
         </View>
@@ -296,18 +288,14 @@ const SignUp = () => {
 export default SignUp;
 
 const styles = StyleSheet.create({
-  headerContainer: {
-    width: "100%",
-    alignItems: "center",
-    marginTop: 75,
-  },
   headerText: {
-    fontFamily: "SquadaOne",
-    fontSize: theme.fontSizes.display,
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.title,
     color: theme.colors.secondary,
+    textAlign: "center",
+    marginBottom: theme.spacing.medium,
   },
   scrollview: {
-    justifyContent: "center",
     width: "100%",
   },
   agreementContainer: {
@@ -315,7 +303,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.medium,
   },
   agreement: {
-    fontFamily: "Arial",
+    fontFamily: theme.fontFamily.Arial,
     color: theme.colors.secondary,
     fontSize: theme.fontSizes.extraSmall,
     textAlign: "center",
@@ -328,12 +316,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.large,
   },
   prompt: {
-    fontFamily: "Arial",
+    fontFamily: theme.fontFamily.Arial,
     color: theme.colors.secondary,
     fontSize: theme.fontSizes.small,
   },
   loginText: {
-    fontFamily: "ArialBold",
+    fontFamily: theme.fontFamily.ArialBold,
     color: theme.colors.secondary,
     fontSize: theme.fontSizes.small,
   },
