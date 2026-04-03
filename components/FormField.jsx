@@ -214,12 +214,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.fontSizes.medium,
-    fontFamily: "Arial",
+    fontFamily: theme.fontFamily.ArialBold,
   },
   optionalText: {
     fontSize: theme.fontSizes.small,
     color: theme.colors.secondary,
-    fontFamily: "Arial",
+    fontFamily: theme.fontFamily.Arial,
   },
   inputWrapper: {
     width: "100%",
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.small,
   },
   textInput: {
-    fontFamily: "Arial",
+    fontFamily: theme.fontFamily.Arial,
     fontSize: theme.fontSizes.medium,
     flex: 1,
   },
@@ -257,14 +257,13 @@ const styles = StyleSheet.create({
     height: 60,
     textAlign: "center",
     fontSize: theme.fontSizes.huge,
-    fontFamily: "SquadaOne",
+    fontFamily: theme.fontFamily.SquadaOne,
     backgroundColor: theme.colors.secondary,
     borderWidth: 2,
   },
   example: {
-    fontSize: theme.fontSizes.medium,
-    fontFamily: "Arial",
-    fontStyle: "italic",
+    fontSize: theme.fontSizes.small,
+    fontFamily: theme.fontFamily.ArialItalic,
   },
 });
 

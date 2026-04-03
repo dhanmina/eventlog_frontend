@@ -4,12 +4,12 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import axios from "axios";
-import { API_URL } from "../../../config/config";
 import { router } from "expo-router";
 
 import theme from "../../../constants/theme";
@@ -20,6 +20,8 @@ import FormField from "../../../components/FormField";
 import CustomDropdown from "../../../components/CustomDropdown";
 import CustomButton from "../../../components/CustomButton";
 import CustomModal from "../../../components/CustomModal";
+
+import { fetchPublicDepartments, signup } from "../../../services/api";
 
 const SignUp = () => {
   const [departments, setDepartments] = useState([]);
@@ -41,24 +43,19 @@ const SignUp = () => {
   const [modalType, setModalType] = useState("error");
 
   useEffect(() => {
-    fetchDepartments();
+    loadDepartments();
   }, []);
 
-  const fetchDepartments = async () => {
+  const loadDepartments = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/api/departments`);
-
-      if (response.data?.departments) {
-        setDepartments(
-          response.data.departments.map((dept) => ({
-            label: dept.department_name,
-            value: dept.department_id,
-          })),
-        );
-      } else {
-        showModal("Invalid API response.", "warning");
-      }
+      const depts = await fetchPublicDepartments();
+      setDepartments(
+        depts.map((dept) => ({
+          label: dept.department_name,
+          value: dept.department_id,
+        })),
+      );
     } catch (error) {
       showModal("Failed to load departments. Please try again.", "error");
     } finally {
@@ -116,7 +113,7 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/api/auth/signup`, {
+      await signup({
         id_number: formData.id_number,
         first_name: formData.first_name,
         middle_name: formData.middle_name,
@@ -127,16 +124,9 @@ const SignUp = () => {
         department_id: formData.department_id,
       });
 
-      if (response.data.success) {
-        showModal("Registration successful!", "success");
-
-        resetForm();
-        setTimeout(() => {
-          router.push("/login");
-        }, 2000);
-      } else {
-        showModal(response.data.message || "Registration failed.", "error");
-      }
+      showModal("Registration successful!", "success");
+      resetForm();
+      setTimeout(() => router.push("/login"), 2000);
     } catch (error) {
       showModal(
         error.response?.data?.message || "Something went wrong.",
@@ -147,130 +137,124 @@ const SignUp = () => {
     }
   };
 
+  const fieldProps = { iconShow: false };
+
   return (
-    <SafeAreaView style={[globalStyles.primaryContainer, { padding: 0 }]}>
-      <Header type="primary" />
-      <Text style={styles.headerText}>REGISTER</Text>
+    <SafeAreaView style={[globalStyles.primaryContainer, styles.safeArea]} edges={["top"]}>
+      <View style={styles.logoSection}>
+        <Header type="primary" style={styles.header} />
+      </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollview}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.card}
       >
-        <FormField
-          type="id"
-          example="12345"
-          iconShow={false}
-          title="ID Number"
-          value={formData.id_number}
-          onChangeText={(value) => handleInputChange("id_number", value)}
-          titleColor="secondary"
-        />
-        <FormField
-          title="First Name"
-          example="Juan Miguel"
-          value={formData.first_name}
-          onChangeText={(value) => handleInputChange("first_name", value)}
-          titleColor="secondary"
-        />
-        <FormField
-          title="Middle Name"
-          example="Reyes"
-          value={formData.middle_name}
-          onChangeText={(value) => handleInputChange("middle_name", value)}
-          titleColor="secondary"
-        />
-        <FormField
-          title="Last Name"
-          example="Santos"
-          value={formData.last_name}
-          onChangeText={(value) => handleInputChange("last_name", value)}
-          titleColor="secondary"
-        />
-        <FormField
-          title="Suffix Name"
-          example="Jr"
-          optional
-          value={formData.suffix}
-          onChangeText={(value) => handleInputChange("suffix", value)}
-          titleColor="secondary"
-        />
-        <FormField
-          type="email"
-          example="juanreyes@gmail.com"
-          iconShow={false}
-          title="Email"
-          value={formData.email}
-          onChangeText={(value) => handleInputChange("email", value)}
-          titleColor="secondary"
-        />
+        <ScrollView
+          contentContainerStyle={styles.scrollview}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title}>REGISTER</Text>
 
-        {loading ? (
-          <Text>Loading Departments...</Text>
-        ) : (
-          <CustomDropdown
-            placeholder="Select Department"
-            title="Department"
-            titleColor="secondary"
-            data={departments}
-            selectedValue={formData.department_id}
-            onSelect={(selected) =>
-              handleInputChange("department_id", selected.value)
-            }
+          <FormField
+            type="id"
+            placeholder="ID Number"
+            value={formData.id_number}
+            onChangeText={(value) => handleInputChange("id_number", value)}
+            {...fieldProps}
           />
-        )}
+          <View style={styles.row}>
+            <View style={styles.flex1}>
+              <FormField
+                placeholder="First Name"
+                value={formData.first_name}
+                onChangeText={(value) => handleInputChange("first_name", value)}
+                {...fieldProps}
+              />
+            </View>
+            <View style={styles.flex1}>
+              <FormField
+                placeholder="Last Name"
+                value={formData.last_name}
+                onChangeText={(value) => handleInputChange("last_name", value)}
+                {...fieldProps}
+              />
+            </View>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.flex1}>
+              <FormField
+                placeholder="Middle Name"
+                value={formData.middle_name}
+                onChangeText={(value) => handleInputChange("middle_name", value)}
+                {...fieldProps}
+              />
+            </View>
+            <View style={styles.flex1}>
+              <FormField
+                placeholder="Suffix"
+                value={formData.suffix}
+                onChangeText={(value) => handleInputChange("suffix", value)}
+                {...fieldProps}
+              />
+            </View>
+          </View>
+          <FormField
+            type="email"
+            placeholder="Email Address"
+            value={formData.email}
+            onChangeText={(value) => handleInputChange("email", value)}
+            {...fieldProps}
+          />
 
-        <FormField
-          type="password"
-          iconShow={false}
-          title="Password"
-          placeholder="Enter your password"
-          secureTextEntry
-          value={formData.password}
-          onChangeText={(value) => handleInputChange("password", value)}
-          titleColor="secondary"
-          errorMessage={
-            formData.password && formData.password.length < 8
-              ? "Password must be at least 8 characters long."
-              : ""
-          }
-        />
-        <FormField
-          type="password"
-          iconShow={false}
-          title="Confirm Password"
-          placeholder="Confirm your password"
-          secureTextEntry
-          value={formData.confirm_password}
-          onChangeText={(value) => handleInputChange("confirm_password", value)}
-          titleColor="secondary"
-        />
-        <View style={styles.agreementContainer}>
+          {loading ? (
+            <Text style={styles.loadingText}>Loading departments...</Text>
+          ) : (
+            <CustomDropdown
+              placeholder="Department"
+              data={departments}
+              value={formData.department_id}
+              onSelect={(selected) =>
+                handleInputChange("department_id", selected?.value ?? null)
+              }
+            />
+          )}
+
+          <FormField
+            type="password"
+            placeholder="Password"
+            value={formData.password}
+            onChangeText={(value) => handleInputChange("password", value)}
+            {...fieldProps}
+          />
+          <FormField
+            type="password"
+            placeholder="Confirm Password"
+            value={formData.confirm_password}
+            onChangeText={(value) => handleInputChange("confirm_password", value)}
+            {...fieldProps}
+          />
+
           <Text style={styles.agreement}>
-            * By registering for EVENTLOG, you agree to the terms and conditions
-            set by the College of Information Technology Department. Your
-            participation and continued use of EVENTLOG confirm your acceptance
-            of these policies.
+            By registering, you agree to the terms and conditions set by the
+            College of Information Technology Department. Please use only one
+            account.
           </Text>
-          <Text style={styles.agreement}>
-            *Warning: Please use only one account.
-          </Text>
-        </View>
 
-        <CustomButton
-          type="secondary"
-          title="REGISTER"
-          onPress={handleRegister}
-          disabled={loading}
-          otherStyles={styles.button}
-        />
+          <CustomButton
+            title="REGISTER"
+            onPress={handleRegister}
+            disabled={loading}
+          />
 
-        <View style={styles.accountPromptContainer}>
-          <Text style={styles.prompt}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.push("/login")}>
-            <Text style={styles.loginText}>Log In</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <View style={styles.footer}>
+            <Text style={styles.prompt}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.push("/login")}>
+              <Text style={styles.loginText}>Log In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <CustomModal
         visible={modalVisible}
@@ -288,44 +272,74 @@ const SignUp = () => {
 export default SignUp;
 
 const styles = StyleSheet.create({
-  headerText: {
+  safeArea: {
+    justifyContent: "flex-start",
+  },
+  logoSection: {
+    flex: 1,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  header: {
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  card: {
+    flex: 3,
+    width: "100%",
+    backgroundColor: theme.colors.secondary,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  scrollview: {
+    paddingHorizontal: theme.spacing.xlarge,
+    paddingTop: theme.spacing.large,
+    paddingBottom: 60,
+  },
+  title: {
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.title,
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
     textAlign: "center",
     marginBottom: theme.spacing.medium,
   },
-  scrollview: {
-    width: "100%",
+  row: {
+    flexDirection: "row",
+    gap: theme.spacing.small,
   },
-  agreementContainer: {
-    width: "80%",
+  flex1: {
+    flex: 1,
+  },
+  loadingText: {
+    fontFamily: theme.fontFamily.Arial,
+    color: theme.colors.gray,
+    fontSize: theme.fontSizes.medium,
+    textAlign: "center",
     marginBottom: theme.spacing.medium,
   },
   agreement: {
     fontFamily: theme.fontFamily.Arial,
-    color: theme.colors.secondary,
+    color: theme.colors.gray,
     fontSize: theme.fontSizes.extraSmall,
     textAlign: "center",
+    marginBottom: theme.spacing.medium,
+    opacity: 0.8,
   },
-  accountPromptContainer: {
+  footer: {
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    marginTop: theme.spacing.medium,
-    marginBottom: theme.spacing.large,
+    marginTop: theme.spacing.small,
   },
   prompt: {
     fontFamily: theme.fontFamily.Arial,
-    color: theme.colors.secondary,
+    color: theme.colors.gray,
     fontSize: theme.fontSizes.small,
   },
   loginText: {
     fontFamily: theme.fontFamily.ArialBold,
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
     fontSize: theme.fontSizes.small,
-  },
-  button: {
-    width: "80%",
   },
 });

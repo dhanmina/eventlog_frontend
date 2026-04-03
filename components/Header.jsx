@@ -32,7 +32,7 @@ const Header = ({ type = "primary", style }) => {
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    height: 120,
+    height: 100,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -46,14 +46,14 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   logo: {
-    width: 200,
-    height: 200,
+    width: 160,
+    height: 160,
     position: "absolute",
     zIndex: 2,
   },
   topBar: {
     width: "80%",
-    height: 40,
+    height: 32,
     backgroundColor: ACCENT_COLOR,
     position: "absolute",
     top: theme.spacing.medium,
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   middleBar: {
     width: "80%",
-    height: 40,
+    height: 32,
     position: "absolute",
     zIndex: 1,
     alignSelf: "center",
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     width: "80%",
-    height: 40,
+    height: 32,
     backgroundColor: ACCENT_COLOR,
     position: "absolute",
     bottom: theme.spacing.medium,

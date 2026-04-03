@@ -4,7 +4,7 @@ const theme = {
     secondary: "#FBF1E5",
     gray: "#333333",
     green: "#4CAF50",
-    placeholder: "#CCCCCC"
+    placeholder: "#888888"
   },
   fontSizes: {
     extraSmall: 12,

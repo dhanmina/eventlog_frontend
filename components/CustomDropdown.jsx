@@ -11,10 +11,11 @@ const CustomDropdown = ({
   title,
   display = "rounded",
   titleColor = "primary",
+  borderColor = "primary",
   multiSelect = false,
   fontFamily = "Arial",
   placeholderFontSize = theme.fontSizes.medium,
-  placeholderColor = "#888",
+  placeholderColor = theme.colors.placeholder,
   selectedEventColor = theme.colors.primary,
   selectedEventFont = "Arial",
   selectedEventFontSize = theme.fontSizes.medium,
@@ -67,10 +68,12 @@ const CustomDropdown = ({
   };
 
   const getDropdownStyle = () => {
+    const resolvedBorderColor =
+      borderColor === "secondary" ? theme.colors.secondary : theme.colors.primary;
     const baseStyle = {
       height: 50,
       borderWidth: 2,
-      borderColor: theme.colors.primary,
+      borderColor: resolvedBorderColor,
       backgroundColor: theme.colors.secondary,
       padding: theme.spacing.medium,
     };
@@ -82,7 +85,7 @@ const CustomDropdown = ({
   const getTitleStyle = () => {
     const color =
       titleColor === "primary" ? theme.colors.primary : theme.colors.secondary;
-    return { ...styles.title, color, fontFamily };
+    return { ...styles.title, color, fontFamily: theme.fontFamily.ArialBold };
   };
 
   const customPlaceholder = () => {
