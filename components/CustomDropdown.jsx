@@ -136,6 +136,7 @@ const CustomDropdown = ({
           }}
           itemTextStyle={{ ...styles.itemTextStyle, fontFamily }}
           itemContainerStyle={styles.itemContainerStyle}
+          containerStyle={styles.listContainer}
           inputSearchStyle={styles.inputSearchStyle}
           searchPlaceholderTextColor={theme.colors.gray}
           iconColor={theme.colors.primary}
@@ -161,6 +162,7 @@ const CustomDropdown = ({
           }}
           itemTextStyle={{ ...styles.itemTextStyle, fontFamily }}
           itemContainerStyle={styles.itemContainerStyle}
+          containerStyle={styles.listContainer}
           iconColor={theme.colors.primary}
         />
       )}
@@ -187,6 +189,15 @@ const styles = StyleSheet.create({
   },
   itemContainerStyle: {
     backgroundColor: theme.colors.secondary,
+  },
+  listContainer: {
+    backgroundColor: theme.colors.secondary,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    borderRadius: 0,
+    overflow: "hidden",
+    elevation: 0,
+    shadowColor: "transparent",
   },
 });
 
