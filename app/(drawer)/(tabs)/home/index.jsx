@@ -4,15 +4,14 @@ import {
   Text,
   View,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import CollapsibleDropdown from "../../../../components/CollapsibleDropdown";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../../context/AuthContext";
 import { useEvents } from "../../../../context/EventsContext";
 
@@ -34,13 +33,13 @@ const Home = () => {
       if (loading) return;
       await fetchAndStoreEvents();
     },
-    [loading, fetchAndStoreEvents]
+    [loading, fetchAndStoreEvents],
   );
 
   useFocusEffect(
     useCallback(() => {
       smartFetch("Focus");
-    }, [smartFetch])
+    }, [smartFetch]),
   );
 
   const onRefresh = useCallback(() => {
@@ -86,8 +85,8 @@ const Home = () => {
       const datesArray = Array.isArray(dates)
         ? dates
         : dates?.split(",")
-        ? dates.split(",")
-        : [];
+          ? dates.split(",")
+          : [];
       if (datesArray.length === 0) return "N/A";
       const parsedDates = datesArray
         .map((dateStr) => new Date(dateStr))
@@ -163,95 +162,147 @@ const Home = () => {
     );
   };
 
+  const firstName = user?.full_name?.split(" ")[0] || "User";
+  const roleLabels = { 1: "STUDENT", 2: "OFFICER", 3: "ADMIN", 4: "SUPER ADMIN" };
+  const roleLabel = roleLabels[user?.role_id] || "";
+
   return (
-    <SafeAreaView style={globalStyles.secondaryContainer}>
-      <View>
-        <View style={styles.headerContainer}>
-          <Text style={styles.textHeader}>EVENTLOG</Text>
-          <Text style={styles.title}>LIST OF EVENTS</Text>
-          <View style={styles.line}></View>
-        </View>
-
-        <TouchableOpacity
-          onPress={() => router.push("/home/Welcome")}
-          style={styles.welcomeWrapper}
-        >
-          <View style={styles.welcomeContainer}>
-            <Text style={styles.welcomeText}>WELCOME EVENTLOG USERS!</Text>
+    <View style={globalStyles.secondaryContainer}>
+      <View style={styles.greetingCard}>
+        <View style={styles.greetingRow}>
+          <View style={styles.greetingTextBlock}>
+            <Text style={styles.greetingHello}>Hello, {firstName}!</Text>
+            <Text style={styles.greetingSubtitle}>Welcome to EVENTLOG</Text>
           </View>
-        </TouchableOpacity>
-
-        <ScrollView
-          style={{ marginBottom: 20 }}
-          contentContainerStyle={styles.scrollview}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={loading}
-              onRefresh={onRefresh}
-              colors={[theme.colors.primary]}
-              tintColor={theme.colors.primary}
-            />
-          }
-        >
-          {renderContent()}
-        </ScrollView>
+          {roleLabel ? (
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleBadgeText}>{roleLabel}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
 
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionLabel}>UPCOMING EVENTS</Text>
+        {events.length > 0 && (
+          <View style={styles.eventCountBadge}>
+            <Text style={styles.eventCountText}>{events.length}</Text>
+          </View>
+        )}
+      </View>
+
+      <ScrollView
+        style={globalStyles.scrollView}
+        contentContainerStyle={styles.scrollview}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
+        }
+      >
+        {renderContent()}
+      </ScrollView>
+
       <StatusBar style="auto" />
-    </SafeAreaView>
+    </View>
   );
 };
 
 export default Home;
 
 const styles = StyleSheet.create({
-  textHeader: {
-    fontSize: theme.fontSizes.display,
-    fontFamily: "SquadaOne",
-    color: theme.colors.primary,
-    textAlign: "center",
-  },
-  title: {
-    fontSize: theme.fontSizes.huge,
-    fontFamily: "SquadaOne",
-    color: theme.colors.primary,
-    textAlign: "center",
-  },
-  line: {
-    borderColor: theme.colors.primary,
-    borderWidth: 1,
+  greetingCard: {
     width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
   },
-  welcomeContainer: {
-    height: 50,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    marginTop: theme.spacing.large,
-    justifyContent: "center",
+  greetingRow: {
+    flexDirection: "row",
     alignItems: "center",
-    width: "100%",
+    justifyContent: "space-between",
   },
-  welcomeText: {
-    fontFamily: "SquadaOne",
-    fontSize: theme.fontSizes.large,
-    color: theme.colors.primary,
+  greetingTextBlock: {
+    flex: 1,
+    marginRight: theme.spacing.small,
+  },
+  greetingHello: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  greetingSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.secondary,
+    opacity: 0.75,
+    marginTop: theme.spacing.xsmall,
+  },
+  roleBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: theme.borderRadius.small,
+    paddingHorizontal: theme.spacing.small,
+    paddingVertical: theme.spacing.xsmall,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  roleBadgeText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
     textAlign: "center",
+  },
+  sectionHeader: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: theme.spacing.small,
+  },
+  sectionLabel: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.primary,
+    opacity: 0.6,
+  },
+  eventCountBadge: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing.xsmall,
+  },
+  eventCountText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
   },
   scrollview: {
-    marginTop: 20,
-    paddingBottom: 20,
+    flexGrow: 1,
+    paddingBottom: 120,
   },
   noEventText: {
     textAlign: "center",
     color: theme.colors.primary,
     fontSize: theme.fontSizes.medium,
     fontFamily: theme.fontFamily.Arial,
-    marginTop: 20,
-    paddingHorizontal: theme.spacing.medium,
-  },
-  headerContainer: {
-    marginTop: 20,
+    marginTop: theme.spacing.large,
     paddingHorizontal: theme.spacing.medium,
   },
 });
