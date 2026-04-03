@@ -71,7 +71,7 @@ const globalStyles = StyleSheet.create({
   icons: {
     width: 24,
     height: 24,
-    tintColor: theme.colors.gray,
+    tintColor: theme.colors.primary,
   },
 });
 

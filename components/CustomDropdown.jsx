@@ -138,6 +138,7 @@ const CustomDropdown = ({
           itemContainerStyle={styles.itemContainerStyle}
           inputSearchStyle={styles.inputSearchStyle}
           searchPlaceholderTextColor={theme.colors.gray}
+          iconColor={theme.colors.primary}
           renderSelectedItem={(item, unSelect) => (
             <TouchableOpacity onPress={() => unSelect && unSelect(item)} />
           )}
@@ -160,6 +161,7 @@ const CustomDropdown = ({
           }}
           itemTextStyle={{ ...styles.itemTextStyle, fontFamily }}
           itemContainerStyle={styles.itemContainerStyle}
+          iconColor={theme.colors.primary}
         />
       )}
     </View>
