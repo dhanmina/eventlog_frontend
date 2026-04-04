@@ -14,7 +14,6 @@ import icons from "../../../../constants/icons";
 import { useLocalSearchParams } from "expo-router";
 import moment from "moment";
 import * as Print from "expo-print";
-import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import CustomModal from "../../../../components/CustomModal";
 import { getStudentAttSummary } from "../../../../services/api/records";
@@ -381,29 +380,13 @@ const Attendance = () => {
         console.log("✅ [PDF] Generated from Print:", tempUri);
 
         const pdfName = `${student_name || "Student"} - Individual Attendance Report.pdf`;
-        console.log("📝 [PDF] Creating file:", pdfName);
+        console.log("📝 [PDF] PDF name:", pdfName);
 
-        const documentsDir = FileSystem.documentDirectory;
-        console.log("📂 [PDF] Documents directory:", documentsDir);
-
-        const destPath = `${documentsDir}${pdfName}`;
-        console.log("📂 [PDF] Destination path:", destPath);
-
-        await FileSystem.copyAsync({ from: tempUri, to: destPath });
-        console.log("✅ [PDF] File copied successfully to:", destPath);
-
-        // Clean up temp file
-        try {
-          await FileSystem.deleteAsync(tempUri, { idempotent: true });
-          console.log("🗑️ [PDF] Temp file cleaned up");
-        } catch (cleanupError) {
-          console.warn("⚠️ [PDF] Temp file cleanup warning:", cleanupError.message);
-        }
-
-        console.log("📤 [PDF] Initiating share dialog...");
-        await Sharing.shareAsync(destPath, {
+        console.log("📤 [PDF] Initiating share dialog with temp file...");
+        await Sharing.shareAsync(tempUri, {
           mimeType: "application/pdf",
           UTI: ".pdf",
+          filename: pdfName,
         });
         console.log("✅ [PDF] Shared successfully");
 
@@ -415,8 +398,7 @@ const Attendance = () => {
         });
       } catch (fileError) {
         console.error("❌ [PDF File Error]", {
-          stage: fileError.message?.includes("copy") ? "copy" :
-                  fileError.message?.includes("share") ? "share" :
+          stage: fileError.message?.includes("share") ? "share" :
                   fileError.message?.includes("Print") ? "generate" : "unknown",
           message: fileError.message,
           code: fileError.code,
