@@ -90,12 +90,6 @@ const PersistentTabBar = ({ roleId, pathname }) => {
 
 const NAV_ITEMS = [
   {
-    label: "User Management",
-    icon: icons.role,
-    route: "/(drawer)/userManagement",
-    match: "/userManagement",
-  },
-  {
     label: "Academic Management",
     icon: icons.school,
     route: "/(drawer)/academicManagement",
@@ -106,6 +100,12 @@ const NAV_ITEMS = [
     icon: icons.calendarStar,
     route: "/(drawer)/eventManagement",
     match: "/eventManagement",
+  },
+  {
+    label: "User Management",
+    icon: icons.role,
+    route: "/(drawer)/userManagement",
+    match: "/userManagement",
   },
 ];
 
