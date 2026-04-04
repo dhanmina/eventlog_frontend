@@ -6,7 +6,7 @@ const AccountLayout = () => (
     <Stack.Screen
       name="index"
       options={{
-        headerShown: true,
+        headerShown: false,
         headerStyle: { backgroundColor: theme.colors.primary },
         headerTintColor: theme.colors.secondary,
         title: "",

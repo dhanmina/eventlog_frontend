@@ -18,27 +18,46 @@ import icons from "../../../../constants/icons";
 import { useAuth } from "../../../../context/AuthContext";
 import { useEvents } from "../../../../context/EventsContext";
 
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const ROLE_LABELS = { 1: "Student", 2: "Officer", 3: "Admin", 4: "Super Admin" };
+const ROLE_LABELS = {
+  1: "Student",
+  2: "Officer",
+  3: "Admin",
+  4: "Super Admin",
+};
 
 const TimeRange = ({ label, timeIn, timeOut }) => {
-  if ((!timeIn || timeIn === "N/A") && (!timeOut || timeOut === "N/A")) return null;
+  if ((!timeIn || timeIn === "N/A") && (!timeOut || timeOut === "N/A"))
+    return null;
   return (
     <View style={styles.timeRange}>
       <Text style={styles.timeRangeLabel}>{label}</Text>
       <Text style={styles.timeRangeValue}>
         {timeIn !== "N/A" ? timeIn : "--"}
-        <Text style={styles.timeRangeArrow}>  ›  </Text>
+        <Text style={styles.timeRangeArrow}> › </Text>
         {timeOut !== "N/A" ? timeOut : "--"}
       </Text>
     </View>
   );
 };
 
-const EventCard = ({ title, date, venue, am_in, am_out, pm_in, pm_out, description, isToday }) => {
+const EventCard = ({
+  title,
+  date,
+  venue,
+  am_in,
+  am_out,
+  pm_in,
+  pm_out,
+  description,
+  isToday,
+}) => {
   const [expanded, setExpanded] = useState(false);
   const hasAm = am_in !== "N/A" || am_out !== "N/A";
   const hasPm = pm_in !== "N/A" || pm_out !== "N/A";
@@ -49,13 +68,18 @@ const EventCard = ({ title, date, venue, am_in, am_out, pm_in, pm_out, descripti
   };
 
   return (
-    <TouchableOpacity style={styles.eventCard} onPress={toggle} activeOpacity={0.82}>
+    <TouchableOpacity
+      style={styles.eventCard}
+      onPress={toggle}
+      activeOpacity={0.82}
+    >
       <View style={[styles.eventAccent, isToday && styles.eventAccentToday]} />
       <View style={styles.eventCardContent}>
-
-        {/* Top row: title + badges */}
         <View style={styles.eventCardHeader}>
-          <Text style={styles.eventTitle} numberOfLines={expanded ? undefined : 2}>
+          <Text
+            style={styles.eventTitle}
+            numberOfLines={expanded ? undefined : 2}
+          >
             {title}
           </Text>
           <View style={styles.eventBadges}>
@@ -71,19 +95,23 @@ const EventCard = ({ title, date, venue, am_in, am_out, pm_in, pm_out, descripti
           </View>
         </View>
 
-        {/* Date row */}
         <View style={styles.eventMetaRow}>
           <Image source={icons.calendar} style={styles.eventMetaIcon} />
-          <Text style={styles.eventMetaText} numberOfLines={1}>{date}</Text>
+          <Text style={styles.eventMetaText} numberOfLines={1}>
+            {date}
+          </Text>
         </View>
 
-        {/* Venue row - always visible */}
         <View style={styles.eventMetaRow}>
           <Image source={icons.location} style={styles.eventMetaIcon} />
-          <Text style={styles.eventMetaText} numberOfLines={expanded ? undefined : 1}>{venue}</Text>
+          <Text
+            style={styles.eventMetaText}
+            numberOfLines={expanded ? undefined : 1}
+          >
+            {venue}
+          </Text>
         </View>
 
-        {/* Expanded section */}
         {expanded && (
           <View style={styles.expandedSection}>
             <View style={styles.expandedDivider} />
@@ -124,12 +152,21 @@ const Home = () => {
     await fetchAndStoreEvents();
   }, [loading, fetchAndStoreEvents]);
 
-  useFocusEffect(useCallback(() => { smartFetch(); }, [smartFetch]));
-  const onRefresh = useCallback(() => { smartFetch(); }, [smartFetch]);
-  useEffect(() => { if (lastEventUpdate > 0) smartFetch(); }, [lastEventUpdate, smartFetch]);
+  useFocusEffect(
+    useCallback(() => {
+      smartFetch();
+    }, [smartFetch]),
+  );
+  const onRefresh = useCallback(() => {
+    smartFetch();
+  }, [smartFetch]);
+  useEffect(() => {
+    if (lastEventUpdate > 0) smartFetch();
+  }, [lastEventUpdate, smartFetch]);
 
   const formatTime = (timeString) => {
-    if (!timeString || typeof timeString !== "string" || !timeString.trim()) return "N/A";
+    if (!timeString || typeof timeString !== "string" || !timeString.trim())
+      return "N/A";
     try {
       const trimmed = timeString.trim();
       if (/\b(AM|PM)\b/i.test(trimmed)) return trimmed.toUpperCase();
@@ -137,9 +174,19 @@ const Home = () => {
       if (parts.length < 2) return "N/A";
       const hours = parseInt(parts[0], 10);
       const minutes = parseInt(parts[1], 10);
-      if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return "N/A";
+      if (
+        isNaN(hours) ||
+        isNaN(minutes) ||
+        hours < 0 ||
+        hours > 23 ||
+        minutes < 0 ||
+        minutes > 59
+      )
+        return "N/A";
       return `${hours % 12 || 12}:${minutes.toString().padStart(2, "0")} ${hours >= 12 ? "PM" : "AM"}`;
-    } catch { return "N/A"; }
+    } catch {
+      return "N/A";
+    }
   };
 
   const formatEventDates = (dates) => {
@@ -157,9 +204,13 @@ const Home = () => {
         return acc;
       }, {});
       return Object.values(grouped)
-        .map((g) => `${g.month} ${g.sort((a, b) => a - b).join(", ")}, ${g.year}`)
+        .map(
+          (g) => `${g.month} ${g.sort((a, b) => a - b).join(", ")}, ${g.year}`,
+        )
         .join(" & ");
-    } catch { return "N/A"; }
+    } catch {
+      return "N/A";
+    }
   };
 
   const checkIsToday = (dates) => {
@@ -177,13 +228,17 @@ const Home = () => {
 
   const getTodayLabel = () => {
     return new Date().toLocaleDateString("en-US", {
-      weekday: "long", month: "long", day: "numeric",
+      weekday: "long",
+      month: "long",
+      day: "numeric",
     });
   };
 
   const firstName = user?.full_name?.split(" ")[0] || "there";
   const roleLabel = ROLE_LABELS[user?.role_id] || "";
-  const todayEventCount = events.filter((e) => checkIsToday(e.event_dates)).length;
+  const todayEventCount = events.filter((e) =>
+    checkIsToday(e.event_dates),
+  ).length;
 
   const renderContent = () => {
     if (loading && events.length === 0)
@@ -197,7 +252,9 @@ const Home = () => {
         <View style={styles.emptyState}>
           <Image source={icons.event} style={styles.emptyIcon} />
           <Text style={styles.emptyTitle}>No Access</Text>
-          <Text style={styles.emptySubtitle}>Your role does not have permission to view events.</Text>
+          <Text style={styles.emptySubtitle}>
+            Your role does not have permission to view events.
+          </Text>
         </View>
       );
     if ((user?.role_id === 1 || user?.role_id === 2) && !user?.block_id)
@@ -205,7 +262,9 @@ const Home = () => {
         <View style={styles.emptyState}>
           <Image source={icons.blocks} style={styles.emptyIcon} />
           <Text style={styles.emptyTitle}>No Block Assigned</Text>
-          <Text style={styles.emptySubtitle}>Please contact your administrator.</Text>
+          <Text style={styles.emptySubtitle}>
+            Please contact your administrator.
+          </Text>
         </View>
       );
     if (events.length > 0)
@@ -227,19 +286,21 @@ const Home = () => {
       <View style={styles.emptyState}>
         <Image source={icons.calendarStar} style={styles.emptyIcon} />
         <Text style={styles.emptyTitle}>No Upcoming Events</Text>
-        <Text style={styles.emptySubtitle}>Pull down to refresh or check back later.</Text>
+        <Text style={styles.emptySubtitle}>
+          Pull down to refresh or check back later.
+        </Text>
       </View>
     );
   };
 
   return (
     <View style={globalStyles.secondaryContainer}>
-
-      {/* Header card */}
       <View style={styles.headerCard}>
         <View style={styles.headerTop}>
           <View style={styles.headerTextBlock}>
-            <Text style={styles.greeting}>{getGreeting()}, {firstName}!</Text>
+            <Text style={styles.greeting}>
+              {getGreeting()}, {firstName}!
+            </Text>
             <Text style={styles.headerDate}>{getTodayLabel()}</Text>
           </View>
           {roleLabel ? (
@@ -257,9 +318,7 @@ const Home = () => {
                 {events.length === 1 ? "event" : "events"} coming up
               </Text>
             </View>
-            {todayEventCount > 0 && (
-              <View style={styles.headerStatDivider} />
-            )}
+            {todayEventCount > 0 && <View style={styles.headerStatDivider} />}
             {todayEventCount > 0 && (
               <View style={styles.headerStat}>
                 <Text style={styles.headerStatValue}>{todayEventCount}</Text>
@@ -272,7 +331,6 @@ const Home = () => {
         )}
       </View>
 
-      {/* Section label */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionLabel}>UPCOMING EVENTS</Text>
       </View>

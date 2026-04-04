@@ -6,10 +6,7 @@ const QRLayout = () => (
     <Stack.Screen
       name="index"
       options={{
-        headerShown: true,
-        headerTitle: "",
-        headerStyle: { backgroundColor: theme.colors.primary },
-        headerTintColor: theme.colors.secondary,
+        headerShown: false,
       }}
     />
     <Stack.Screen

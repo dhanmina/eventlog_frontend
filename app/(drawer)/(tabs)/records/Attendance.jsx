@@ -28,10 +28,18 @@ const StatusChip = ({ attended }) => {
   }
   const isPresent = !!attended;
   return (
-    <View style={[styles.statusChip, isPresent ? styles.chipPresent : styles.chipAbsent]}>
+    <View
+      style={[
+        styles.statusChip,
+        isPresent ? styles.chipPresent : styles.chipAbsent,
+      ]}
+    >
       <Image
         source={isPresent ? icons.present : icons.absent}
-        style={[styles.chipIcon, { tintColor: isPresent ? theme.colors.green : "#C62828" }]}
+        style={[
+          styles.chipIcon,
+          { tintColor: isPresent ? theme.colors.green : "#C62828" },
+        ]}
       />
     </View>
   );
@@ -47,15 +55,17 @@ const SessionLog = ({ label, data, sessionType = "am", showDivider }) => {
   if (!scheduleIn && !scheduleOut) return null;
 
   const sessionTimes = {
-    am_in: "08:00:00", am_out: "12:00:00",
-    pm_in: "13:00:00", pm_out: "17:00:00",
+    am_in: "08:00:00",
+    am_out: "12:00:00",
+    pm_in: "13:00:00",
+    pm_out: "17:00:00",
   };
 
   const now = moment();
   const isSessionTimePassed = (timeKey) => {
     if (!timeKey) return false;
     return now.isSameOrAfter(
-      moment(`${data.date}T${sessionTimes[timeKey]}`, "YYYY-MM-DDTHH:mm:ss")
+      moment(`${data.date}T${sessionTimes[timeKey]}`, "YYYY-MM-DDTHH:mm:ss"),
     );
   };
 
@@ -69,11 +79,15 @@ const SessionLog = ({ label, data, sessionType = "am", showDivider }) => {
         <Text style={styles.sessionLabel}>{label}</Text>
         <View style={styles.sessionStatus}>
           <View style={styles.statusIndicator}>
-            <StatusChip attended={showIn ? data?.attendance?.[timeInKey] : undefined} />
+            <StatusChip
+              attended={showIn ? data?.attendance?.[timeInKey] : undefined}
+            />
             <Text style={styles.statusLabel}>In</Text>
           </View>
           <View style={styles.statusIndicator}>
-            <StatusChip attended={showOut ? data?.attendance?.[timeOutKey] : undefined} />
+            <StatusChip
+              attended={showOut ? data?.attendance?.[timeOutKey] : undefined}
+            />
             <Text style={styles.statusLabel}>Out</Text>
           </View>
         </View>
@@ -91,7 +105,10 @@ const Attendance = () => {
   const { eventId, studentId } = useLocalSearchParams();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState({
-    title: "", message: "", type: "success", cancelTitle: "OK",
+    title: "",
+    message: "",
+    type: "success",
+    cancelTitle: "OK",
   });
 
   useEffect(() => {
@@ -105,14 +122,20 @@ const Attendance = () => {
 
         if (summaryResponse?.success && summaryResponse.data) {
           const {
-            event_name, student_id, student_name,
-            attendance_summary: rawSummary, available_time_periods,
+            event_name,
+            student_id,
+            student_name,
+            attendance_summary: rawSummary,
+            available_time_periods,
           } = summaryResponse.data;
 
           let attendance_summary = rawSummary;
           if (typeof rawSummary === "string") {
-            try { attendance_summary = JSON.parse(rawSummary); }
-            catch { attendance_summary = {}; }
+            try {
+              attendance_summary = JSON.parse(rawSummary);
+            } catch {
+              attendance_summary = {};
+            }
           }
 
           setEventName(event_name);
@@ -172,7 +195,7 @@ const Attendance = () => {
           total: acc.total + (s.total_count || 0),
         };
       },
-      { present: 0, total: 0 }
+      { present: 0, total: 0 },
     );
   }, [rawAttendanceSummary]);
 
@@ -181,7 +204,10 @@ const Attendance = () => {
     let hasError = false;
 
     try {
-      console.log("🔄 [PDF Download] Initiating PDF download...", { eventId, studentId });
+      console.log("🔄 [PDF Download] Initiating PDF download...", {
+        eventId,
+        studentId,
+      });
 
       const response = await getStudentAttSummary(eventId, studentId);
       if (!response?.success || !response.data) {
@@ -190,26 +216,37 @@ const Attendance = () => {
       }
 
       const {
-        event_name, student_id, student_name,
-        attendance_summary, available_time_periods = {},
+        event_name,
+        student_id,
+        student_name,
+        attendance_summary,
+        available_time_periods = {},
       } = response.data;
 
       pdfStudentName = student_name || "Student";
 
       let tableHeaders = `<span class="col-date">Date</span>`;
-      if (available_time_periods.hasAmIn) tableHeaders += '<span class="col-time">AM In</span>';
-      if (available_time_periods.hasAmOut) tableHeaders += '<span class="col-time">AM Out</span>';
-      if (available_time_periods.hasPmIn) tableHeaders += '<span class="col-time">PM In</span>';
-      if (available_time_periods.hasPmOut) tableHeaders += '<span class="col-time">PM Out</span>';
+      if (available_time_periods.hasAmIn)
+        tableHeaders += '<span class="col-time">AM In</span>';
+      if (available_time_periods.hasAmOut)
+        tableHeaders += '<span class="col-time">AM Out</span>';
+      if (available_time_periods.hasPmIn)
+        tableHeaders += '<span class="col-time">PM In</span>';
+      if (available_time_periods.hasPmOut)
+        tableHeaders += '<span class="col-time">PM Out</span>';
       tableHeaders += `<span class="col-count">Present</span><span class="col-count">Absent</span>`;
 
       const tableRows = Object.entries(attendance_summary || {})
         .map(([date, summary]) => {
           let rowColumns = `<span class="col-date">${moment(date).format("MMMM D, YYYY")}</span>`;
-          if (available_time_periods.hasAmIn) rowColumns += `<span class="col-time">${summary.am_in_attended || 0}</span>`;
-          if (available_time_periods.hasAmOut) rowColumns += `<span class="col-time">${summary.am_out_attended || 0}</span>`;
-          if (available_time_periods.hasPmIn) rowColumns += `<span class="col-time">${summary.pm_in_attended || 0}</span>`;
-          if (available_time_periods.hasPmOut) rowColumns += `<span class="col-time">${summary.pm_out_attended || 0}</span>`;
+          if (available_time_periods.hasAmIn)
+            rowColumns += `<span class="col-time">${summary.am_in_attended || 0}</span>`;
+          if (available_time_periods.hasAmOut)
+            rowColumns += `<span class="col-time">${summary.am_out_attended || 0}</span>`;
+          if (available_time_periods.hasPmIn)
+            rowColumns += `<span class="col-time">${summary.pm_in_attended || 0}</span>`;
+          if (available_time_periods.hasPmOut)
+            rowColumns += `<span class="col-time">${summary.pm_out_attended || 0}</span>`;
           rowColumns += `<span class="col-count">${summary.present_count}</span><span class="col-count">${summary.absent_count}</span>`;
           return `<div class="record-line">${rowColumns}</div>`;
         })
@@ -264,12 +301,17 @@ const Attendance = () => {
       `;
 
       try {
-        const safeName = (student_name || "Student").replace(/[^a-zA-Z0-9]/g, "");
+        const safeName = (student_name || "Student").replace(
+          /[^a-zA-Z0-9]/g,
+          "",
+        );
         const safeEvent = (event_name || "Event").replace(/[^a-zA-Z0-9]/g, "");
         const pdfName = `${safeName}_${safeEvent}.pdf`;
         console.log("📝 [PDF] Target filename:", pdfName);
 
-        const { uri: tempUri } = await Print.printToFileAsync({ html: htmlContent });
+        const { uri: tempUri } = await Print.printToFileAsync({
+          html: htmlContent,
+        });
         const tempFile = new File(tempUri);
         const documentsDir = new Directory(Paths.document);
         const existingFile = new File(documentsDir, pdfName);
@@ -278,7 +320,10 @@ const Attendance = () => {
         tempFile.rename(pdfName);
         console.log("✅ [PDF] File moved to:", tempFile.uri);
 
-        const shareResult = await Share.share({ url: tempFile.uri, title: pdfName });
+        const shareResult = await Share.share({
+          url: tempFile.uri,
+          title: pdfName,
+        });
         console.log("✅ [PDF] Share result:", shareResult.action);
 
         if (shareResult.action === Share.sharedAction) {
@@ -291,11 +336,17 @@ const Attendance = () => {
           setModalVisible(true);
         }
       } catch (fileError) {
-        console.error("❌ [PDF File Error]", { message: fileError.message, code: fileError.code });
+        console.error("❌ [PDF File Error]", {
+          message: fileError.message,
+          code: fileError.code,
+        });
         throw fileError;
       }
     } catch (error) {
-      console.error("❌ [PDF Generation Error]", { message: error.message, code: error.code });
+      console.error("❌ [PDF Generation Error]", {
+        message: error.message,
+        code: error.code,
+      });
       hasError = true;
       setModalConfig({
         title: "Download Failed",
@@ -322,13 +373,15 @@ const Attendance = () => {
       <View style={globalStyles.secondaryContainer}>
         <Image source={icons.calendarStar} style={styles.stateIcon} />
         <Text style={styles.stateTitle}>No Data</Text>
-        <Text style={styles.stateSubtitle}>No attendance data available for this event.</Text>
+        <Text style={styles.stateSubtitle}>
+          No attendance data available for this event.
+        </Text>
       </View>
     );
   }
 
   const pastDates = attendanceDataList.filter((d) =>
-    moment(d.date).isSameOrBefore(moment(), "day")
+    moment(d.date).isSameOrBefore(moment(), "day"),
   );
 
   return (
@@ -342,7 +395,6 @@ const Attendance = () => {
         onCancel={() => setModalVisible(false)}
       />
 
-      {/* Header */}
       <View style={styles.headerCard}>
         <Text style={styles.headerTitle}>{eventName}</Text>
         <Text style={styles.headerSubtitle}>Attendance Report</Text>
@@ -359,7 +411,9 @@ const Attendance = () => {
           {!!studentDetails.courseBlock && (
             <View style={styles.headerMetaRow}>
               <Image source={icons.blocks} style={styles.headerMetaIcon} />
-              <Text style={styles.headerMetaText}>{studentDetails.courseBlock}</Text>
+              <Text style={styles.headerMetaText}>
+                {studentDetails.courseBlock}
+              </Text>
             </View>
           )}
         </View>
@@ -372,7 +426,9 @@ const Attendance = () => {
             </View>
             <View style={styles.headerStatDivider} />
             <View style={styles.headerStat}>
-              <Text style={styles.headerStatValue}>{overallStats.total - overallStats.present}</Text>
+              <Text style={styles.headerStatValue}>
+                {overallStats.total - overallStats.present}
+              </Text>
               <Text style={styles.headerStatLabel}>absent</Text>
             </View>
             <View style={styles.headerStatDivider} />
@@ -393,7 +449,9 @@ const Attendance = () => {
           <View style={styles.emptyState}>
             <Image source={icons.clock} style={styles.emptyIcon} />
             <Text style={styles.stateTitle}>Not Yet</Text>
-            <Text style={styles.stateSubtitle}>No attendance records available yet.</Text>
+            <Text style={styles.stateSubtitle}>
+              No attendance records available yet.
+            </Text>
           </View>
         ) : (
           pastDates.map((attendanceData, index) => {
@@ -402,23 +460,31 @@ const Attendance = () => {
               schedule: attendanceData.schedule,
               attendance: attendanceData.attendance,
             };
-            const hasAm = attendanceData.schedule?.am_in && attendanceData.schedule?.am_out;
-            const hasPm = attendanceData.schedule?.pm_in && attendanceData.schedule?.pm_out;
+            const hasAm =
+              attendanceData.schedule?.am_in && attendanceData.schedule?.am_out;
+            const hasPm =
+              attendanceData.schedule?.pm_in && attendanceData.schedule?.pm_out;
             const stats = rawAttendanceSummary[attendanceData.date] || {};
             const presentCount = stats.present_count || 0;
             const totalCount = stats.total_count || 0;
 
             const badgeStyle =
-              totalCount === 0 ? styles.badgeNeutral
-              : presentCount === totalCount ? styles.badgeGreen
-              : presentCount > 0 ? styles.badgeYellow
-              : styles.badgeRed;
+              totalCount === 0
+                ? styles.badgeNeutral
+                : presentCount === totalCount
+                  ? styles.badgeGreen
+                  : presentCount > 0
+                    ? styles.badgeYellow
+                    : styles.badgeRed;
 
             const badgeTextStyle =
-              totalCount === 0 ? styles.badgeTextNeutral
-              : presentCount === totalCount ? styles.badgeTextGreen
-              : presentCount > 0 ? styles.badgeTextYellow
-              : styles.badgeTextRed;
+              totalCount === 0
+                ? styles.badgeTextNeutral
+                : presentCount === totalCount
+                  ? styles.badgeTextGreen
+                  : presentCount > 0
+                    ? styles.badgeTextYellow
+                    : styles.badgeTextRed;
 
             return (
               <View key={index} style={styles.dateCard}>
@@ -435,13 +501,25 @@ const Attendance = () => {
                 </View>
                 <View style={styles.sessionsWrapper}>
                   {hasAm && (
-                    <SessionLog label="Morning" data={sessionData} sessionType="am" showDivider={false} />
+                    <SessionLog
+                      label="Morning"
+                      data={sessionData}
+                      sessionType="am"
+                      showDivider={false}
+                    />
                   )}
                   {hasPm && (
-                    <SessionLog label="Afternoon" data={sessionData} sessionType="pm" showDivider={!!hasAm} />
+                    <SessionLog
+                      label="Afternoon"
+                      data={sessionData}
+                      sessionType="pm"
+                      showDivider={!!hasAm}
+                    />
                   )}
                   {!hasAm && !hasPm && (
-                    <Text style={styles.noSessionText}>No schedule for this date</Text>
+                    <Text style={styles.noSessionText}>
+                      No schedule for this date
+                    </Text>
                   )}
                 </View>
               </View>
@@ -450,7 +528,11 @@ const Attendance = () => {
         )}
       </ScrollView>
 
-      <TouchableOpacity style={styles.downloadButton} onPress={handlePrint} activeOpacity={0.8}>
+      <TouchableOpacity
+        style={styles.downloadButton}
+        onPress={handlePrint}
+        activeOpacity={0.8}
+      >
         <Image source={icons.printer} style={styles.downloadIcon} />
         <Text style={styles.downloadText}>DOWNLOAD REPORT</Text>
       </TouchableOpacity>

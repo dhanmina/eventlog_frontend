@@ -6,7 +6,7 @@ const HomeLayout = () => (
     <Stack.Screen
       name="index"
       options={{
-        headerShown: true,
+        headerShown: false,
         headerTitle: "",
         headerStyle: { backgroundColor: theme.colors.primary },
         headerTintColor: theme.colors.secondary,

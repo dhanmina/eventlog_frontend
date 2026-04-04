@@ -60,7 +60,6 @@ const Account = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Card */}
         <View style={styles.headerCard}>
           <View style={styles.headerRow}>
             <View style={styles.avatarWrap}>
@@ -104,7 +103,6 @@ const Account = () => {
           </View>
         </View>
 
-        {/* Contact */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>CONTACT US</Text>
           <View style={styles.card}>
@@ -140,7 +138,6 @@ const Account = () => {
           </View>
         </View>
 
-        {/* Logout */}
         <View style={styles.logoutContainer}>
           <CustomButton title="LOG OUT" onPress={handleLogout} />
         </View>

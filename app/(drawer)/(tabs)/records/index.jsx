@@ -78,7 +78,10 @@ const Records = () => {
     if (!eventDates) return [];
     let dates = [];
     if (typeof eventDates === "string") {
-      dates = eventDates.split(",").map((d) => d.trim()).filter(Boolean);
+      dates = eventDates
+        .split(",")
+        .map((d) => d.trim())
+        .filter(Boolean);
     } else if (Array.isArray(eventDates)) {
       dates = eventDates.filter(Boolean);
     } else {
@@ -101,11 +104,16 @@ const Records = () => {
   }, [lastEventUpdate, fetchRecordsData]);
 
   const { filteredOngoing, filteredPast } = useMemo(() => {
-    if (!searchTerm.trim()) return { filteredOngoing: ongoingEvents, filteredPast: pastEvents };
+    if (!searchTerm.trim())
+      return { filteredOngoing: ongoingEvents, filteredPast: pastEvents };
     const lower = searchTerm.toLowerCase();
     return {
-      filteredOngoing: ongoingEvents.filter((e) => e.event_name.toLowerCase().includes(lower)),
-      filteredPast: pastEvents.filter((e) => e.event_name.toLowerCase().includes(lower)),
+      filteredOngoing: ongoingEvents.filter((e) =>
+        e.event_name.toLowerCase().includes(lower),
+      ),
+      filteredPast: pastEvents.filter((e) =>
+        e.event_name.toLowerCase().includes(lower),
+      ),
     };
   }, [ongoingEvents, pastEvents, searchTerm]);
 
@@ -115,7 +123,8 @@ const Records = () => {
   }, [loading, fetchRecordsData]);
 
   const formatEventDates = useCallback((eventDates) => {
-    if (!Array.isArray(eventDates) || eventDates.length === 0) return "No dates";
+    if (!Array.isArray(eventDates) || eventDates.length === 0)
+      return "No dates";
     const validDates = eventDates
       .map((d) => moment(d))
       .filter((m) => m.isValid())
@@ -125,7 +134,10 @@ const Records = () => {
 
     let consecutive = true;
     for (let i = 1; i < validDates.length; i++) {
-      if (validDates[i].diff(validDates[i - 1], "days") !== 1) { consecutive = false; break; }
+      if (validDates[i].diff(validDates[i - 1], "days") !== 1) {
+        consecutive = false;
+        break;
+      }
     }
     if (consecutive) {
       const start = validDates[0];
@@ -135,13 +147,23 @@ const Records = () => {
       }
       return `${start.format("MMM DD")} - ${end.format("MMM DD, YYYY")}`;
     }
-    const shown = validDates.slice(0, 3).map((d) => d.format("MMM DD, YYYY")).join(", ");
-    return validDates.length > 3 ? `${shown} +${validDates.length - 3} more` : shown;
+    const shown = validDates
+      .slice(0, 3)
+      .map((d) => d.format("MMM DD, YYYY"))
+      .join(", ");
+    return validDates.length > 3
+      ? `${shown} +${validDates.length - 3} more`
+      : shown;
   }, []);
 
-  const handleEventPress = useCallback((eventId) => {
-    router.push(`/records/Attendance?eventId=${eventId}&studentId=${studentId}`);
-  }, [studentId]);
+  const handleEventPress = useCallback(
+    (eventId) => {
+      router.push(
+        `/records/Attendance?eventId=${eventId}&studentId=${studentId}`,
+      );
+    },
+    [studentId],
+  );
 
   const activeList = activeTab === "Ongoing" ? filteredOngoing : filteredPast;
   const totalCount = ongoingEvents.length + pastEvents.length;
@@ -154,7 +176,9 @@ const Records = () => {
       onPress={() => handleEventPress(event.event_id)}
       activeOpacity={0.78}
     >
-      <View style={[styles.eventAccent, !isOngoingTab && styles.eventAccentPast]} />
+      <View
+        style={[styles.eventAccent, !isOngoingTab && styles.eventAccentPast]}
+      />
       <View style={styles.eventCardContent}>
         <View style={styles.eventCardTop}>
           <View style={styles.eventCardLeft}>
@@ -163,15 +187,32 @@ const Records = () => {
                 <Text style={styles.ongoingBadgeText}>ONGOING</Text>
               </View>
             )}
-            <Text style={[styles.eventTitle, !isOngoingTab && styles.eventTitlePast]} numberOfLines={2}>
+            <Text
+              style={[
+                styles.eventTitle,
+                !isOngoingTab && styles.eventTitlePast,
+              ]}
+              numberOfLines={2}
+            >
               {event.event_name}
             </Text>
           </View>
-          <Image source={icons.arrowRight} style={[styles.chevronIcon, !isOngoingTab && styles.chevronIconPast]} />
+          <Image
+            source={icons.arrowRight}
+            style={[
+              styles.chevronIcon,
+              !isOngoingTab && styles.chevronIconPast,
+            ]}
+          />
         </View>
         <View style={styles.datePill}>
           <Image source={icons.calendar} style={styles.datePillIcon} />
-          <Text style={[styles.datePillText, !isOngoingTab && styles.datePillTextPast]}>
+          <Text
+            style={[
+              styles.datePillText,
+              !isOngoingTab && styles.datePillTextPast,
+            ]}
+          >
             {formatEventDates(event.event_dates)}
           </Text>
         </View>
@@ -192,7 +233,9 @@ const Records = () => {
         <View style={styles.emptyState}>
           <Image source={icons.disabled} style={styles.emptyIcon} />
           <Text style={styles.emptyTitle}>No Access</Text>
-          <Text style={styles.emptySubtitle}>Your role does not have permission to view records.</Text>
+          <Text style={styles.emptySubtitle}>
+            Your role does not have permission to view records.
+          </Text>
         </View>
       );
     }
@@ -221,8 +264,6 @@ const Records = () => {
 
   return (
     <View style={globalStyles.secondaryContainer}>
-
-      {/* Header */}
       <View style={styles.headerCard}>
         <View style={styles.headerTop}>
           <View>
@@ -250,15 +291,14 @@ const Records = () => {
         )}
       </View>
 
-      {/* Search */}
       <View style={{ width: "100%" }}>
         <CustomSearch placeholder="Search records" onSearch={setSearchTerm} />
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabBar}>
         {TABS.map((tab) => {
-          const count = tab === "Ongoing" ? filteredOngoing.length : filteredPast.length;
+          const count =
+            tab === "Ongoing" ? filteredOngoing.length : filteredPast.length;
           const active = activeTab === tab;
           return (
             <TouchableOpacity
@@ -267,10 +307,21 @@ const Records = () => {
               onPress={() => setActiveTab(tab)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab}</Text>
+              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
+                {tab}
+              </Text>
               {count > 0 && (
-                <View style={[styles.tabBadge, active && styles.tabBadgeActive]}>
-                  <Text style={[styles.tabBadgeText, active && styles.tabBadgeTextActive]}>{count}</Text>
+                <View
+                  style={[styles.tabBadge, active && styles.tabBadgeActive]}
+                >
+                  <Text
+                    style={[
+                      styles.tabBadgeText,
+                      active && styles.tabBadgeTextActive,
+                    ]}
+                  >
+                    {count}
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
