@@ -200,10 +200,14 @@ const Attendance = () => {
 
   const handlePrint = async () => {
     try {
+      console.log("🔄 [PDF Download] Initiating PDF download...", { eventId, studentId });
+
       const response = await getStudentAttSummary(eventId, studentId);
       if (!response?.success || !response.data) {
+        console.error("❌ [PDF] Failed to fetch student summary");
         throw new Error("Failed to fetch student data for PDF generation.");
       }
+      console.log("✅ [PDF] Student summary fetched successfully");
 
       const {
         event_name,
@@ -213,6 +217,7 @@ const Attendance = () => {
         available_time_periods = {},
       } = response.data;
 
+      console.log("📋 [PDF] Building table headers...");
       let tableHeaders = `<span class="col-date">Date</span>`;
       if (available_time_periods.hasAmIn)
         tableHeaders += '<span class="col-time">AM In</span>';
@@ -223,7 +228,9 @@ const Attendance = () => {
       if (available_time_periods.hasPmOut)
         tableHeaders += '<span class="col-time">PM Out</span>';
       tableHeaders += `<span class="col-count">Present</span><span class="col-count">Absent</span>`;
+      console.log("✅ [PDF] Headers created:", { hasAmIn: available_time_periods.hasAmIn, hasPmIn: available_time_periods.hasPmIn });
 
+      console.log("📊 [PDF] Processing attendance rows...", { totalDates: Object.keys(attendance_summary || {}).length });
       const tableRows = Object.entries(attendance_summary || {})
         .map(([date, summary]) => {
           let rowColumns = `<span class="col-date">${moment(date).format("MMMM D, YYYY")}</span>`;
@@ -239,6 +246,7 @@ const Attendance = () => {
           return `<div class="record-line">${rowColumns}</div>`;
         })
         .join("");
+      console.log("✅ [PDF] Rows processed, count:", Object.keys(attendance_summary || {}).length);
 
       const htmlContent = `
         <html>
@@ -363,26 +371,66 @@ const Attendance = () => {
         </html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      const pdfName = `${student_name || "Student"} - Individual Attendance Report.pdf`;
-      const src = new File(uri);
-      const dest = new File(Paths.document, pdfName);
-      src.move(dest);
-      await Sharing.shareAsync(dest.uri, {
-        mimeType: "application/pdf",
-        UTI: ".pdf",
+      try {
+        console.log("🔄 [PDF] Starting PDF generation...");
+        const { uri } = await Print.printToFileAsync({ html: htmlContent });
+        console.log("✅ [PDF] Generated from Print:", uri);
+
+        const pdfName = `${student_name || "Student"} - Individual Attendance Report.pdf`;
+        console.log("📝 [PDF] Creating file:", pdfName);
+
+        const src = new File(uri);
+        console.log("📂 [PDF] Source file created:", uri);
+
+        const dest = new File(Paths.document, pdfName);
+        console.log("📂 [PDF] Destination path:", Paths.document, pdfName);
+
+        src.move(dest);
+        console.log("✅ [PDF] File moved successfully to:", dest.uri);
+
+        console.log("📤 [PDF] Initiating share dialog...");
+        await Sharing.shareAsync(dest.uri, {
+          mimeType: "application/pdf",
+          UTI: ".pdf",
+        });
+        console.log("✅ [PDF] Shared successfully");
+
+        setModalConfig({
+          title: "Download Successful",
+          message: "Your attendance record has been downloaded successfully.",
+          type: "success",
+          cancelTitle: "OK",
+        });
+      } catch (fileError) {
+        console.error("❌ [PDF File Error]", {
+          stage: fileError.message?.includes("move") ? "move" :
+                  fileError.message?.includes("share") ? "share" :
+                  fileError.message?.includes("Print") ? "generate" : "unknown",
+          message: fileError.message,
+          code: fileError.code,
+          stack: fileError.stack,
+          studentName: student_name,
+          eventId,
+          studentId,
+        });
+
+        throw fileError;
+      }
+    } catch (error) {
+      console.error("❌ [PDF Generation Error]", {
+        message: error.message,
+        code: error.code,
+        stage: error.message?.includes("JSON") ? "html" :
+               error.message?.includes("File") ? "file" :
+               error.message?.includes("share") ? "share" : "unknown",
+        eventId,
+        studentId,
+        studentName: student_name,
       });
 
       setModalConfig({
-        title: "Download Successful",
-        message: "Your attendance record has been downloaded successfully.",
-        type: "success",
-        cancelTitle: "OK",
-      });
-    } catch (error) {
-      setModalConfig({
         title: "Download Failed",
-        message: `An error occurred while generating the PDF: ${error.message || "Unknown error"}`,
+        message: `An error occurred: ${error.message || "Unknown error"}. Please try again or contact support.`,
         type: "error",
         cancelTitle: "OK",
       });
