@@ -375,20 +375,20 @@ const Attendance = () => {
       `;
 
       try {
+        const pdfName = `${student_name || "Student"} - Attendance Report.pdf`;
+        console.log("📝 [PDF] Target filename:", pdfName);
+
         console.log("🔄 [PDF] Starting PDF generation...");
         const { uri: tempUri } = await Print.printToFileAsync({ html: htmlContent });
-        console.log("✅ [PDF] Generated from Print:", tempUri);
+        console.log("✅ [PDF] Generated temp file:", tempUri);
 
-        const pdfName = `${student_name || "Student"} - Individual Attendance Report.pdf`;
-        console.log("📝 [PDF] PDF name:", pdfName);
-
-        console.log("📤 [PDF] Initiating share dialog with temp file...");
+        console.log("📤 [PDF] Sharing with filename:", pdfName);
         await Sharing.shareAsync(tempUri, {
           mimeType: "application/pdf",
           UTI: ".pdf",
           filename: pdfName,
         });
-        console.log("✅ [PDF] Shared successfully");
+        console.log("✅ [PDF] Shared successfully with filename:", pdfName);
 
         setModalConfig({
           title: "Download Successful",
