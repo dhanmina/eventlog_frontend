@@ -1,26 +1,22 @@
-import React, { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
-  View,
-  Text,
   StyleSheet,
+  Text,
+  View,
   ScrollView,
   TouchableOpacity,
   Image,
   RefreshControl,
+  Platform,
 } from "react-native";
-
-import { StatusBar } from "expo-status-bar";
-import {
-  fetchEvents,
-  approveEvent,
-  deleteEvent,
-} from "../../../../services/api/events";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { fetchEvents, deleteEvent } from "../../../../services/api/events";
 import icons from "../../../../constants/icons";
+import SearchBar from "../../../../components/CustomSearch";
+import CustomModal from "../../../../components/CustomModal";
+import CustomButton from "../../../../components/CustomButton";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
-import CustomModal from "../../../../components/CustomModal";
-import { getStoredUser } from "../../../../database/queries";
 
 export default function PendingEvents() {
   const [events, setEvents] = useState([]);
@@ -29,18 +25,14 @@ export default function PendingEvents() {
   const [modalType, setModalType] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [adminId, setAdminId] = useState(null);
-  const [isApproveSuccessModalVisible, setIsApproveSuccessModalVisible] =
-    useState(false);
-  const [isDeleteSuccessModalVisible, setIsDeleteSuccessModalVisible] =
-    useState(false);
+  const [isApproveSuccessModalVisible, setIsApproveSuccessModalVisible] = useState(false);
+  const [isDeleteSuccessModalVisible, setIsDeleteSuccessModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadPendingEvents = async () => {
     try {
       const response = await fetchEvents();
-      const fetchedEvents = Array.isArray(response?.events)
-        ? response.events
-        : [];
+      const fetchedEvents = Array.isArray(response?.events) ? response.events : [];
       const filteredPendingEvents = fetchedEvents.filter(
         (event) => event.status === "Pending" && event.event_id
       );
@@ -58,21 +50,23 @@ export default function PendingEvents() {
     await loadPendingEvents();
   };
 
-  useEffect(() => {
-    const loadAdminId = async () => {
-      try {
-        const storedUser = await getStoredUser();
-
-        if (storedUser && storedUser.id_number) {
-          setAdminId(storedUser.id_number);
+  useFocusEffect(
+    useCallback(() => {
+      const loadAdminId = async () => {
+        try {
+          const { getStoredUser } = await import("../../../../database/queries");
+          const storedUser = await getStoredUser();
+          if (storedUser && storedUser.id_number) {
+            setAdminId(storedUser.id_number);
+          }
+        } catch (error) {
+          console.error("[PendingEvents] Error loading admin ID:", error);
         }
-      } catch (error) {
-        console.error("[PendingEvents] Error loading admin ID:", error);
-      }
-    };
-    loadAdminId();
-    loadPendingEvents();
-  }, []);
+      };
+      loadAdminId();
+      loadPendingEvents();
+    }, [])
+  );
 
   const handleOpenModal = (type, event) => {
     if (!event || !event.event_id) return;
@@ -89,6 +83,8 @@ export default function PendingEvents() {
   const handleApproveEvent = async () => {
     if (!selectedEvent || !adminId) return;
     try {
+      await deleteEvent(selectedEvent.event_id);
+      const { approveEvent } = await import("../../../../services/api/events");
       await approveEvent(selectedEvent.event_id, adminId);
       setEvents((prevEvents) =>
         prevEvents.filter((event) => event.event_id !== selectedEvent.event_id)
@@ -117,61 +113,19 @@ export default function PendingEvents() {
   if (loading) {
     return (
       <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.loadingText}>Loading pending events...</Text>
+        <View style={styles.headerCard}>
+          <Text style={styles.headerTitle}>PENDING EVENTS</Text>
+          <Text style={styles.headerSubtitle}>Events awaiting approval</Text>
+        </View>
+        <View style={styles.loadingState}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <Text style={styles.headerText}>PENDING EVENTS</Text>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollview}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
-        {events.length > 0 ? (
-          events.map((event) => (
-            <TouchableOpacity
-              key={event.event_id}
-              style={styles.eventContainer}
-              onPress={() =>
-                router.push(
-                  `/eventManagement/events/EventDetails?id=${event.event_id}`
-                )
-              }
-            >
-              <View style={styles.textContainer}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {event.event_name}
-                </Text>
-                <Text style={styles.status} numberOfLines={1}>
-                  {event.status}
-                </Text>
-              </View>
-              <View style={styles.iconContainer}>
-                <TouchableOpacity
-                  style={styles.iconBtn}
-                  onPress={() => handleOpenModal("approve", event)}
-                >
-                  <Image source={icons.check} style={styles.icon} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.iconBtn}
-                  onPress={() => handleOpenModal("delete", event)}
-                >
-                  <Image source={icons.trash} style={styles.icon} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))
-        ) : (
-          <Text style={styles.noResults}>No pending events found</Text>
-        )}
-      </ScrollView>
       <CustomModal
         visible={isModalVisible && modalType === "approve"}
         title="Confirm Approval"
@@ -208,24 +162,124 @@ export default function PendingEvents() {
         onClose={() => setIsDeleteSuccessModalVisible(false)}
         cancelTitle="CLOSE"
       />
-      <StatusBar style="auto" />
+
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>PENDING EVENTS</Text>
+        <Text style={styles.headerSubtitle}>Events awaiting approval</Text>
+        {events.length > 0 && (
+          <View style={styles.headerFooter}>
+            <Text style={styles.headerStat}>{events.length} pending</Text>
+          </View>
+        )}
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollview}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+      >
+        {events.length > 0 ? (
+          events.map((event) => (
+            <TouchableOpacity
+              key={event.event_id}
+              style={styles.card}
+              onPress={() =>
+                router.push(`/eventManagement/events/EventDetails?id=${event.event_id}`)
+              }
+              activeOpacity={0.8}
+            >
+              <View style={styles.cardLeft} />
+              <View style={styles.cardBody}>
+                <Text style={styles.cardName} numberOfLines={1}>
+                  {event.event_name}
+                </Text>
+                <Text style={styles.cardSub} numberOfLines={1}>
+                  {event.venue || ""}
+                </Text>
+              </View>
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => handleOpenModal("approve", event)}
+                >
+                  <Image source={icons.check} style={styles.icon} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => handleOpenModal("delete", event)}
+                >
+                  <Image source={icons.trash} style={styles.icon} />
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Image source={icons.check} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>No pending events</Text>
+            <Text style={styles.emptySub}>All caught up!</Text>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
-    fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
     marginBottom: theme.spacing.small,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
+  },
+  headerFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
+    paddingTop: theme.spacing.small,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,241,229,0.15)",
+  },
+  headerStat: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.7,
+  },
+  loadingState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.medium,
     color: theme.colors.primary,
-    textAlign: "center",
+    opacity: 0.5,
   },
   scrollView: {
     flex: 1,
@@ -234,54 +288,88 @@ const styles = StyleSheet.create({
   },
   scrollview: {
     flexGrow: 1,
-    paddingBottom: 110,
+    paddingBottom: theme.spacing.medium,
   },
-  eventContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+  card: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.small,
-    paddingVertical: theme.spacing.small,
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.1)",
     marginBottom: theme.spacing.small,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
   },
-  textContainer: {
+  cardLeft: {
+    width: 4,
+    alignSelf: "stretch",
+    backgroundColor: theme.colors.primary,
+    opacity: 0.7,
+  },
+  cardBody: {
     flex: 1,
-    flexDirection: "column",
-    justifyContent: "center",
-    marginRight: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+    gap: 3,
   },
-  icon: {
-    width: 20,
-    height: 20,
-    tintColor: theme.colors.primary,
+  cardName: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.primary,
+  },
+  cardSub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.5,
+    marginTop: 2,
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingRight: theme.spacing.xsmall,
   },
   iconBtn: {
     padding: theme.spacing.xsmall,
     marginLeft: theme.spacing.xsmall,
   },
-  iconContainer: {
-    flexDirection: "row",
+  icon: {
+    width: 18,
+    height: 18,
+    tintColor: theme.colors.primary,
+  },
+  emptyState: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 60,
+    gap: theme.spacing.small,
   },
-  name: {
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    tintColor: theme.colors.primary,
+    opacity: 0.2,
+  },
+  emptyTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
     fontSize: theme.fontSizes.large,
-    flexShrink: 1,
-  },
-  status: {
-    fontFamily: theme.fontFamily.SquadaOne,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.small,
-    flexShrink: 1,
+    opacity: 0.4,
   },
-  noResults: {
-    textAlign: "center",
-    fontFamily: theme.fontFamily.SquadaOne,
+  emptySub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.medium,
-    marginTop: theme.spacing.medium,
+    opacity: 0.3,
   },
 });

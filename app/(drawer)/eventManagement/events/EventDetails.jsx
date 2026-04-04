@@ -1,19 +1,26 @@
-import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useState, useEffect } from "react";
-import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
-import TabsComponent from "../../../../components/TabsComponent";
-import CustomButton from "../../../../components/CustomButton";
-import CustomModal from "../../../../components/CustomModal";
+import { useState, useCallback } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Platform,
+} from "react-native";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { fetchEventById, deleteEvent, approveEvent } from "../../../../services/api/events";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
-import {
-  fetchEventById,
-  deleteEvent,
-  approveEvent,
-} from "../../../../services/api/events";
+import CustomButton from "../../../../components/CustomButton";
+import CustomModal from "../../../../components/CustomModal";
 import { getStoredUser } from "../../../../database/queries";
-import { useLocalSearchParams } from "expo-router";
+
+const Row = ({ label, value }) => (
+  <View style={styles.row}>
+    <Text style={styles.rowLabel}>{label}</Text>
+    <Text style={styles.rowValue}>{value || "—"}</Text>
+  </View>
+);
 
 const EventDetails = () => {
   const { id: eventId } = useLocalSearchParams();
@@ -25,55 +32,25 @@ const EventDetails = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [storedUser, setStoredUser] = useState(null);
 
-  useEffect(() => {
-    const fetchStoredUser = async () => {
-      try {
-        const user = await getStoredUser();
-        setStoredUser(user);
-      } catch (error) {}
-    };
-    fetchStoredUser();
-  }, []);
-
-  const fetchEventDetails = async () => {
-    try {
-      if (!eventId) throw new Error("Invalid event ID");
-      const eventData = await fetchEventById(eventId);
-      if (!eventData) throw new Error("Event details not found");
-      setEventDetails(eventData);
-    } catch (error) {
-      console.error("[EventDetails] Failed to fetch event details:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useFocusEffect(
-    React.useCallback(() => {
-      setIsLoading(true);
-      fetchEventDetails();
+    useCallback(() => {
+      const fetchData = async () => {
+        try {
+          const user = await getStoredUser();
+          setStoredUser(user);
+          if (!eventId) throw new Error("Invalid event ID");
+          const eventData = await fetchEventById(eventId);
+          if (!eventData) throw new Error("Event details not found");
+          setEventDetails(eventData);
+        } catch (error) {
+          console.error("[EventDetails] Failed to fetch event details:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchData();
     }, [eventId])
   );
-
-  if (isLoading) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
-
-  if (!eventDetails) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.errorText}>Event details not found.</Text>
-      </View>
-    );
-  }
-
-  const handleDeletePress = () => {
-    setIsDeleteModalVisible(true);
-  };
 
   const handleConfirmDelete = async () => {
     try {
@@ -86,10 +63,6 @@ const EventDetails = () => {
         router.back();
       }, 2000);
     } catch (error) {}
-  };
-
-  const handleApprovePress = () => {
-    setIsApproveModalVisible(true);
   };
 
   const handleConfirmApprove = async () => {
@@ -107,123 +80,31 @@ const EventDetails = () => {
   };
 
   const formatColumnData = (data, separator = ",") => {
-    if (!data) return <Text style={styles.columnItem}>-</Text>;
+    if (!data) return "-";
     const items = data.split(separator).map((item) => item.trim());
-    return items.map((item, index) => (
-      <Text key={index} style={styles.columnItem}>
-        {item}
-      </Text>
-    ));
+    return items.join(", ");
   };
+
+  if (isLoading)
+    return (
+      <View style={globalStyles.secondaryContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+
+  if (!eventDetails)
+    return (
+      <View style={globalStyles.secondaryContainer}>
+        <Text style={styles.errorText}>Event not found.</Text>
+      </View>
+    );
+
+  const isArchived = eventDetails.status === "Archived";
+  const isPending = eventDetails.status === "Pending";
+  const canApprove = isPending && storedUser?.role_id === 4;
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <Text style={styles.headerText}>Event Details</Text>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.detailsWrapper}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Event Name:</Text>
-          <Text style={styles.detail}>{eventDetails.event_name || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Description:</Text>
-          <Text style={styles.detail}>{eventDetails.description || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Venue:</Text>
-          <Text style={styles.detail}>{eventDetails.venue || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Created By:</Text>
-          <Text style={styles.detail}>{eventDetails.created_by || "-"}</Text>
-        </View>
-        {eventDetails.status !== "Pending" && (
-          <View style={styles.detailsContainer}>
-            <Text style={styles.detailTitle}>Approved By:</Text>
-            <Text style={styles.detail}>{eventDetails.approved_by || "-"}</Text>
-          </View>
-        )}
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Event Dates:</Text>
-          <View style={styles.columnContainer}>
-            {formatColumnData(eventDetails.event_dates)}
-          </View>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Event Blocks:</Text>
-          <View style={styles.columnContainer}>
-            {formatColumnData(eventDetails.block_names)}
-          </View>
-        </View>
-        {eventDetails.am_in && (
-          <View style={styles.detailsContainer}>
-            <Text style={styles.detailTitle}>AM In:</Text>
-            <Text style={styles.detail}>{eventDetails.am_in}</Text>
-          </View>
-        )}
-        {eventDetails.am_out && (
-          <View style={styles.detailsContainer}>
-            <Text style={styles.detailTitle}>AM Out:</Text>
-            <Text style={styles.detail}>{eventDetails.am_out}</Text>
-          </View>
-        )}
-        {eventDetails.pm_in && (
-          <View style={styles.detailsContainer}>
-            <Text style={styles.detailTitle}>PM In:</Text>
-            <Text style={styles.detail}>{eventDetails.pm_in}</Text>
-          </View>
-        )}
-        {eventDetails.pm_out && (
-          <View style={styles.detailsContainer}>
-            <Text style={styles.detailTitle}>PM Out:</Text>
-            <Text style={styles.detail}>{eventDetails.pm_out}</Text>
-          </View>
-        )}
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Scan Personnel:</Text>
-          <Text style={styles.detail}>
-            {eventDetails.scan_personnel || "-"}
-          </Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Status:</Text>
-          <Text style={styles.detail}>{eventDetails.status || "-"}</Text>
-        </View>
-      </ScrollView>
-      <View style={styles.buttonContainer}>
-        {eventDetails.status !== "Archived" && (
-          <>
-            {eventDetails.status === "Pending" && storedUser?.role_id === 4 ? (
-              <View style={styles.button}>
-                <CustomButton title="APPROVE" onPress={handleApprovePress} />
-              </View>
-            ) : (
-              <View style={styles.button}>
-                <CustomButton
-                  title="EDIT"
-                  onPress={() =>
-                    router.push(
-                      `/eventManagement/events/EditEvent?id=${eventDetails.event_id}`
-                    )
-                  }
-                />
-              </View>
-            )}
-            {eventDetails.status !== "deleted" && (
-              <View style={styles.button}>
-                <CustomButton
-                  title="DELETE"
-                  type="secondary"
-                  onPress={handleDeletePress}
-                />
-              </View>
-            )}
-          </>
-        )}
-      </View>
       <CustomModal
         visible={isApproveModalVisible}
         title="Confirm Approval"
@@ -253,22 +134,122 @@ const EventDetails = () => {
         cancelTitle="CLOSE"
         hideButtons={true}
       />
-      <TabsComponent />
-      <StatusBar style="light" />
+
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>{eventDetails.event_name || ""}</Text>
+        <Text style={styles.headerSubtitle}>
+          {[eventDetails.venue, eventDetails.status].filter(Boolean).join("  ·  ")}
+        </Text>
+        <View style={[styles.statusBadge, isArchived && styles.statusBadgeArchived]}>
+          <Text style={[styles.statusText, isArchived && styles.statusTextArchived]}>
+            {eventDetails.status}
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.detailsWrapper}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.infoCard}>
+          <Row label="Event Name" value={eventDetails.event_name} />
+          <Row label="Description" value={eventDetails.description} />
+          <Row label="Venue" value={eventDetails.venue} />
+          <Row label="Event Dates" value={formatColumnData(eventDetails.event_dates)} />
+          <Row label="Event Blocks" value={formatColumnData(eventDetails.block_names)} />
+          {eventDetails.am_in && <Row label="AM In" value={eventDetails.am_in} />}
+          {eventDetails.am_out && <Row label="AM Out" value={eventDetails.am_out} />}
+          {eventDetails.pm_in && <Row label="PM In" value={eventDetails.pm_in} />}
+          {eventDetails.pm_out && <Row label="PM Out" value={eventDetails.pm_out} />}
+          <Row label="Created By" value={eventDetails.created_by} />
+          {eventDetails.status !== "Pending" && (
+            <Row label="Approved By" value={eventDetails.approved_by} />
+          )}
+          <Row label="Scan Personnel" value={eventDetails.scan_personnel} />
+          <View style={[styles.row, styles.rowLast]}>
+            <Text style={styles.rowLabel}>Status</Text>
+            <Text style={styles.rowValue}>{eventDetails.status}</Text>
+          </View>
+        </View>
+      </ScrollView>
+
+      {!isArchived && (
+        <View style={styles.buttonContainer}>
+          {canApprove ? (
+            <View style={styles.button}>
+              <CustomButton title="APPROVE" onPress={() => setIsApproveModalVisible(true)} />
+            </View>
+          ) : (
+            <View style={styles.button}>
+              <CustomButton
+                title="EDIT"
+                onPress={() => router.push(`/eventManagement/events/EditEvent?id=${eventDetails.event_id}`)}
+              />
+            </View>
+          )}
+          <View style={styles.button}>
+            <CustomButton
+              title="DELETE"
+              type="secondary"
+              onPress={() => setIsDeleteModalVisible(true)}
+            />
+          </View>
+        </View>
+      )}
     </View>
   );
 };
 
 export default EventDetails;
 
-
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    gap: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
-    marginBottom: theme.spacing.small,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+  },
+  statusBadge: {
+    alignSelf: "flex-start",
+    marginTop: theme.spacing.xsmall,
+    backgroundColor: "rgba(251,241,229,0.2)",
+    borderRadius: theme.borderRadius.small,
+    paddingHorizontal: theme.spacing.small,
+    paddingVertical: 2,
+  },
+  statusBadgeArchived: {
+    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  statusText: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+  },
+  statusTextArchived: {
+    opacity: 0.6,
   },
   scrollView: {
     flex: 1,
@@ -278,9 +259,47 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingVertical: theme.spacing.small,
   },
+  infoCard: {
+    width: "100%",
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.1)",
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  row: {
+    flexDirection: "row",
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(37,85,134,0.07)",
+  },
+  rowLast: {
+    borderBottomWidth: 0,
+  },
+  rowLabel: {
+    width: "40%",
+    fontFamily: theme.fontFamily.ArialBold,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.primary,
+  },
+  rowValue: {
+    flex: 1,
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.primary,
+  },
   buttonContainer: {
     flexDirection: "row",
-    justifyContent: "center",
     gap: theme.spacing.small,
     paddingTop: theme.spacing.medium,
     paddingBottom: 80 + theme.spacing.medium,
@@ -289,49 +308,11 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
   },
-  detailsContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    borderBottomWidth: 2,
-    borderColor: theme.colors.primary,
-    paddingVertical: theme.spacing.small,
-  },
-  detailTitle: {
-    fontFamily: theme.fontFamily.ArialBold,
-    fontSize: theme.fontSizes.medium,
-    color: theme.colors.primary,
-    width: "40%",
-    flexShrink: 1,
-  },
-  detail: {
-    fontFamily: theme.fontFamily.Arial,
-    fontSize: theme.fontSizes.medium,
-    color: theme.colors.primary,
-    width: "60%",
-    flexShrink: 1,
-  },
-  columnContainer: {
-    flexDirection: "column",
-    width: "60%",
-  },
-  columnItem: {
-    fontFamily: theme.fontFamily.Arial,
-    fontSize: theme.fontSizes.medium,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.small,
-  },
-  loadingText: {
-    fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.Arial,
-    color: theme.colors.primary,
-    textAlign: "center",
-    marginTop: theme.spacing.medium,
-  },
   errorText: {
-    fontSize: theme.fontSizes.large,
     fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
     color: theme.colors.primary,
+    opacity: 0.5,
     textAlign: "center",
-    marginTop: theme.spacing.medium,
   },
 });

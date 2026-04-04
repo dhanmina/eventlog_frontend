@@ -1,27 +1,34 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
   ActivityIndicator,
+  Platform,
 } from "react-native";
-
-import { StatusBar } from "expo-status-bar";
-import TabsComponent from "../../../../components/TabsComponent";
+import { useLocalSearchParams } from "expo-router";
+import { editAdmin, fetchAdminById } from "../../../../services/api/admins";
+import { getStoredUser } from "../../../../database/queries";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomDropdown from "../../../../components/CustomDropdown";
 import CustomButton from "../../../../components/CustomButton";
-import { editAdmin, fetchAdminById } from "../../../../services/api/admins";
 import CustomModal from "../../../../components/CustomModal";
-import { useLocalSearchParams } from "expo-router";
-import { getStoredUser } from "../../../../database/queries";
+
+const ROLE_OPTIONS = [
+  { label: "Admin", value: 3 },
+  { label: "Super Admin", value: 4 },
+];
+
+const STATUS_OPTIONS = [
+  { label: "Active", value: "Active" },
+  { label: "Disabled", value: "Disabled" },
+];
 
 const EditAdmin = () => {
   const { id_number: initialIdNumber } = useLocalSearchParams();
-  const [currentIdNumber, setCurrentIdNumber] = useState(initialIdNumber);
   const [formData, setFormData] = useState({
     id_number: "",
     first_name: "",
@@ -30,97 +37,60 @@ const EditAdmin = () => {
     suffix: "",
     email: "",
     role_id: null,
-    status: "active",
+    status: "Active",
   });
-
   const [isLoading, setIsLoading] = useState(true);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
-
-  const roleOptions = [
-    { label: "Admin", value: 3 },
-    { label: "Super Admin", value: 4 },
-  ];
-
-  const statusOptions = [
-    { label: "Active", value: "Active" },
-    { label: "Disabled", value: "Disabled" },
-  ];
-
-  const fetchAdminDetails = async (id) => {
-    setIsLoading(true);
-    try {
-      if (!id) throw new Error("Invalid admin ID");
-
-      const adminDetails = await fetchAdminById(id);
-      if (!adminDetails) throw new Error("Admin details not found");
-
-      setFormData({
-        id_number: adminDetails.id_number || "",
-        first_name: adminDetails.first_name || "",
-        middle_name: adminDetails.middle_name || "",
-        last_name: adminDetails.last_name || "",
-        suffix: adminDetails.suffix || "",
-        email: adminDetails.email || "",
-        role_id: adminDetails.role_id || null,
-        status: adminDetails.status || "active",
-      });
-    } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message: error.message || "Failed to load admin details.",
-        type: "error",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [modal, setModal] = useState({ visible: false, title: "", message: "", type: "success" });
 
   useEffect(() => {
-    fetchAdminDetails(initialIdNumber);
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        if (!initialIdNumber) throw new Error("Invalid admin ID");
+        const adminDetails = await fetchAdminById(initialIdNumber);
+        if (!adminDetails) throw new Error("Admin details not found");
+        setFormData({
+          id_number: adminDetails.id_number || "",
+          first_name: adminDetails.first_name || "",
+          middle_name: adminDetails.middle_name || "",
+          last_name: adminDetails.last_name || "",
+          suffix: adminDetails.suffix || "",
+          email: adminDetails.email || "",
+          role_id: adminDetails.role_id || null,
+          status: adminDetails.status || "Active",
+        });
+      } catch (error) {
+        setModal({ visible: true, title: "Error", message: error.message || "Failed to load admin details.", type: "error" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, [initialIdNumber]);
 
-  const handleChange = (name, value) => {
-    setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
-  };
+  const handleChange = (name, value) => setFormData((prev) => ({ ...prev, [name]: value }));
+
+  const isFormValid =
+    formData.first_name &&
+    formData.last_name &&
+    formData.role_id !== null;
 
   const handleSubmit = async () => {
+    if (!isFormValid) {
+      setModal({ visible: true, title: "Warning", message: "Please fill in all required fields.", type: "warning" });
+      return;
+    }
     try {
       const currentUser = await getStoredUser();
       if (!currentUser) throw new Error("Failed to verify your account.");
 
-      const isEditingOwnAccount = currentUser.id_number === currentIdNumber;
-
-      if (isEditingOwnAccount && formData.status === "disabled") {
-        setModal({
-          visible: true,
-          title: "Action Not Allowed",
-          message: "You cannot disable your own account.",
-          type: "error",
-        });
+      const isEditingOwnAccount = currentUser.id_number === initialIdNumber;
+      if (isEditingOwnAccount && formData.status === "Disabled") {
+        setModal({ visible: true, title: "Action Not Allowed", message: "You cannot disable your own account.", type: "error" });
         return;
       }
 
-      if (
-        !formData.first_name ||
-        !formData.last_name ||
-        formData.role_id === null
-      ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
-        return;
-      }
-
-      const submitData = {
+      await editAdmin(initialIdNumber, {
         new_id_number: formData.id_number,
         first_name: formData.first_name,
         middle_name: formData.middle_name || null,
@@ -129,25 +99,10 @@ const EditAdmin = () => {
         email: formData.email || null,
         role_id: formData.role_id,
         status: formData.status,
-      };
-
-      await editAdmin(currentIdNumber, submitData);
-
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Admin updated successfully!",
-        type: "success",
       });
-
-      fetchAdminDetails(currentIdNumber);
+      setModal({ visible: true, title: "Success", message: "Admin updated successfully!", type: "success" });
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message: error.response?.data?.message || "Failed to update admin.",
-        type: "error",
-      });
+      setModal({ visible: true, title: "Error", message: error.response?.data?.message || "Failed to update admin.", type: "error" });
     }
   };
 
@@ -166,15 +121,20 @@ const EditAdmin = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={() => setModal((m) => ({ ...m, visible: false }))}
         cancelTitle="CLOSE"
       />
 
-      <Text style={styles.headerText}>EDIT ADMIN</Text>
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>EDIT ADMIN</Text>
+        <Text style={styles.headerSubtitle}>Update administrator information</Text>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <FormField
           title="First Name"
@@ -203,22 +163,20 @@ const EditAdmin = () => {
         />
         <CustomDropdown
           title="Role"
-          data={roleOptions}
+          data={ROLE_OPTIONS}
           value={formData.role_id}
-          onSelect={(item) => handleChange("role_id", item.value)}
+          onSelect={(item) => handleChange("role_id", item?.value ?? "")}
         />
         <CustomDropdown
           title="Status"
-          data={statusOptions}
+          data={STATUS_OPTIONS}
           value={formData.status}
-          onSelect={(item) => handleChange("status", item.value)}
+          onSelect={(item) => handleChange("status", item?.value ?? "")}
         />
-        <View style={styles.buttonWrapper}>
-          <CustomButton title="UPDATE" onPress={handleSubmit} />
+        <View style={styles.buttonContainer}>
+          <CustomButton title="UPDATE" onPress={handleSubmit} disabled={!isFormValid} />
         </View>
       </ScrollView>
-      <TabsComponent />
-      <StatusBar style="auto" />
     </View>
   );
 };
@@ -226,12 +184,33 @@ const EditAdmin = () => {
 export default EditAdmin;
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
-    marginBottom: theme.spacing.small,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
   },
   scrollView: {
     flex: 1,
@@ -241,7 +220,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 120,
   },
-  buttonWrapper: {
+  buttonContainer: {
     marginTop: theme.spacing.medium,
   },
 });

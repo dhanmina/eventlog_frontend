@@ -1,57 +1,35 @@
-import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useState } from "react";
-import { StatusBar } from "expo-status-bar";
-import TabsComponent from "../../../../components/TabsComponent";
+import { useState } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  Platform,
+} from "react-native";
+import { addEventName } from "../../../../services/api/events";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
-import { addEventName } from "../../../../services/api/events";
 
 const AddEventName = () => {
   const [formData, setFormData] = useState({ name: "" });
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState({ visible: false, title: "", message: "", type: "success" });
 
-  const handleChange = (name, value) => {
-    setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
-  };
+  const handleChange = (name, value) => setFormData((prev) => ({ ...prev, [name]: value }));
 
   const handleSubmit = async () => {
+    if (!formData.name || typeof formData.name !== "string" || !formData.name.trim()) {
+      setModal({ visible: true, title: "Warning", message: "Please enter a valid event name.", type: "warning" });
+      return;
+    }
     try {
-      if (!formData.name || typeof formData.name !== "string") {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please enter a valid event name.",
-          type: "warning",
-        });
-        return;
-      }
-
       await addEventName(formData.name.trim());
-
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Event name added successfully!",
-        type: "success",
-      });
+      setModal({ visible: true, title: "Success", message: "Event name added successfully!", type: "success" });
       setFormData({ name: "" });
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message:
-          error.response?.data?.message ||
-          "Failed to add event name. Please try again.",
-        type: "error",
-      });
+      setModal({ visible: true, title: "Error", message: error.response?.data?.message || "Failed to add event name.", type: "error" });
     }
   };
 
@@ -62,31 +40,31 @@ const AddEventName = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={() => setModal((m) => ({ ...m, visible: false }))}
         cancelTitle="CLOSE"
       />
 
-      <Text style={styles.headerText}>ADD EVENT NAME</Text>
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>ADD EVENT NAME</Text>
+        <Text style={styles.headerSubtitle}>Create a new event category</Text>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View>
-          <FormField
-            title="Event Name"
-            placeholder="Enter event name"
-            value={formData.name}
-            onChangeText={(text) => handleChange("name", text)}
-          />
-        </View>
-        <View>
+        <FormField
+          title="Event Name"
+          placeholder="Enter event name"
+          value={formData.name}
+          onChangeText={(text) => handleChange("name", text)}
+        />
+        <View style={styles.buttonContainer}>
           <CustomButton title="ADD" onPress={handleSubmit} />
         </View>
       </ScrollView>
-
-      <TabsComponent />
-      <StatusBar style="auto" />
     </View>
   );
 };
@@ -94,12 +72,33 @@ const AddEventName = () => {
 export default AddEventName;
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
-    marginBottom: theme.spacing.small,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
   },
   scrollView: {
     flex: 1,
@@ -108,5 +107,8 @@ const styles = StyleSheet.create({
   scrollview: {
     flexGrow: 1,
     paddingBottom: 120,
+  },
+  buttonContainer: {
+    marginTop: theme.spacing.medium,
   },
 });

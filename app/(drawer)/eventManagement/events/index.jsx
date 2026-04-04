@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,11 +7,10 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  Platform,
 } from "react-native";
-import TabsComponent from "../../../../components/TabsComponent";
-import { StatusBar } from "expo-status-bar";
-import { fetchEvents, deleteEvent } from "../../../../services/api/events";
 import { router, useFocusEffect } from "expo-router";
+import { fetchEvents, deleteEvent } from "../../../../services/api/events";
 import icons from "../../../../constants/icons";
 import SearchBar from "../../../../components/CustomSearch";
 import CustomModal from "../../../../components/CustomModal";
@@ -38,24 +37,19 @@ export default function EventsList() {
         (event) => event.status !== "Deleted"
       );
       setEvents(filteredEvents);
-    } catch (err) {}
+    } catch {}
   };
 
   const refreshData = async () => {
     setRefreshing(true);
     try {
       await loadEvents();
-    } catch (error) {
     } finally {
       setRefreshing(false);
     }
   };
 
-  useFocusEffect(
-    React.useCallback(() => {
-      loadEvents();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadEvents(); }, []));
 
   const filteredEvents = events.filter((event) => {
     const eventName = event.event_name?.toLowerCase() || "";
@@ -76,6 +70,8 @@ export default function EventsList() {
   const pendingEventsCount = events.filter(
     (event) => event.status === "Pending"
   ).length;
+  const approvedCount = events.filter((e) => e.status === "Approved").length;
+  const archivedCount = events.filter((e) => e.status === "Archived").length;
 
   const handleDeletePress = (event) => {
     setEventToDelete(event);
@@ -100,12 +96,43 @@ export default function EventsList() {
       );
       handleDeleteModalClose();
       setIsSuccessModalVisible(true);
-    } catch (error) {}
+    } catch {}
   };
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <Text style={styles.headerText}>EVENTS</Text>
+      <CustomModal
+        visible={isDeleteModalVisible}
+        title="Confirm Deletion"
+        message={`Are you sure you want to delete ${eventToDelete?.event_name}?`}
+        type="warning"
+        onClose={handleDeleteModalClose}
+        onConfirm={handleConfirmDelete}
+        cancelTitle="Cancel"
+        confirmTitle="Delete"
+      />
+      <CustomModal
+        visible={isSuccessModalVisible}
+        title="Success"
+        message="Event deleted successfully!"
+        type="success"
+        onClose={() => setIsSuccessModalVisible(false)}
+        cancelTitle="CLOSE"
+      />
+
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>EVENTS</Text>
+        <Text style={styles.headerSubtitle}>Manage school events and activities</Text>
+        {events.length > 0 && (
+          <View style={styles.headerFooter}>
+            <Text style={styles.headerStat}>{approvedCount} Approved</Text>
+            <Text style={styles.headerStatDivider}>·</Text>
+            <Text style={styles.headerStat}>{pendingEventsCount} Pending</Text>
+            <Text style={styles.headerStatDivider}>·</Text>
+            <Text style={styles.headerStat}>{archivedCount} Archived</Text>
+          </View>
+        )}
+      </View>
 
       <View style={{ width: "100%" }}>
         <SearchBar placeholder="Search events..." onSearch={setSearchQuery} />
@@ -118,8 +145,7 @@ export default function EventsList() {
         >
           <View style={styles.pendingContainer}>
             <Text style={styles.pendingText}>
-              {pendingEventsCount} PENDING EVENT
-              {pendingEventsCount > 1 ? "S" : ""}
+              {pendingEventsCount} PENDING EVENT{pendingEventsCount > 1 ? "S" : ""}
             </Text>
           </View>
         </TouchableOpacity>
@@ -129,45 +155,39 @@ export default function EventsList() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshData} />}
       >
         {approvedOrArchivedEvents.length > 0 ? (
           approvedOrArchivedEvents.map((event) => (
             <TouchableOpacity
               key={event.event_id}
-              style={styles.eventContainer}
+              style={styles.card}
               onPress={() =>
-                router.push(
-                  `/eventManagement/events/EventDetails?id=${event.event_id}`
-                )
+                router.push(`/eventManagement/events/EventDetails?id=${event.event_id}`)
               }
+              activeOpacity={0.8}
             >
-              <View style={styles.textContainer}>
-                <Text style={styles.name} numberOfLines={1}>
+              <View style={[styles.cardLeft, event.status === "Archived" && styles.cardLeftDisabled]} />
+              <View style={styles.cardBody}>
+                <Text style={styles.cardName} numberOfLines={1}>
                   {event.event_name}
                 </Text>
-                <Text style={styles.status} numberOfLines={1}>
-                  {event.status}
+                <Text style={styles.cardSub} numberOfLines={1}>
+                  {event.venue || ""}
                 </Text>
               </View>
-              <View style={styles.iconContainer}>
+              <View style={styles.actions}>
                 <TouchableOpacity
-                  style={[styles.iconBtn, { opacity: event.status === "Archived" ? 0.3 : 1 }]}
+                  style={styles.iconBtn}
                   onPress={() =>
-                    router.push(
-                      `/eventManagement/events/EditEvent?id=${event.event_id}`
-                    )
+                    router.push(`/eventManagement/events/EditEvent?id=${event.event_id}`)
                   }
-                  disabled={event.status === "Archived"}
                 >
                   <Image source={icons.edit} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.iconBtn, { opacity: event.status === "Archived" ? 0.3 : 1 }]}
+                  style={styles.iconBtn}
                   onPress={() => handleDeletePress(event)}
-                  disabled={event.status === "Archived"}
                 >
                   <Image source={icons.trash} style={styles.icon} />
                 </TouchableOpacity>
@@ -175,7 +195,13 @@ export default function EventsList() {
             </TouchableOpacity>
           ))
         ) : pendingEventsCount === 0 ? (
-          <Text style={styles.noResults}>No events found</Text>
+          <View style={styles.emptyState}>
+            <Image source={icons.event} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>No events found</Text>
+            <Text style={styles.emptySub}>
+              {searchQuery ? "Try a different search term" : "Add an event to get started"}
+            </Text>
+          </View>
         ) : null}
       </ScrollView>
 
@@ -186,51 +212,69 @@ export default function EventsList() {
         />
       </View>
       <View style={styles.tabSpacer} />
-
-      <CustomModal
-        visible={isDeleteModalVisible}
-        title="Confirm Deletion"
-        message={`Are you sure you want to delete ${eventToDelete?.event_name}?`}
-        type="warning"
-        onClose={handleDeleteModalClose}
-        onConfirm={handleConfirmDelete}
-        cancelTitle="Cancel"
-        confirmTitle="Delete"
-      />
-
-      <CustomModal
-        visible={isSuccessModalVisible}
-        title="Success"
-        message="Event deleted successfully!"
-        type="success"
-        onClose={() => setIsSuccessModalVisible(false)}
-        cancelTitle="CLOSE"
-      />
-      <TabsComponent />
-      <StatusBar style="auto" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
-    fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
     marginBottom: theme.spacing.small,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
+  },
+  headerFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
+    paddingTop: theme.spacing.small,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,241,229,0.15)",
+  },
+  headerStat: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.7,
+  },
+  headerStatDivider: {
+    color: theme.colors.secondary,
+    opacity: 0.3,
   },
   pendingContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.medium,
     paddingVertical: theme.spacing.small,
     justifyContent: "center",
     alignItems: "center",
   },
   pendingText: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.extraLarge,
-    color: theme.colors.primary,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.secondary,
   },
   scrollView: {
     flex: 1,
@@ -239,62 +283,99 @@ const styles = StyleSheet.create({
   },
   scrollview: {
     flexGrow: 1,
-    paddingBottom: 200,
+    paddingBottom: theme.spacing.medium,
   },
-  eventContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+  card: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.small,
-    paddingVertical: theme.spacing.small,
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.1)",
     marginBottom: theme.spacing.small,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
   },
-  textContainer: {
+  cardLeft: {
+    width: 4,
+    alignSelf: "stretch",
+    backgroundColor: theme.colors.primary,
+    opacity: 0.7,
+  },
+  cardLeftDisabled: {
+    backgroundColor: "rgba(0,0,0,0.15)",
+    opacity: 1,
+  },
+  cardBody: {
     flex: 1,
-    flexDirection: "column",
-    justifyContent: "center",
-    marginRight: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+    gap: 3,
   },
-  icon: {
-    width: 20,
-    height: 20,
-    tintColor: theme.colors.primary,
+  cardName: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.primary,
+  },
+  cardSub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.5,
+    marginTop: 2,
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingRight: theme.spacing.xsmall,
   },
   iconBtn: {
     padding: theme.spacing.xsmall,
     marginLeft: theme.spacing.xsmall,
   },
-  iconContainer: {
-    flexDirection: "row",
+  icon: {
+    width: 18,
+    height: 18,
+    tintColor: theme.colors.primary,
+  },
+  emptyState: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 60,
+    gap: theme.spacing.small,
   },
-  name: {
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    tintColor: theme.colors.primary,
+    opacity: 0.2,
+  },
+  emptyTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
     fontSize: theme.fontSizes.large,
-    flexShrink: 1,
-  },
-  status: {
-    fontFamily: theme.fontFamily.SquadaOne,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.small,
-    flexShrink: 1,
+    opacity: 0.4,
   },
-  noResults: {
-    textAlign: "center",
-    fontFamily: theme.fontFamily.SquadaOne,
+  emptySub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.medium,
-    marginTop: theme.spacing.medium,
+    opacity: 0.3,
   },
   buttonContainer: {
-    alignSelf: "center",
-    width: "80%",
+    width: "100%",
     paddingVertical: theme.spacing.small,
   },
   tabSpacer: {
-    height: 110,
+    height: 80,
   },
 });

@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
-  ActivityIndicator,
-  TouchableOpacity,
+  Platform,
 } from "react-native";
-import { StatusBar } from "expo-status-bar";
+import { addEvent } from "../../../../services/api/events";
+import { fetchDepartments } from "../../../../services/api/departments";
+import { fetchEventNames } from "../../../../services/api/events";
+import { fetchBlocksByDepartment } from "../../../../services/api/blocks";
+import { getStoredUser } from "../../../../database/queries";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import CustomDropdown from "../../../../components/CustomDropdown";
@@ -17,11 +20,6 @@ import FormField from "../../../../components/FormField";
 import TimePickerComponent from "../../../../components/TimePickerComponent";
 import DatePickerComponent from "../../../../components/DatePickerComponent";
 import DurationPicker from "../../../../components/DurationPicker";
-import { fetchDepartments } from "../../../../services/api/departments";
-import { fetchEventNames, addEvent } from "../../../../services/api/events";
-import { fetchBlocksByDepartment } from "../../../../services/api/blocks";
-import { getStoredUser } from "../../../../database/queries";
-import { router } from "expo-router";
 
 const AddEvent = () => {
   const [formData, setFormData] = useState({
@@ -42,282 +40,105 @@ const AddEvent = () => {
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [blockOptions, setBlockOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
-  const [errorDepartments, setErrorDepartments] = useState(null);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState({ visible: false, title: "", message: "", type: "success" });
   const [isDurationPickerVisible, setIsDurationPickerVisible] = useState(false);
-
-  const fetchDepartmentData = async () => {
-    setLoadingDepartments(true);
-    setErrorDepartments(null);
-    try {
-      const response = await fetchDepartments();
-      if (!response || !Array.isArray(response.departments)) {
-        throw new Error(
-          "Invalid data format from API: Expected 'departments' array."
-        );
-      }
-      const departmentsData = response.departments;
-      const activeDepartmentsData = departmentsData.filter(
-        (dept) => dept.status === "Active"
-      );
-      const formattedDepartments = activeDepartmentsData.map((dept) => ({
-        label: dept.department_name,
-        value: dept.department_id,
-      }));
-      if (
-        formattedDepartments.some(
-          (dept) => !dept.label || dept.value === undefined
-        )
-      ) {
-        throw new Error("Invalid department data.");
-      }
-      setDepartmentOptions(formattedDepartments);
-    } catch (err) {
-      setErrorDepartments(err);
-      setModal({
-        visible: true,
-        title: "Error",
-        message: "Failed to load departments. Please try again.",
-        type: "error",
-      });
-    } finally {
-      setLoadingDepartments(false);
-    }
-  };
 
   useEffect(() => {
     const initializeData = async () => {
       try {
         const storedUserData = await getStoredUser();
-        if (!storedUserData || !storedUserData.id_number) {
-          throw new Error("Invalid or missing user ID.");
+        if (storedUserData?.id_number) {
+          handleChange("created_by", storedUserData.id_number);
         }
-        handleChange("created_by", storedUserData.id_number);
-      } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load user data. Please try again.",
-          type: "error",
-        });
-      }
-    };
-    const fetchEventNamesData = async () => {
-      setIsLoading(true);
-      try {
-        const eventNamesData = await fetchEventNames();
-        if (!Array.isArray(eventNamesData)) {
-          throw new Error("Invalid data format from API.");
+
+        const [eventNamesData, deptResponse] = await Promise.all([
+          fetchEventNames(),
+          fetchDepartments(),
+        ]);
+
+        const activeEventNames = Array.isArray(eventNamesData)
+          ? eventNamesData.filter((n) => n.status === "Active")
+          : [];
+        setEventNames(activeEventNames.map((n) => ({
+          label: n.label || n.name,
+          value: n.value || n.id,
+        })));
+
+        if (deptResponse?.departments) {
+          const activeDepts = deptResponse.departments.filter((d) => d.status === "Active");
+          setDepartmentOptions(activeDepts.map((d) => ({
+            label: d.department_name,
+            value: d.department_id,
+          })));
         }
-        const activeEventNamesData = eventNamesData.filter(
-          (name) => name.status === "Active"
-        );
-        const formattedEventNames = activeEventNamesData.map((name) => ({
-          label: name.label || name.name,
-          value: name.value || name.id,
-        }));
-        setEventNames(formattedEventNames);
-      } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load event names. Please try again.",
-          type: "error",
-        });
-      } finally {
-        setIsLoading(false);
-      }
+      } catch {}
+      setIsLoading(false);
     };
     initializeData();
-    fetchEventNamesData();
-    fetchDepartmentData();
   }, []);
 
   useEffect(() => {
     const fetchBlocksData = async () => {
+      if (formData.department_ids.length === 0) {
+        setBlockOptions([]);
+        return;
+      }
       setLoadingBlocks(true);
       try {
-        const departmentIds = formData.department_ids;
-        if (!departmentIds || departmentIds.length === 0) {
-          setBlockOptions([]);
-          return;
+        const blocksResponse = await fetchBlocksByDepartment(formData.department_ids);
+        if (Array.isArray(blocksResponse)) {
+          const activeBlocks = blocksResponse.filter((b) => b.status === "Active");
+          setBlockOptions(activeBlocks.map((b) => ({
+            label: b.course_code ? `${b.course_code} ${b.block_name || b.name || ""}` : (b.block_name || b.name || ""),
+            value: b.block_id,
+          })));
         }
-        const blocksResponse = await fetchBlocksByDepartment(departmentIds);
-        if (!Array.isArray(blocksResponse)) {
-          throw new Error("Invalid API response: Expected an array of blocks.");
-        }
-        const activeBlocks = blocksResponse.filter(
-          (block) => block.status === "Active"
-        );
-
-        const formattedBlocks = activeBlocks.map((block) => {
-          const blockName = block.block_name || block.name || "";
-          const label = block.course_code
-            ? `${block.course_code} ${blockName}`
-            : blockName;
-          return { label, value: block.block_id };
-        });
-
-        setBlockOptions(formattedBlocks);
-      } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load blocks. Please try again.",
-          type: "error",
-        });
-      } finally {
-        setLoadingBlocks(false);
-      }
+      } catch {}
+      setLoadingBlocks(false);
     };
     fetchBlocksData();
   }, [formData.department_ids]);
 
-  const handleChange = (name, value) => {
-    setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
-  };
+  const handleChange = (name, value) => setFormData((prev) => ({ ...prev, [name]: value }));
 
   const handleSubmit = async () => {
+    if (!formData.event_name_id) {
+      setModal({ visible: true, title: "Validation Error", message: "Please select an event name.", type: "error" });
+      return;
+    }
+    if (formData.department_ids.length === 0) {
+      setModal({ visible: true, title: "Validation Error", message: "Please select at least one department.", type: "error" });
+      return;
+    }
+    if (formData.block_ids.length === 0) {
+      setModal({ visible: true, title: "Validation Error", message: "Please select at least one block.", type: "error" });
+      return;
+    }
+    if (!formData.venue) {
+      setModal({ visible: true, title: "Validation Error", message: "Please enter a venue.", type: "error" });
+      return;
+    }
+    if (!formData.description.trim()) {
+      setModal({ visible: true, title: "Validation Error", message: "Please fill in the event description.", type: "error" });
+      return;
+    }
+    if (!formData.event_date || (Array.isArray(formData.event_date) && formData.event_date.flat().filter(Boolean).length === 0)) {
+      setModal({ visible: true, title: "Validation Error", message: "Please select a valid event date.", type: "error" });
+      return;
+    }
+    if (!(formData.am_in || formData.am_out || formData.pm_in || formData.pm_out)) {
+      setModal({ visible: true, title: "Validation Error", message: "Please select at least one AM or PM time.", type: "error" });
+      return;
+    }
+    if (formData.duration < 30) {
+      setModal({ visible: true, title: "Validation Error", message: "Event duration must be at least 30 minutes.", type: "error" });
+      return;
+    }
+
     try {
-      if (!formData.event_name_id) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select an event name.",
-          type: "error",
-        });
-        return;
-      }
-      if (formData.department_ids.length === 0) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select at least one department.",
-          type: "error",
-        });
-        return;
-      }
-      if (formData.block_ids.length === 0) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select at least one block.",
-          type: "error",
-        });
-        return;
-      }
-      if (!formData.venue) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please enter a venue.",
-          type: "error",
-        });
-        return;
-      }
-      if (!formData.description.trim()) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please fill in the event description.",
-          type: "error",
-        });
-        return;
-      }
-      if (!formData.event_date) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select a valid event date.",
-          type: "error",
-        });
-        return;
-      }
-
-      const formattedDates = Array.isArray(formData.event_date)
-        ? formData.event_date.flat().filter(Boolean)
-        : [];
-
-      if (formattedDates.length === 0) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select a valid event date.",
-          type: "error",
-        });
-        return;
-      }
-
-      if (
-        !(
-          formData.am_in ||
-          formData.am_out ||
-          formData.pm_in ||
-          formData.pm_out
-        )
-      ) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select at least one of the AM or PM times.",
-          type: "error",
-        });
-        return;
-      }
-
-      const convertToMinutes = (timeString) => {
-        const [hours, minutes] = timeString.split(":").map(Number);
-        return hours * 60 + minutes;
-      };
-
-      if (formData.am_in && formData.am_out) {
-        const amInMinutes = convertToMinutes(formData.am_in);
-        const amOutMinutes = convertToMinutes(formData.am_out);
-        const amTimeDifference = amOutMinutes - amInMinutes;
-        if (amTimeDifference < 60) {
-          setModal({
-            visible: true,
-            title: "Validation Error",
-            message: "AM times must be at least one hour apart.",
-            type: "error",
-          });
-          return;
-        }
-      }
-
-      if (formData.pm_in && formData.pm_out) {
-        const pmInMinutes = convertToMinutes(formData.pm_in);
-        const pmOutMinutes = convertToMinutes(formData.pm_out);
-        const pmTimeDifference = pmOutMinutes - pmInMinutes;
-        if (pmTimeDifference < 60) {
-          setModal({
-            visible: true,
-            title: "Validation Error",
-            message: "PM times must be at least one hour apart.",
-            type: "error",
-          });
-          return;
-        }
-      }
-
-      if (formData.duration < 30) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Event duration must be at least 30 minutes.",
-          type: "error",
-        });
-        return;
-      }
-
-      const requestData = {
+      const formattedDates = Array.isArray(formData.event_date) ? formData.event_date.flat().filter(Boolean) : [];
+      await addEvent({
         event_name_id: formData.event_name_id,
         venue: formData.venue,
         dates: formattedDates,
@@ -329,287 +150,210 @@ const AddEvent = () => {
         pm_out: formData.pm_out,
         duration: formData.duration,
         admin_id_number: formData.created_by,
-      };
-
-      const response = await addEvent(requestData);
-
-      if (response?.success) {
-        setModal({
-          visible: true,
-          title: "Success",
-          message: "Event added successfully!",
-          type: "success",
-          onPress: () => router.back(),
-        });
-        setTimeout(() => {
-          router.back();
-        }, 1500);
-        setFormData({
-          event_name_id: "",
-          department_ids: [],
-          block_ids: [],
-          venue: "",
-          description: "",
-          am_in: null,
-          am_out: null,
-          pm_in: null,
-          pm_out: null,
-          event_date: null,
-          duration: 0,
-          created_by: formData.created_by,
-        });
-      } else {
-        let errorMessage =
-          "Failed to add the event. Please double-check your information and try again.";
-        if (response?.message) {
-          errorMessage = response.message;
-        }
-        setModal({
-          visible: true,
-          title: "Error",
-          message: errorMessage,
-          type: "error",
-        });
-      }
-    } catch (error) {
-      let errorMessage =
-        "Failed to add the event. Please double-check your information and try again.";
-      if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message === "Network request failed") {
-        errorMessage =
-          "There was a problem connecting to the server. Please check your internet connection and try again.";
-      }
-      setModal({
-        visible: true,
-        title: "Error",
-        message: errorMessage,
-        type: "error",
       });
+      setModal({ visible: true, title: "Success", message: "Event added successfully!", type: "success" });
+      setFormData({
+        event_name_id: "",
+        department_ids: [],
+        block_ids: [],
+        venue: "",
+        description: "",
+        am_in: null,
+        am_out: null,
+        pm_in: null,
+        pm_out: null,
+        event_date: null,
+        duration: 0,
+        created_by: formData.created_by,
+      });
+      setBlockOptions([]);
+    } catch (error) {
+      setModal({ visible: true, title: "Error", message: error.response?.data?.message || "Failed to add event.", type: "error" });
     }
-  };
-
-  const handleModalClose = () => {
-    setModal({ ...modal, visible: false });
   };
 
   const addOneHour = (timeStr) => {
     if (!timeStr) return null;
-    const parts = timeStr.split(":");
-    if (parts.length < 2) return null;
-    const h = parseInt(parts[0], 10) + 1;
-    const m = parseInt(parts[1], 10);
-    if (h >= 24) return null;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
+    const [h, m] = timeStr.split(":").map(Number);
+    if (h >= 23) return null;
+    return `${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
   };
 
-  const amOutDefault = useMemo(() => addOneHour(formData.am_in), [formData.am_in]);
-  const pmOutDefault = useMemo(() => addOneHour(formData.pm_in), [formData.pm_in]);
-
-  const handleDateChange = (date) => {
-    handleChange("event_date", date);
-  };
-
-  const openDurationPicker = () => {
-    setIsDurationPickerVisible(true);
-  };
-
-  const closeDurationPicker = () => {
-    setIsDurationPickerVisible(false);
-  };
-
-  const handleDurationSelect = (durationInMinutes) => {
-    handleChange("duration", durationInMinutes);
-    closeDurationPicker();
-  };
-
-  if (isLoading || loadingDepartments) {
+  if (isLoading) {
     return (
       <View style={globalStyles.secondaryContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
-
-  if (errorDepartments) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={{ color: "red", textAlign: "center" }}>
-          Failed to load departments. Please try again.
-        </Text>
-        <CustomButton
-          title="Retry"
-          onPress={() => {
-            setLoadingDepartments(true);
-            setErrorDepartments(null);
-            fetchDepartmentData();
-          }}
-        />
+        <View style={styles.loadingState}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <View style={[globalStyles.secondaryContainer]}>
+    <View style={globalStyles.secondaryContainer}>
       <CustomModal
         visible={modal.visible}
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={handleModalClose}
+        onClose={() => setModal((m) => ({ ...m, visible: false }))}
         cancelTitle="CLOSE"
       />
-      <Text style={styles.headerText}>ADD EVENT</Text>
+
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>ADD EVENT</Text>
+        <Text style={styles.headerSubtitle}>Schedule a new school event</Text>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View>
-          <CustomDropdown
-            title="Select Event Name"
-            data={eventNames}
-            placeholder="Select an event name"
-            value={formData.event_name_id}
-            onSelect={(item) => handleChange("event_name_id", item.value)}
-          />
-          <CustomDropdown
-            title="Select Departments"
-            data={departmentOptions}
-            placeholder="Select departments"
-            value={formData.department_ids}
-            onSelect={(selectedItems) => {
-              const selectedValues = Array.isArray(selectedItems)
-                ? selectedItems.map((item) =>
-                    typeof item === "object" && item !== null
-                      ? item.value
-                      : item
-                  )
-                : [];
-              handleChange("department_ids", selectedValues);
-            }}
-            multiSelect
-          />
-          {loadingBlocks ? (
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-          ) : (
-            <CustomDropdown
-              title="Select Blocks"
-              data={blockOptions}
-              placeholder="Select blocks"
-              value={formData.block_ids}
-              onSelect={(selectedItems) => {
-                const selectedValues = Array.isArray(selectedItems)
-                  ? selectedItems.map((item) =>
-                      typeof item === "object" && item !== null
-                        ? item.value
-                        : item
-                    )
-                  : [];
-                handleChange("block_ids", selectedValues);
-              }}
-              multiSelect
+        <CustomDropdown
+          title="Event Name"
+          data={eventNames}
+          placeholder="Select an event name"
+          value={formData.event_name_id}
+          onSelect={(item) => handleChange("event_name_id", item?.value ?? "")}
+        />
+        <CustomDropdown
+          title="Departments"
+          data={departmentOptions}
+          placeholder="Select departments"
+          value={formData.department_ids}
+          onSelect={(selectedItems) => {
+            const values = Array.isArray(selectedItems) ? selectedItems.map((i) => typeof i === "object" ? i.value : i) : [];
+            handleChange("department_ids", values);
+          }}
+          multiSelect
+        />
+        <CustomDropdown
+          title="Blocks"
+          data={blockOptions}
+          placeholder={loadingBlocks ? "Loading blocks..." : "Select blocks"}
+          value={formData.block_ids}
+          onSelect={(selectedItems) => {
+            const values = Array.isArray(selectedItems) ? selectedItems.map((i) => typeof i === "object" ? i.value : i) : [];
+            handleChange("block_ids", values);
+          }}
+          multiSelect
+        />
+        <FormField
+          title="Venue"
+          placeholder="Enter venue details"
+          value={formData.venue}
+          onChangeText={(text) => handleChange("venue", text)}
+        />
+        <FormField
+          title="Description"
+          placeholder="Enter event description..."
+          value={formData.description}
+          onChangeText={(text) => handleChange("description", text)}
+          multiline={true}
+        />
+        <DatePickerComponent
+          title="Date of Event"
+          onDateChange={(date) => handleChange("event_date", date)}
+          selectedDate={formData.event_date}
+        />
+        <View style={styles.timeWrapper}>
+          <View style={styles.timeContainer}>
+            <TimePickerComponent
+              title="AM Time In"
+              onTimeChange={(time) => handleChange("am_in", time)}
+              selectedValue={formData.am_in}
+              allowPM={false}
             />
-          )}
-          <FormField
-            title="Venue"
-            placeholder="Enter venue details"
-            value={formData.venue}
-            onChangeText={(text) => handleChange("venue", text)}
-          />
-          <FormField
-            title="Description"
-            placeholder="Enter event description..."
-            value={formData.description}
-            onChangeText={(text) => handleChange("description", text)}
-            multiline={true}
-          />
-          <DatePickerComponent
-            title="Date of Event"
-            onDateChange={handleDateChange}
-            selectedDate={formData.event_date}
-          />
-          <View>
-            <View style={styles.timeWrapper}>
-              <View style={styles.timeContainer}>
-                <TimePickerComponent
-                  title="AM Time In"
-                  onTimeChange={(time) => handleChange("am_in", time)}
-                  selectedValue={formData.am_in}
-                  allowPM={false}
-                />
-              </View>
-              <View style={styles.timeContainer}>
-                <TimePickerComponent
-                  title="AM Time Out"
-                  onTimeChange={(time) => handleChange("am_out", time)}
-                  selectedValue={formData.am_out}
-                  defaultValue={amOutDefault}
-                  allowPM={false}
-                />
-              </View>
-            </View>
           </View>
-          <View>
-            <View style={styles.timeWrapper}>
-              <View style={styles.timeContainer}>
-                <TimePickerComponent
-                  title="PM Time In"
-                  onTimeChange={(time) => handleChange("pm_in", time)}
-                  selectedValue={formData.pm_in}
-                  allowAM={false}
-                />
-              </View>
-              <View style={styles.timeContainer}>
-                <TimePickerComponent
-                  title="PM Time Out"
-                  onTimeChange={(time) => handleChange("pm_out", time)}
-                  selectedValue={formData.pm_out}
-                  defaultValue={pmOutDefault}
-                  allowAM={false}
-                />
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.durationButton}
-              onPress={openDurationPicker}
-            >
-              <Text style={styles.durationButtonText}>
-                Set Duration:{" "}
-                {formData.duration > 0
-                  ? `${Math.floor(formData.duration / 60)} ${
-                      Math.floor(formData.duration / 60) === 1 ? "hr" : "hrs"
-                    } ${formData.duration % 60} mins`
-                  : ""}
-              </Text>
-            </TouchableOpacity>
-            {isDurationPickerVisible && (
-              <DurationPicker
-                visible={isDurationPickerVisible}
-                onClose={closeDurationPicker}
-                onDurationSelect={handleDurationSelect}
-                selectedDuration={formData.duration}
-                key={isDurationPickerVisible ? "visible" : "hidden"}
-              />
-            )}
-          </View>
-          <View style={styles.buttonContainer}>
-            <CustomButton title="SUBMIT" onPress={handleSubmit} />
+          <View style={styles.timeContainer}>
+            <TimePickerComponent
+              title="AM Time Out"
+              onTimeChange={(time) => handleChange("am_out", time)}
+              selectedValue={formData.am_out}
+              defaultValue={addOneHour(formData.am_in)}
+              allowPM={false}
+            />
           </View>
         </View>
+        <View style={styles.timeWrapper}>
+          <View style={styles.timeContainer}>
+            <TimePickerComponent
+              title="PM Time In"
+              onTimeChange={(time) => handleChange("pm_in", time)}
+              selectedValue={formData.pm_in}
+              allowAM={false}
+            />
+          </View>
+          <View style={styles.timeContainer}>
+            <TimePickerComponent
+              title="PM Time Out"
+              onTimeChange={(time) => handleChange("pm_out", time)}
+              selectedValue={formData.pm_out}
+              defaultValue={addOneHour(formData.pm_in)}
+              allowAM={false}
+            />
+          </View>
+        </View>
+        <View
+          style={styles.durationButton}
+          onTouchEnd={openDurationPicker}
+        >
+          <Text style={styles.durationButtonText}>
+            Set Duration: {formData.duration > 0 ? `${Math.floor(formData.duration / 60)} hr ${formData.duration % 60} mins` : "Tap to set"}
+          </Text>
+        </View>
+        {isDurationPickerVisible && (
+          <DurationPicker
+            visible={isDurationPickerVisible}
+            onClose={() => setIsDurationPickerVisible(false)}
+            onDurationSelect={(d) => { handleChange("duration", d); setIsDurationPickerVisible(false); }}
+            selectedDuration={formData.duration}
+          />
+        )}
+        <View style={styles.buttonContainer}>
+          <CustomButton title="SUBMIT" onPress={handleSubmit} />
+        </View>
       </ScrollView>
-      <StatusBar style="auto" />
     </View>
   );
+
+  function openDurationPicker() {
+    setIsDurationPickerVisible(true);
+  }
 };
 
+export default AddEvent;
+
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
-    marginBottom: theme.spacing.small,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
   },
   scrollView: {
     flex: 1,
@@ -618,9 +362,6 @@ const styles = StyleSheet.create({
   scrollview: {
     flexGrow: 1,
     paddingBottom: 120,
-  },
-  buttonContainer: {
-    marginTop: theme.spacing.medium,
   },
   timeWrapper: {
     flexDirection: "row",
@@ -634,8 +375,8 @@ const styles = StyleSheet.create({
   durationButton: {
     padding: theme.spacing.small,
     borderRadius: theme.borderRadius.medium,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+    borderWidth: 1.5,
+    borderColor: "rgba(37,85,134,0.4)",
     marginTop: theme.spacing.medium,
     alignItems: "center",
     justifyContent: "center",
@@ -646,6 +387,18 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.medium,
     fontFamily: theme.fontFamily.Arial,
   },
+  buttonContainer: {
+    marginTop: theme.spacing.medium,
+  },
+  loadingState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.primary,
+    opacity: 0.5,
+  },
 });
-
-export default AddEvent;

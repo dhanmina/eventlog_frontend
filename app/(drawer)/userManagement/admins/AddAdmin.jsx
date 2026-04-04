@@ -1,21 +1,23 @@
+import { useState } from "react";
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
-  ActivityIndicator,
+  Platform,
 } from "react-native";
-import React, { useState, useEffect } from "react";
-
-import { StatusBar } from "expo-status-bar";
-import TabsComponent from "../../../../components/TabsComponent";
+import { addAdmin } from "../../../../services/api/admins";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomDropdown from "../../../../components/CustomDropdown";
 import CustomButton from "../../../../components/CustomButton";
-import { addAdmin } from "../../../../services/api/admins";
 import CustomModal from "../../../../components/CustomModal";
+
+const ROLE_OPTIONS = [
+  { label: "Admin", value: 3 },
+  { label: "Super Admin", value: 4 },
+];
 
 const AddAdmin = () => {
   const [formData, setFormData] = useState({
@@ -27,87 +29,42 @@ const AddAdmin = () => {
     email: "",
     role_id: null,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modal, setModal] = useState({ visible: false, title: "", message: "", type: "success" });
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const handleChange = (name, value) => setFormData((prev) => ({ ...prev, [name]: value }));
 
-  const roleOptions = [
-    { label: "Admin", value: 3 },
-    { label: "Super Admin", value: 4 },
-  ];
-
-  const handleChange = (name, value) => {
-    setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
-  };
+  const isFormValid =
+    formData.id_number &&
+    formData.first_name &&
+    formData.last_name &&
+    formData.email.trim() &&
+    formData.role_id !== null;
 
   const handleSubmit = async () => {
+    setIsSubmitting(true);
     try {
-      if (
-        !formData.id_number ||
-        !formData.first_name ||
-        !formData.last_name ||
-        !formData.email.trim() ||
-        formData.role_id === null
-      ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
+      if (!isFormValid) {
+        setModal({ visible: true, title: "Warning", message: "Please fill in all required fields.", type: "warning" });
         return;
       }
-
-      const submitData = {
+      await addAdmin({
         id_number: formData.id_number,
         first_name: formData.first_name,
-        middle_name: formData.middle_name,
+        middle_name: formData.middle_name || null,
         last_name: formData.last_name,
-        suffix: formData.suffix,
+        suffix: formData.suffix || null,
         email: formData.email,
         role_id: formData.role_id,
-      };
-
-      await addAdmin(submitData);
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Admin added successfully!",
-        type: "success",
       });
-      setFormData({
-        id_number: "",
-        first_name: "",
-        middle_name: "",
-        last_name: "",
-        suffix: "",
-        email: "",
-        role_id: null,
-      });
+      setModal({ visible: true, title: "Success", message: "Admin added successfully!", type: "success" });
+      setFormData({ id_number: "", first_name: "", middle_name: "", last_name: "", suffix: "", email: "", role_id: null });
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message:
-          error.response?.data?.message ||
-          "Failed to add admin. Please try again.",
-        type: "error",
-      });
+      setModal({ visible: true, title: "Error", message: error.response?.data?.message || "Failed to add admin.", type: "error" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
 
   return (
     <View style={globalStyles.secondaryContainer}>
@@ -116,15 +73,20 @@ const AddAdmin = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={() => setModal((m) => ({ ...m, visible: false }))}
         cancelTitle="CLOSE"
       />
 
-      <Text style={styles.headerText}>ADD ADMIN</Text>
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>ADD ADMIN</Text>
+        <Text style={styles.headerSubtitle}>Create a new administrator account</Text>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <FormField
           type="id"
@@ -168,18 +130,19 @@ const AddAdmin = () => {
         />
         <CustomDropdown
           title="Role"
-          data={roleOptions}
+          data={ROLE_OPTIONS}
           placeholder="Select a role"
           value={formData.role_id}
-          onSelect={(item) => handleChange("role_id", item.value)}
+          onSelect={(item) => handleChange("role_id", item?.value ?? "")}
         />
-        <View style={styles.buttonWrapper}>
-          <CustomButton title="ADD" onPress={handleSubmit} />
+        <View style={styles.buttonContainer}>
+          <CustomButton
+            title={isSubmitting ? "ADDING..." : "ADD ADMIN"}
+            onPress={handleSubmit}
+            disabled={!isFormValid || isSubmitting}
+          />
         </View>
       </ScrollView>
-
-      <TabsComponent />
-      <StatusBar style="auto" />
     </View>
   );
 };
@@ -187,12 +150,33 @@ const AddAdmin = () => {
 export default AddAdmin;
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
-    marginBottom: theme.spacing.small,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
   },
   scrollView: {
     flex: 1,
@@ -202,7 +186,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 120,
   },
-  buttonWrapper: {
+  buttonContainer: {
     marginTop: theme.spacing.medium,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,11 +7,10 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  Platform,
 } from "react-native";
-import TabsComponent from "../../../../components/TabsComponent";
-import { StatusBar } from "expo-status-bar";
-import { fetchAdmins, disableAdmin } from "../../../../services/api/admins";
 import { router, useFocusEffect } from "expo-router";
+import { fetchAdmins, disableAdmin, enableAdmin } from "../../../../services/api/admins";
 import icons from "../../../../constants/icons";
 import SearchBar from "../../../../components/CustomSearch";
 import CustomModal from "../../../../components/CustomModal";
@@ -23,21 +22,19 @@ import { getStoredUser } from "../../../../database/queries";
 export default function AdminsScreen() {
   const [admins, setAdmins] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isDisableModalVisible, setIsDisableModalVisible] = useState(false);
-  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
-  const [adminToDisable, setAdminToDisable] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [currentAdminId, setCurrentAdminId] = useState(null);
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState("");
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isToggleModalVisible, setIsToggleModalVisible] = useState(false);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [adminToToggle, setAdminToToggle] = useState(null);
+  const [isOwnAccountModalVisible, setIsOwnAccountModalVisible] = useState(false);
 
   useEffect(() => {
     const fetchCurrentAdmin = async () => {
       const user = await getStoredUser();
       setCurrentAdminId(user?.id_number);
     };
-
     fetchCurrentAdmin();
   }, []);
 
@@ -45,16 +42,10 @@ export default function AdminsScreen() {
     try {
       const fetchedAdmins = await fetchAdmins();
       setAdmins(fetchedAdmins);
-    } catch (err) {
-      console.error("Error fetching admins:", err);
-    }
+    } catch {}
   };
 
-  useFocusEffect(
-    React.useCallback(() => {
-      loadAdmins();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadAdmins(); }, []));
 
   const refreshData = async () => {
     setRefreshing(true);
@@ -62,161 +53,194 @@ export default function AdminsScreen() {
     setRefreshing(false);
   };
 
-  const lowerCaseQuery = searchQuery.toLowerCase();
-  const filteredAdmins = admins.filter(
-    (admin) =>
-      admin.first_name.toLowerCase().includes(lowerCaseQuery) ||
-      admin.last_name.toLowerCase().includes(lowerCaseQuery)
-  );
+  const filteredAdmins = admins.filter((admin) => {
+    const fullName = `${admin.first_name || ""} ${admin.last_name || ""}`.toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase()) || admin.id_number?.includes(searchQuery);
+  });
 
-  const handleDisablePress = (admin) => {
+  const activeCount = admins.filter((a) => a.status === "Active").length;
+  const disabledCount = admins.filter((a) => a.status === "Disabled").length;
+
+  const handleTogglePress = (admin) => {
     if (admin.id_number === currentAdminId) {
-      setIsDisableModalVisible(false);
-      setAdminToDisable(null);
-      setIsSuccessModalVisible(false);
-      setModalMessage("You cannot disable your own account.");
-      setModalType("error");
-      setIsModalVisible(true);
+      setIsOwnAccountModalVisible(true);
       return;
     }
-
-    setAdminToDisable(admin);
-    setIsDisableModalVisible(true);
+    setAdminToToggle(admin);
+    setIsToggleModalVisible(true);
   };
 
-  const handleDisableModalClose = () => {
-    setIsDisableModalVisible(false);
-    setAdminToDisable(null);
+  const handleToggleModalClose = () => {
+    setIsToggleModalVisible(false);
+    setAdminToToggle(null);
   };
 
-  const handleConfirmDisable = async () => {
-    if (!adminToDisable) return;
-
-    if (adminToDisable.id_number === currentAdminId) {
-      setIsDisableModalVisible(false);
-      setAdminToDisable(null);
-      setIsSuccessModalVisible(false);
-      setModalMessage("You cannot disable your own account.");
-      setModalType("error");
-      setIsModalVisible(true);
-      return;
-    }
-
+  const handleConfirmToggle = async () => {
+    if (!adminToToggle) return;
+    const isDisabled = adminToToggle.status === "Disabled";
     try {
-      await disableAdmin(adminToDisable.id_number);
+      if (isDisabled) {
+        await enableAdmin(adminToToggle.id_number);
+      } else {
+        await disableAdmin(adminToToggle.id_number);
+      }
       await loadAdmins();
-      setIsDisableModalVisible(false);
-      setTimeout(() => setIsSuccessModalVisible(true), 300);
-    } catch (error) {
-      console.error("Error disabling admin:", error);
-    }
+      handleToggleModalClose();
+      setSuccessMessage(`Admin ${isDisabled ? "enabled" : "disabled"} successfully!`);
+      setIsSuccessModalVisible(true);
+    } catch {}
   };
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <Text style={styles.headerText}>ADMINS</Text>
-      <View style={{ width: "100%" }}>
-        <SearchBar placeholder="Search admins..." onSearch={setSearchQuery} />
-      </View>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollview}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
-        }
-      >
-        {filteredAdmins.length > 0 ? (
-          filteredAdmins.map((admin) => (
-            <TouchableOpacity
-              key={admin.id_number}
-              style={styles.adminContainer}
-              onPress={() =>
-                router.push(
-                  `/userManagement/admins/AdminDetails?id_number=${admin.id_number}`
-                )
-              }
-            >
-              <View style={styles.textContainer}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {admin.first_name} {admin.last_name}
-                </Text>
-                <Text style={styles.status} numberOfLines={1}>
-                  {admin.status}
-                </Text>
-              </View>
-              <View style={styles.iconContainer}>
-                <TouchableOpacity
-                  style={styles.iconBtn}
-                  onPress={() =>
-                    router.push(
-                      `/userManagement/admins/EditAdmin?id_number=${admin.id_number}`
-                    )
-                  }
-                >
-                  <Image source={icons.edit} style={styles.icon} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.iconBtn, { opacity: admin.status === "Disabled" ? 0.3 : 1 }]}
-                  onPress={() => handleDisablePress(admin)}
-                  disabled={admin.status === "Disabled"}
-                >
-                  <Image source={icons.disabled} style={styles.icon} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))
-        ) : (
-          <Text style={styles.noResults}>No admins found</Text>
-        )}
-      </ScrollView>
-      <View style={styles.buttonContainer}>
-        <CustomButton
-          title="ADD ADMIN"
-          onPress={() => router.push("/userManagement/admins/AddAdmin")}
-        />
-      </View>
-      <View style={styles.tabSpacer} />
       <CustomModal
-        visible={isDisableModalVisible}
-        title="Confirm Disable"
-        message={`Are you sure you want to disable ${adminToDisable?.first_name} ${adminToDisable?.last_name}?`}
+        visible={isToggleModalVisible}
+        title={adminToToggle?.status === "Disabled" ? "Enable Admin" : "Disable Admin"}
+        message={`Are you sure you want to ${adminToToggle?.status === "Disabled" ? "enable" : "disable"} ${adminToToggle?.first_name} ${adminToToggle?.last_name}?`}
         type="warning"
-        onClose={handleDisableModalClose}
-        onConfirm={handleConfirmDisable}
+        onClose={handleToggleModalClose}
+        onConfirm={handleConfirmToggle}
         cancelTitle="Cancel"
-        confirmTitle="Disable"
+        confirmTitle={adminToToggle?.status === "Disabled" ? "Enable" : "Disable"}
       />
       <CustomModal
         visible={isSuccessModalVisible}
         title="Success"
-        message="Admin disabled successfully!"
+        message={successMessage}
         type="success"
         onClose={() => setIsSuccessModalVisible(false)}
         cancelTitle="CLOSE"
       />
-
       <CustomModal
-        visible={isModalVisible}
+        visible={isOwnAccountModalVisible}
         title="Action Not Allowed"
-        message={modalMessage}
-        type={modalType}
-        onClose={() => setIsModalVisible(false)}
+        message="You cannot disable your own account."
+        type="warning"
+        onClose={() => setIsOwnAccountModalVisible(false)}
         cancelTitle="CLOSE"
       />
-      <TabsComponent />
-      <StatusBar style="auto" />
+
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>ADMINS</Text>
+        <Text style={styles.headerSubtitle}>Manage administrator accounts</Text>
+        {admins.length > 0 && (
+          <View style={styles.headerFooter}>
+            <Text style={styles.headerStat}>{activeCount} Active</Text>
+            <Text style={styles.headerStatDivider}>·</Text>
+            <Text style={styles.headerStat}>{disabledCount} Disabled</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={{ width: "100%" }}>
+        <SearchBar placeholder="Search admins..." onSearch={setSearchQuery} />
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollview}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshData} />}
+      >
+        {filteredAdmins.length > 0 ? (
+          filteredAdmins.map((admin) => {
+            const isDisabled = admin.status === "Disabled";
+            const fullName = `${admin.first_name || ""} ${admin.last_name || ""}`;
+            return (
+              <TouchableOpacity
+                key={admin.id_number}
+                style={styles.card}
+                onPress={() => router.push(`/userManagement/admins/AdminDetails?id_number=${admin.id_number}`)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.cardLeft, isDisabled && styles.cardLeftDisabled]} />
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardName} numberOfLines={1}>{fullName}</Text>
+                  <Text style={styles.cardSub} numberOfLines={1}>{admin.id_number}</Text>
+                </View>
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => router.push(`/userManagement/admins/EditAdmin?id_number=${admin.id_number}`)}
+                  >
+                    <Image source={icons.edit} style={styles.icon} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => handleTogglePress(admin)}
+                  >
+                    <Image source={isDisabled ? icons.check : icons.disabled} style={styles.icon} />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          <View style={styles.emptyState}>
+            <Image source={icons.admin} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>No admins found</Text>
+            <Text style={styles.emptySub}>
+              {searchQuery ? "Try a different search term" : "Add an admin to get started"}
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+
+      <View style={styles.buttonContainer}>
+        <CustomButton title="ADD ADMIN" onPress={() => router.push("/userManagement/admins/AddAdmin")} />
+      </View>
+      <View style={styles.tabSpacer} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
-    fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
     marginBottom: theme.spacing.small,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
+  },
+  headerFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
+    paddingTop: theme.spacing.small,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,241,229,0.15)",
+  },
+  headerStat: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.7,
+  },
+  headerStatDivider: {
+    color: theme.colors.secondary,
+    opacity: 0.3,
   },
   scrollView: {
     flex: 1,
@@ -224,63 +248,100 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.small,
   },
   scrollview: {
-    paddingBottom: 200,
     flexGrow: 1,
+    paddingBottom: theme.spacing.medium,
   },
-  adminContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+  card: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.small,
-    paddingVertical: theme.spacing.small,
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.1)",
     marginBottom: theme.spacing.small,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
   },
-  textContainer: {
+  cardLeft: {
+    width: 4,
+    alignSelf: "stretch",
+    backgroundColor: theme.colors.primary,
+    opacity: 0.7,
+  },
+  cardLeftDisabled: {
+    backgroundColor: "rgba(0,0,0,0.15)",
+    opacity: 1,
+  },
+  cardBody: {
     flex: 1,
-    flexDirection: "column",
-    justifyContent: "center",
-    marginRight: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+    gap: 3,
   },
-  icon: {
-    width: 20,
-    height: 20,
-    tintColor: theme.colors.primary,
+  cardName: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.primary,
+  },
+  cardSub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.5,
+    marginTop: 2,
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingRight: theme.spacing.xsmall,
   },
   iconBtn: {
     padding: theme.spacing.xsmall,
     marginLeft: theme.spacing.xsmall,
   },
-  iconContainer: {
-    flexDirection: "row",
+  icon: {
+    width: 18,
+    height: 18,
+    tintColor: theme.colors.primary,
+  },
+  emptyState: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 60,
+    gap: theme.spacing.small,
   },
-  name: {
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    tintColor: theme.colors.primary,
+    opacity: 0.2,
+  },
+  emptyTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
     fontSize: theme.fontSizes.large,
-    flexShrink: 1,
-  },
-  status: {
-    fontFamily: theme.fontFamily.SquadaOne,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.small,
-    flexShrink: 1,
+    opacity: 0.4,
   },
-  noResults: {
-    textAlign: "center",
-    fontFamily: theme.fontFamily.SquadaOne,
+  emptySub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.medium,
-    marginTop: theme.spacing.medium,
+    opacity: 0.3,
   },
   buttonContainer: {
-    alignSelf: "center",
-    width: "80%",
+    width: "100%",
     paddingVertical: theme.spacing.small,
   },
   tabSpacer: {
-    height: 110,
+    height: 80,
   },
 });

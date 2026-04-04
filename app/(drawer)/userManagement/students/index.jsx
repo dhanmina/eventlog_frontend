@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,16 +7,14 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  Platform,
 } from "react-native";
-import TabsComponent from "../../../../components/TabsComponent";
-
-import { StatusBar } from "expo-status-bar";
-import { fetchUsers, disableUser } from "../../../../services/api/users";
 import { router, useFocusEffect } from "expo-router";
+import { fetchUsers, disableUser, enableUser } from "../../../../services/api/users";
 import icons from "../../../../constants/icons";
 import SearchBar from "../../../../components/CustomSearch";
-import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
+import CustomButton from "../../../../components/CustomButton";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 
@@ -26,25 +24,22 @@ export default function StudentsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [isDisableModalVisible, setIsDisableModalVisible] = useState(false);
-  const [studentToDisable, setStudentToDisable] = useState(null);
+  const [isToggleModalVisible, setIsToggleModalVisible] = useState(false);
+  const [studentToToggle, setStudentToToggle] = useState(null);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const loadStudents = async (query = "", page = 1) => {
     try {
       const response = await fetchUsers(query, page);
-      if (response && response.success && Array.isArray(response.data)) {
+      if (response?.success && Array.isArray(response.data)) {
         setStudents(response.data);
-        setTotalPages(
-          Math.ceil(
-            response.pagination.totalItems / response.pagination.itemsPerPage
-          )
-        );
+        setTotalPages(Math.ceil(response.pagination.totalItems / response.pagination.itemsPerPage));
       } else {
         setStudents([]);
         setTotalPages(1);
       }
-    } catch (err) {
+    } catch {
       setStudents([]);
       setTotalPages(1);
     }
@@ -59,11 +54,7 @@ export default function StudentsScreen() {
     }
   };
 
-  useFocusEffect(
-    React.useCallback(() => {
-      loadStudents(searchQuery, currentPage);
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadStudents(searchQuery, currentPage); }, []));
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -72,31 +63,73 @@ export default function StudentsScreen() {
     }
   };
 
-  const handleDisablePress = (student) => {
-    setStudentToDisable(student);
-    setIsDisableModalVisible(true);
+  const filteredStudents = students.filter((student) => {
+    const fullName = `${student.first_name || ""} ${student.middle_name || ""} ${student.last_name || ""}`.toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase()) || student.id_number?.includes(searchQuery);
+  });
+
+  const activeCount = students.filter((s) => s.status === "Active").length;
+  const disabledCount = students.filter((s) => s.status === "Disabled").length;
+
+  const handleTogglePress = (student) => {
+    setStudentToToggle(student);
+    setIsToggleModalVisible(true);
   };
 
-  const handleConfirmDisable = async () => {
+  const handleToggleModalClose = () => {
+    setIsToggleModalVisible(false);
+    setStudentToToggle(null);
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!studentToToggle) return;
+    const isDisabled = studentToToggle.status === "Disabled";
     try {
-      if (studentToDisable) {
-        await disableUser(studentToDisable.id_number);
-        setIsDisableModalVisible(false);
-        setIsSuccessModalVisible(true);
-        loadStudents(searchQuery, currentPage);
+      if (isDisabled) {
+        await enableUser(studentToToggle.id_number);
+      } else {
+        await disableUser(studentToToggle.id_number);
       }
-    } catch (error) {
-      console.error("Error disabling student:", error);
-    }
-  };
-
-  const handleSuccessModalClose = () => {
-    setIsSuccessModalVisible(false);
+      setIsToggleModalVisible(false);
+      setSuccessMessage(`Student ${isDisabled ? "enabled" : "disabled"} successfully!`);
+      setIsSuccessModalVisible(true);
+      loadStudents(searchQuery, currentPage);
+    } catch {}
   };
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <Text style={styles.headerText}>STUDENTS</Text>
+      <CustomModal
+        visible={isToggleModalVisible}
+        title={studentToToggle?.status === "Disabled" ? "Enable Student" : "Disable Student"}
+        message={`Are you sure you want to ${studentToToggle?.status === "Disabled" ? "enable" : "disable"} ${studentToToggle?.first_name} ${studentToToggle?.last_name}?`}
+        type="warning"
+        onClose={handleToggleModalClose}
+        onConfirm={handleConfirmToggle}
+        cancelTitle="Cancel"
+        confirmTitle={studentToToggle?.status === "Disabled" ? "Enable" : "Disable"}
+      />
+      <CustomModal
+        visible={isSuccessModalVisible}
+        title="Success"
+        message={successMessage}
+        type="success"
+        onClose={() => setIsSuccessModalVisible(false)}
+        cancelTitle="CLOSE"
+      />
+
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>STUDENTS</Text>
+        <Text style={styles.headerSubtitle}>Manage student accounts</Text>
+        {students.length > 0 && (
+          <View style={styles.headerFooter}>
+            <Text style={styles.headerStat}>{activeCount} Active</Text>
+            <Text style={styles.headerStatDivider}>·</Text>
+            <Text style={styles.headerStat}>{disabledCount} Disabled</Text>
+          </View>
+        )}
+      </View>
+
       <View style={{ width: "100%" }}>
         <SearchBar
           placeholder="Search students..."
@@ -107,59 +140,57 @@ export default function StudentsScreen() {
           }}
         />
       </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshData} />}
       >
-        {students.length > 0 ? (
-          students.map((student) => (
-            <TouchableOpacity
-              key={student.id_number}
-              style={styles.studentContainer}
-              onPress={() =>
-                router.push(
-                  `/userManagement/students/StudentDetails?id=${student.id_number}`
-                )
-              }
-            >
-              <View style={styles.textContainer}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {`${student.first_name || ""} ${student.middle_name || ""} ${
-                    student.last_name || ""
-                  }${student.suffix ? `, ${student.suffix}` : ""}`}
-                </Text>
-                <Text style={styles.status} numberOfLines={1}>
-                  {student.status}
-                </Text>
-              </View>
-              <View style={styles.iconContainer}>
-                <TouchableOpacity
-                  onPress={() =>
-                    router.push(
-                      `/userManagement/students/EditStudent?id=${student.id_number}`
-                    )
-                  }
-                >
-                  <Image source={icons.edit} style={styles.icon} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleDisablePress(student)}
-                  disabled={student.status === "Disabled"}
-                  style={{ opacity: student.status === "Disabled" ? 0.5 : 1 }}
-                >
-                  <Image source={icons.disabled} style={styles.icon} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))
+        {filteredStudents.length > 0 ? (
+          filteredStudents.map((student) => {
+            const isDisabled = student.status === "Disabled";
+            const fullName = `${student.first_name || ""} ${student.middle_name || ""} ${student.last_name || ""}${student.suffix ? `, ${student.suffix}` : ""}`;
+            return (
+              <TouchableOpacity
+                key={student.id_number}
+                style={styles.card}
+                onPress={() => router.push(`/userManagement/students/StudentDetails?id=${student.id_number}`)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.cardLeft, isDisabled && styles.cardLeftDisabled]} />
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardName} numberOfLines={1}>{fullName}</Text>
+                  <Text style={styles.cardSub} numberOfLines={1}>{student.id_number}</Text>
+                </View>
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => router.push(`/userManagement/students/EditStudent?id=${student.id_number}`)}
+                  >
+                    <Image source={icons.edit} style={styles.icon} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => handleTogglePress(student)}
+                  >
+                    <Image source={isDisabled ? icons.check : icons.disabled} style={styles.icon} />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            );
+          })
         ) : (
-          <Text style={styles.noResults}>No students found</Text>
+          <View style={styles.emptyState}>
+            <Image source={icons.student} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>No students found</Text>
+            <Text style={styles.emptySub}>
+              {searchQuery ? "Try a different search term" : "Add a student to get started"}
+            </Text>
+          </View>
         )}
       </ScrollView>
+
       {totalPages > 1 && (
         <View style={styles.pageNav}>
           <TouchableOpacity
@@ -183,59 +214,60 @@ export default function StudentsScreen() {
       )}
 
       <View style={styles.buttonContainer}>
-        <CustomButton
-          title="ADD STUDENT"
-          onPress={() => {
-            router.push("/userManagement/students/AddStudent");
-          }}
-        />
+        <CustomButton title="ADD STUDENT" onPress={() => router.push("/userManagement/students/AddStudent")} />
       </View>
-      <CustomModal
-        visible={isDisableModalVisible}
-        title="Confirm Disable"
-        message={`Are you sure you want to disable ${studentToDisable?.first_name} ${studentToDisable?.last_name}?`}
-        type="warning"
-        onClose={() => setIsDisableModalVisible(false)}
-        onConfirm={handleConfirmDisable}
-        cancelTitle="Cancel"
-        confirmTitle="Disable"
-      />
-      <CustomModal
-        visible={isSuccessModalVisible}
-        title="Success"
-        message="Student disabled successfully!"
-        type="success"
-        onClose={handleSuccessModalClose}
-        cancelTitle="CLOSE"
-      />
-      <TabsComponent />
-      <StatusBar style="auto" />
+      <View style={styles.tabSpacer} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.small,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
-    marginBottom: theme.spacing.small,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
   },
-  studentContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
+  },
+  headerFooter: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.small,
-    paddingVertical: theme.spacing.small,
-    marginBottom: theme.spacing.small,
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
+    paddingTop: theme.spacing.small,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,241,229,0.15)",
   },
-  textContainer: {
-    flex: 1,
-    flexDirection: "column",
-    justifyContent: "center",
+  headerStat: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.7,
+  },
+  headerStatDivider: {
+    color: theme.colors.secondary,
+    opacity: 0.3,
   },
   scrollView: {
     flex: 1,
@@ -243,51 +275,107 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.small,
   },
   scrollview: {
-    paddingBottom: 200,
     flexGrow: 1,
+    paddingBottom: theme.spacing.medium,
   },
-  icon: {
-    width: 20,
-    height: 20,
-    tintColor: theme.colors.primary,
-    marginLeft: theme.spacing.small,
-  },
-  iconContainer: {
+  card: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.1)",
+    marginBottom: theme.spacing.small,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
   },
-  name: {
+  cardLeft: {
+    width: 4,
+    alignSelf: "stretch",
+    backgroundColor: theme.colors.primary,
+    opacity: 0.7,
+  },
+  cardLeftDisabled: {
+    backgroundColor: "rgba(0,0,0,0.15)",
+    opacity: 1,
+  },
+  cardBody: {
+    flex: 1,
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+    gap: 3,
+  },
+  cardName: {
     fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
     fontSize: theme.fontSizes.large,
-    flexShrink: 1,
-  },
-  status: {
-    fontFamily: theme.fontFamily.SquadaOne,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.small,
-    flexShrink: 1,
   },
-  noResults: {
-    textAlign: "center",
-    fontFamily: theme.fontFamily.SquadaOne,
+  cardSub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.medium,
-    marginTop: theme.spacing.medium,
+    opacity: 0.5,
+    marginTop: 2,
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingRight: theme.spacing.xsmall,
+  },
+  iconBtn: {
+    padding: theme.spacing.xsmall,
+    marginLeft: theme.spacing.xsmall,
+  },
+  icon: {
+    width: 18,
+    height: 18,
+    tintColor: theme.colors.primary,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 60,
+    gap: theme.spacing.small,
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    tintColor: theme.colors.primary,
+    opacity: 0.2,
+  },
+  emptyTitle: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.primary,
+    opacity: 0.4,
+  },
+  emptySub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.3,
   },
   buttonContainer: {
-    position: "absolute",
-    bottom: "15%",
-    alignSelf: "center",
-    width: "80%",
-    padding: theme.spacing.medium,
+    width: "100%",
+    paddingVertical: theme.spacing.small,
+  },
+  tabSpacer: {
+    height: 80,
   },
   pageNav: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginVertical: theme.spacing.medium,
-    marginBottom: 180,
+    paddingVertical: theme.spacing.medium,
     gap: theme.spacing.small,
   },
   pageArrowBtn: {
