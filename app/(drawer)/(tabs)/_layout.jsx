@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../context/AuthContext";
 import theme from "../../../constants/theme";
 
-// TabList is hidden — tab bar is rendered persistently in (drawer)/_layout.jsx
 const TabsLayout = () => {
   const { user } = useAuth();
   const roleId = user?.role_id;
@@ -17,11 +16,21 @@ const TabsLayout = () => {
       <Tabs>
         <TabSlot />
         <TabList style={styles.hidden}>
-          <TabTrigger name="home" href="/(tabs)/home"><View /></TabTrigger>
-          <TabTrigger name="qr" href="/(tabs)/qr"><View /></TabTrigger>
-          <TabTrigger name="records" href="/(tabs)/records"><View /></TabTrigger>
-          <TabTrigger name="account" href="/(tabs)/account"><View /></TabTrigger>
-          <TabTrigger name="center" href="/(tabs)/center"><View /></TabTrigger>
+          <TabTrigger name="home" href="/(tabs)/home">
+            <View />
+          </TabTrigger>
+          <TabTrigger name="qr" href="/(tabs)/qr">
+            <View />
+          </TabTrigger>
+          <TabTrigger name="records" href="/(tabs)/records">
+            <View />
+          </TabTrigger>
+          <TabTrigger name="account" href="/(tabs)/account">
+            <View />
+          </TabTrigger>
+          <TabTrigger name="center" href="/(tabs)/center">
+            <View />
+          </TabTrigger>
         </TabList>
       </Tabs>
     </SafeAreaView>

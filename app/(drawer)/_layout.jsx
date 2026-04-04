@@ -20,8 +20,6 @@ import theme from "../../constants/theme";
 
 const screenWidth = Dimensions.get("window").width;
 
-// ─── Persistent bottom tab bar ───────────────────────────────────────────────
-
 const TabItem = ({ icon, label, active }) => (
   <View style={styles.tabItem}>
     {active && <View style={styles.activeBar} />}
@@ -89,8 +87,6 @@ const PersistentTabBar = ({ roleId, pathname }) => {
     </View>
   );
 };
-
-// ─── Sidebar drawer content ───────────────────────────────────────────────────
 
 const NAV_ITEMS = [
   {
@@ -183,8 +179,6 @@ const CustomDrawerContent = (props) => {
     </DrawerContentScrollView>
   );
 };
-
-// ─── Drawer layout ────────────────────────────────────────────────────────────
 
 export default function DrawerLayout() {
   const pathname = usePathname();
@@ -282,13 +276,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // ── Drawer sidebar ──────────────────────────────────────────────────────────
   drawerContent: {
     flexGrow: 1,
     paddingBottom: 100,
   },
 
-  // Header card — matches screen header card pattern
   drawerHeader: {
     backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.large,
@@ -352,7 +344,6 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
 
-  // ── Nav items ───────────────────────────────────────────────────────────────
   drawerNav: {
     paddingHorizontal: theme.spacing.small,
   },
@@ -431,7 +422,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
-  // ── Persistent tab bar ──────────────────────────────────────────────────────
   tabList: {
     position: "absolute",
     bottom: 0,

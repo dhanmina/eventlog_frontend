@@ -351,7 +351,6 @@ const Records = () => {
 export default Records;
 
 const styles = StyleSheet.create({
-  // Header
   headerCard: {
     width: "100%",
     backgroundColor: theme.colors.primary,
@@ -430,7 +429,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(251,241,229,0.25)",
   },
 
-  // Tabs
   tabBar: {
     flexDirection: "row",
     width: "100%",
@@ -498,7 +496,6 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
 
-  // Event cards
   eventCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -600,7 +597,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
-  // Empty state
   emptyState: {
     flex: 1,
     alignItems: "center",

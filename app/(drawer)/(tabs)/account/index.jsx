@@ -154,7 +154,6 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
 
-  // Header card — matches Home/Records pattern
   headerCard: {
     backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.large,
@@ -219,7 +218,6 @@ const styles = StyleSheet.create({
     color: theme.colors.secondary,
   },
 
-  // Sections
   section: {
     marginBottom: theme.spacing.medium,
   },
@@ -249,7 +247,6 @@ const styles = StyleSheet.create({
     }),
   },
 
-  // Info rows
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -291,7 +288,6 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
   },
 
-  // Contact
   contactHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -318,7 +314,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(37,85,134,0.08)",
   },
 
-  // Logout
   logoutContainer: {
     marginTop: theme.spacing.small,
   },

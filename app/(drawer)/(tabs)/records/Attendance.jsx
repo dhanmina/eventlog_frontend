@@ -543,7 +543,6 @@ const Attendance = () => {
 export default Attendance;
 
 const styles = StyleSheet.create({
-  // Header
   headerCard: {
     width: "100%",
     backgroundColor: theme.colors.primary,
@@ -632,7 +631,6 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Date cards
   dateCard: {
     backgroundColor: theme.colors.secondary,
     borderRadius: theme.borderRadius.medium,
@@ -748,7 +746,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.small,
   },
 
-  // Download button
   downloadButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -777,7 +774,6 @@ const styles = StyleSheet.create({
     color: theme.colors.secondary,
   },
 
-  // States
   stateIcon: {
     width: 40,
     height: 40,

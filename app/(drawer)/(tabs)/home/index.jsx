@@ -357,7 +357,6 @@ const Home = () => {
 export default Home;
 
 const styles = StyleSheet.create({
-  // Header
   headerCard: {
     width: "100%",
     backgroundColor: theme.colors.primary,
@@ -437,7 +436,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(251,241,229,0.25)",
   },
 
-  // Section header
   sectionHeader: {
     width: "100%",
     marginBottom: theme.spacing.small,
@@ -455,7 +453,6 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
 
-  // Event cards
   eventCard: {
     flexDirection: "row",
     backgroundColor: theme.colors.secondary,
@@ -544,7 +541,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Expanded
   expandedSection: {
     gap: theme.spacing.small,
     marginTop: theme.spacing.xsmall,
@@ -596,7 +592,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Empty state
   emptyState: {
     flex: 1,
     alignItems: "center",
