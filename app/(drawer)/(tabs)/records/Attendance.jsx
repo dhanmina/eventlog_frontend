@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,92 +6,104 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  Platform,
 } from "react-native";
 import theme from "../../../../constants/theme";
 import globalStyles from "../../../../constants/globalStyles";
 import icons from "../../../../constants/icons";
 import { useLocalSearchParams } from "expo-router";
 import moment from "moment";
-import CustomButton from "../../../../components/CustomButton";
 import * as Print from "expo-print";
-import * as FileSystem from "expo-file-system";
+import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import CustomModal from "../../../../components/CustomModal";
 import { getStudentAttSummary } from "../../../../services/api/records";
 import { getStoredUser } from "../../../../database/queries";
 
-const SessionLog = ({ label, data, sessionType = "am" }) => {
-  const now = moment.now();
-  const isAttendanceTimePassed = (time) => {
-    try {
-      if (!time) return false;
-      const dateStr = data.date;
-      if (!dateStr) return false;
-      const timeMoment = moment(`${dateStr}T${time}`, "YYYY-MM-DDTHH:mm:ss");
-      return timeMoment.isSameOrBefore(now);
-    } catch (error) {
-      return false;
-    }
-  };
-  const renderAttendanceStatus = (time, attendance) => {
-    try {
-      if (isAttendanceTimePassed(time)) {
-        const iconSource = attendance ? icons.present : icons.absent;
-        const iconStyle = attendance ? styles.presentIcon : styles.absentIcon;
-        return <Image source={iconSource} style={iconStyle} />;
-      }
-      return null;
-    } catch (error) {
-      return null;
-    }
-  };
+const CHIP_SIZE = 38;
 
+const StatusChip = ({ attended }) => {
+  if (attended === null || attended === undefined) {
+    return <View style={[styles.statusChip, styles.chipEmpty]} />;
+  }
+  const isPresent = !!attended;
+  return (
+    <View
+      style={[
+        styles.statusChip,
+        isPresent ? styles.chipPresent : styles.chipAbsent,
+      ]}
+    >
+      <Image
+        source={isPresent ? icons.present : icons.absent}
+        style={[
+          styles.chipIcon,
+          { tintColor: isPresent ? theme.colors.green : "#C62828" },
+        ]}
+      />
+    </View>
+  );
+};
+
+const SessionLog = ({ label, data, sessionType = "am", showDivider }) => {
   const timeInKey = sessionType === "am" ? "am_in" : "pm_in";
   const timeOutKey = sessionType === "am" ? "am_out" : "pm_out";
 
-  const scheduleTimeIn = data?.schedule?.[timeInKey];
-  const scheduleTimeOut = data?.schedule?.[timeOutKey];
-  const attendanceTimeIn = data?.attendance?.[timeInKey];
-  const attendanceTimeOut = data?.attendance?.[timeOutKey];
+  const scheduleIn = data?.schedule?.[timeInKey];
+  const scheduleOut = data?.schedule?.[timeOutKey];
 
-  if (!scheduleTimeIn && !scheduleTimeOut) {
-    return null;
-  }
+  if (!scheduleIn && !scheduleOut) return null;
+
+  const sessionTimes = {
+    am_in: "08:00:00",
+    am_out: "12:00:00",
+    pm_in: "13:00:00",
+    pm_out: "17:00:00",
+  };
+
+  const now = moment();
+  const eventDateStr = data.date;
+
+  const isSessionTimePassed = (timeKey) => {
+    if (!timeKey) return false;
+    const sessionTime = sessionTimes[timeKey];
+    const sessionDateTime = moment(
+      `${eventDateStr}T${sessionTime}`,
+      "YYYY-MM-DDTHH:mm:ss",
+    );
+    return now.isSameOrAfter(sessionDateTime);
+  };
+
+  const showIn = isSessionTimePassed(timeInKey);
+  const showOut = isSessionTimePassed(timeOutKey);
 
   return (
-    <View style={styles.sessionContainer}>
-      <View style={styles.morningTextContainer}>
-        <Text style={styles.morningText}>{label}</Text>
-      </View>
-      <View style={styles.logContainer}>
-        <View style={[styles.timeContainer, { width: "50%" }]}>
-          <View
-            style={[
-              styles.timeLabelContainer,
-              { borderRightWidth: 0, borderLeftWidth: 0 },
-            ]}
-          >
-            <Text style={styles.timeLabel}>Time In</Text>
+    <>
+      {showDivider && <View style={styles.sessionDivider} />}
+      <View style={styles.sessionRow}>
+        <Text style={styles.sessionLabel}>{label}</Text>
+        <View style={styles.sessionStatus}>
+          <View style={styles.statusIndicator}>
+            <Text style={styles.statusLabel}>In</Text>
+            <StatusChip
+              attended={showIn ? data?.attendance?.[timeInKey] : undefined}
+            />
           </View>
-          <View style={[styles.imageContainer, { borderLeftWidth: 0 }]}>
-            {renderAttendanceStatus(scheduleTimeIn, attendanceTimeIn)}
-          </View>
-        </View>
-        <View style={[styles.timeContainer, { width: "50%" }]}>
-          <View style={[styles.timeLabelContainer, { borderRightWidth: 0 }]}>
-            <Text style={styles.timeLabel}>Time Out</Text>
-          </View>
-          <View style={[styles.imageContainer, { borderRightWidth: 0 }]}>
-            {renderAttendanceStatus(scheduleTimeOut, attendanceTimeOut)}
+          <View style={styles.statusIndicator}>
+            <Text style={styles.statusLabel}>Out</Text>
+            <StatusChip
+              attended={showOut ? data?.attendance?.[timeOutKey] : undefined}
+            />
           </View>
         </View>
       </View>
-    </View>
+    </>
   );
 };
 
 const Attendance = () => {
   const [attendanceDataList, setAttendanceDataList] = useState([]);
+  const [rawAttendanceSummary, setRawAttendanceSummary] = useState({});
   const [loading, setLoading] = useState(true);
   const [eventName, setEventName] = useState("");
   const [studentDetails, setStudentDetails] = useState(null);
@@ -118,9 +130,18 @@ const Attendance = () => {
             event_name,
             student_id,
             student_name,
-            attendance_summary,
+            attendance_summary: rawSummary,
             available_time_periods,
           } = summaryResponse.data;
+
+          let attendance_summary = rawSummary;
+          if (typeof rawSummary === "string") {
+            try {
+              attendance_summary = JSON.parse(rawSummary);
+            } catch {
+              attendance_summary = {};
+            }
+          }
 
           setEventName(event_name);
 
@@ -145,23 +166,26 @@ const Attendance = () => {
                 pm_out: available_time_periods?.hasPmOut ? "00:00:00" : null,
               },
               attendance: {
-                am_in: !!summary.am_in_attended,
-                am_out: !!summary.am_out_attended,
-                pm_in: !!summary.pm_in_attended,
-                pm_out: !!summary.pm_out_attended,
+                am_in: summary.am_in_attended ? true : false,
+                am_out: summary.am_out_attended ? true : false,
+                pm_in: summary.pm_in_attended ? true : false,
+                pm_out: summary.pm_out_attended ? true : false,
               },
             }));
 
           setAttendanceDataList(dates);
+          setRawAttendanceSummary(attendance_summary);
         } else {
           setEventName("");
           setStudentDetails(null);
           setAttendanceDataList([]);
+          setRawAttendanceSummary({});
         }
-      } catch (error) {
+      } catch {
         setEventName("");
         setStudentDetails(null);
         setAttendanceDataList([]);
+        setRawAttendanceSummary({});
       } finally {
         setLoading(false);
       }
@@ -190,108 +214,68 @@ const Attendance = () => {
       } = response.data;
 
       let tableHeaders = `<span class="col-date">Date</span>`;
-      if (available_time_periods.hasAmIn) {
+      if (available_time_periods.hasAmIn)
         tableHeaders += '<span class="col-time">AM In</span>';
-      }
-      if (available_time_periods.hasAmOut) {
+      if (available_time_periods.hasAmOut)
         tableHeaders += '<span class="col-time">AM Out</span>';
-      }
-      if (available_time_periods.hasPmIn) {
+      if (available_time_periods.hasPmIn)
         tableHeaders += '<span class="col-time">PM In</span>';
-      }
-      if (available_time_periods.hasPmOut) {
+      if (available_time_periods.hasPmOut)
         tableHeaders += '<span class="col-time">PM Out</span>';
-      }
-      tableHeaders += `
-        <span class="col-count">Present</span>
-        <span class="col-count">Absent</span>
-      `;
+      tableHeaders += `<span class="col-count">Present</span><span class="col-count">Absent</span>`;
 
       const tableRows = Object.entries(attendance_summary || {})
         .map(([date, summary]) => {
-          let rowColumns = `<span class="col-date">${moment(date).format(
-            "MMMM D, YYYY"
-          )}</span>`;
-          if (available_time_periods.hasAmIn) {
-            rowColumns += `<span class="col-time">${
-              summary.am_in_attended || 0
-            }</span>`;
-          }
-          if (available_time_periods.hasAmOut) {
-            rowColumns += `<span class="col-time">${
-              summary.am_out_attended || 0
-            }</span>`;
-          }
-          if (available_time_periods.hasPmIn) {
-            rowColumns += `<span class="col-time">${
-              summary.pm_in_attended || 0
-            }</span>`;
-          }
-          if (available_time_periods.hasPmOut) {
-            rowColumns += `<span class="col-time">${
-              summary.pm_out_attended || 0
-            }</span>`;
-          }
-          rowColumns += `
-            <span class="col-count">${summary.present_count}</span>
-            <span class="col-count">${summary.absent_count}</span>
-          `;
+          let rowColumns = `<span class="col-date">${moment(date).format("MMMM D, YYYY")}</span>`;
+          if (available_time_periods.hasAmIn)
+            rowColumns += `<span class="col-time">${summary.am_in_attended || 0}</span>`;
+          if (available_time_periods.hasAmOut)
+            rowColumns += `<span class="col-time">${summary.am_out_attended || 0}</span>`;
+          if (available_time_periods.hasPmIn)
+            rowColumns += `<span class="col-time">${summary.pm_in_attended || 0}</span>`;
+          if (available_time_periods.hasPmOut)
+            rowColumns += `<span class="col-time">${summary.pm_out_attended || 0}</span>`;
+          rowColumns += `<span class="col-count">${summary.present_count}</span><span class="col-count">${summary.absent_count}</span>`;
           return `<div class="record-line">${rowColumns}</div>`;
         })
         .join("");
 
       const htmlContent = `
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <style>
-            body { font-family: Arial, sans-serif; padding: 0px 40px 20px 40px; color: black; font-size: 11px; }
-            h2, h3, h4 { color: black; }
-            .header-line { color: black; font-weight: bold; margin-bottom: 10px; display: flex; }
-            .record-line { color: black; margin-bottom: 2px; display: flex; }
-            .col-date { width: 120px; text-align: left; }
-            .col-time { width: 60px; text-align: center; font-size: 11px; }
-            .col-count { width: 60px; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div style="padding-top: 10px;">
-            <h2 style="color: black; text-align: left; margin-bottom: 3px;">${
-              event_name || "Unknown Event"
-            }</h2>
-            <h3 style="color: black; text-align: left; margin-bottom: 3px;">Individual Attendance Report</h3>
-            <h4 style="color: black; text-align: left; margin-bottom: 3px;">Generated: ${new Date().toLocaleDateString(
-              "en-US",
-              {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              }
-            )}</h4>
-            <h3 style="color: black; text-align: left; margin-bottom: 10px;">${
-              student_name || "N/A"
-            } (${student_id || "N/A"})</h3>
-            <div style="margin-bottom: 15px;">
-              <p style="margin: 5px 0; text-align: left;"><strong>Course/Block:</strong> ${
-                studentDetails?.courseBlock || "N/A"
-              }</p>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <style>
+              body { font-family: Arial, sans-serif; padding: 0px 40px 20px 40px; color: black; font-size: 11px; }
+              h2, h3, h4 { color: black; }
+              .header-line { color: black; font-weight: bold; margin-bottom: 10px; display: flex; }
+              .record-line { color: black; margin-bottom: 2px; display: flex; }
+              .col-date { width: 120px; text-align: left; }
+              .col-time { width: 60px; text-align: center; font-size: 11px; }
+              .col-count { width: 60px; text-align: center; }
+            </style>
+          </head>
+          <body>
+            <div style="padding-top: 10px;">
+              <h2 style="color: black; text-align: left; margin-bottom: 3px;">${event_name || "Unknown Event"}</h2>
+              <h3 style="color: black; text-align: left; margin-bottom: 3px;">Individual Attendance Report</h3>
+              <h4 style="color: black; text-align: left; margin-bottom: 3px;">Generated: ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</h4>
+              <h3 style="color: black; text-align: left; margin-bottom: 10px;">${student_name || "N/A"} (${student_id || "N/A"})</h3>
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 5px 0; text-align: left;"><strong>Course/Block:</strong> ${studentDetails?.courseBlock || "N/A"}</p>
+              </div>
+              <div class="header-line">${tableHeaders}</div>
+              ${tableRows}
             </div>
-            <div class="header-line">
-              ${tableHeaders}
-            </div>
-            ${tableRows}
-          </div>
-        </body>
-      </html>
-    `;
+          </body>
+        </html>
+      `;
 
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      const pdfName = `${
-        student_name || "Student"
-      } - Individual Attendance Report.pdf`;
-      const pdfPath = `${FileSystem.documentDirectory}${pdfName}`;
-      await FileSystem.moveAsync({ from: uri, to: pdfPath });
-      await Sharing.shareAsync(pdfPath, {
+      const pdfName = `${student_name || "Student"} - Individual Attendance Report.pdf`;
+      const src = new File(uri);
+      const dest = new File(Paths.document, pdfName);
+      src.move(dest);
+      await Sharing.shareAsync(dest.uri, {
         mimeType: "application/pdf",
         UTI: ".pdf",
       });
@@ -305,9 +289,7 @@ const Attendance = () => {
     } catch (error) {
       setModalConfig({
         title: "Download Failed",
-        message: `An error occurred while generating the PDF: ${
-          error.message || "Unknown error"
-        }`,
+        message: `An error occurred while generating the PDF: ${error.message || "Unknown error"}`,
         type: "error",
         cancelTitle: "OK",
       });
@@ -319,7 +301,7 @@ const Attendance = () => {
   if (loading) {
     return (
       <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.stateText}>Loading...</Text>
       </View>
     );
   }
@@ -327,81 +309,13 @@ const Attendance = () => {
   if (!eventName || !studentDetails || attendanceDataList.length === 0) {
     return (
       <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.noEventsText}>No attendance data available.</Text>
+        <Text style={styles.stateText}>No attendance data available.</Text>
       </View>
     );
   }
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <View style={styles.attendanceWrapper}>
-        <Text style={styles.eventTitle}>{eventName}</Text>
-        <View style={styles.fullContainer}>
-          <ScrollView
-            contentContainerStyle={styles.scrollviewContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.infoContainer}>
-              <Text style={styles.info}>Name: {studentDetails.name}</Text>
-              <Text style={styles.info}>ID: {studentDetails.id}</Text>
-              {studentDetails.courseBlock ? (
-                <Text style={styles.info}>
-                  Course/Block: {studentDetails.courseBlock}
-                </Text>
-              ) : null}
-            </View>
-            {attendanceDataList.map((attendanceData, index) => {
-              const sessionData = {
-                date: attendanceData.date,
-                schedule: attendanceData.schedule,
-                attendance: attendanceData.attendance,
-              };
-              return (
-                <View key={index} style={styles.attendanceContainer}>
-                  <View style={styles.dateContainer}>
-                    <Text style={styles.date}>
-                      {moment(attendanceData.date).format("MMMM D, YYYY")}
-                    </Text>
-                  </View>
-                  {attendanceData.schedule?.am_in &&
-                    attendanceData.schedule?.am_out && (
-                      <SessionLog
-                        label="Morning"
-                        data={sessionData}
-                        sessionType="am"
-                      />
-                    )}
-                  {attendanceData.schedule?.pm_in &&
-                    attendanceData.schedule?.pm_out && (
-                      <SessionLog
-                        label="Afternoon"
-                        data={sessionData}
-                        sessionType="pm"
-                      />
-                    )}
-                  {!(
-                    attendanceData.schedule?.am_in &&
-                    attendanceData.schedule?.am_out
-                  ) &&
-                    !(
-                      attendanceData.schedule?.pm_in &&
-                      attendanceData.schedule?.pm_out
-                    ) && (
-                      <View style={styles.noSessionContainer}>
-                        <Text style={styles.noSessionText}>
-                          No schedule available for this date
-                        </Text>
-                      </View>
-                    )}
-                </View>
-              );
-            })}
-          </ScrollView>
-          <View style={styles.buttonContainer}>
-            <CustomButton title="Download" onPress={handlePrint} />
-          </View>
-        </View>
-      </View>
       <CustomModal
         visible={modalVisible}
         title={modalConfig.title}
@@ -410,6 +324,123 @@ const Attendance = () => {
         cancelTitle={modalConfig.cancelTitle}
         onCancel={() => setModalVisible(false)}
       />
+
+      <View style={styles.headerCard}>
+        <Text style={styles.headerEventName} numberOfLines={2}>
+          {eventName}
+        </Text>
+        <View style={styles.headerDivider} />
+        <View style={styles.headerInfoRow}>
+          <Image source={icons.student} style={styles.headerIcon} />
+          <Text style={styles.headerInfoText}>{studentDetails.name}</Text>
+        </View>
+        <View style={styles.headerInfoRow}>
+          <Image source={icons.idBadge} style={styles.headerIcon} />
+          <Text style={styles.headerInfoText}>{studentDetails.id}</Text>
+        </View>
+        {!!studentDetails.courseBlock && (
+          <View style={styles.headerInfoRow}>
+            <Image source={icons.blocks} style={styles.headerIcon} />
+            <Text style={styles.headerInfoText}>
+              {studentDetails.courseBlock}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <ScrollView
+        style={globalStyles.scrollView}
+        contentContainerStyle={styles.scrollviewContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {(() => {
+          const pastDates = attendanceDataList.filter((data) => {
+            const now = moment();
+            const dateStr = data.date;
+            return moment(dateStr).isSameOrBefore(now, "day");
+          });
+          return pastDates.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.stateText}>
+                No attendance records available yet.
+              </Text>
+            </View>
+          ) : (
+            pastDates.map((attendanceData, index) => {
+              const sessionData = {
+                date: attendanceData.date,
+                schedule: attendanceData.schedule,
+                attendance: attendanceData.attendance,
+              };
+              const hasAm =
+                attendanceData.schedule?.am_in &&
+                attendanceData.schedule?.am_out;
+              const hasPm =
+                attendanceData.schedule?.pm_in &&
+                attendanceData.schedule?.pm_out;
+
+              const attendanceStats =
+                rawAttendanceSummary[attendanceData.date] || {};
+              const presentCount = attendanceStats.present_count || 0;
+              const totalCount = attendanceStats.total_count || 0;
+
+              let badgeColor = styles.badgeRed;
+              if (totalCount > 0 && presentCount === totalCount)
+                badgeColor = styles.badgeGreen;
+              else if (totalCount > 0 && presentCount > 0)
+                badgeColor = styles.badgeYellow;
+
+              return (
+                <View key={index} style={styles.dateCard}>
+                  <View style={styles.dateHeader}>
+                    <View style={styles.dateAccent} />
+                    <Text style={styles.dateText}>
+                      {moment(attendanceData.date).format("MMMM D, YYYY")}
+                    </Text>
+                    <View style={[styles.attendanceBadge, badgeColor]}>
+                      <Text style={styles.badgeText}>
+                        {presentCount}/{totalCount}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.sessionsWrapper}>
+                    {hasAm && (
+                      <SessionLog
+                        label="Morning"
+                        data={sessionData}
+                        sessionType="am"
+                        showDivider={false}
+                      />
+                    )}
+                    {hasPm && (
+                      <SessionLog
+                        label="Afternoon"
+                        data={sessionData}
+                        sessionType="pm"
+                        showDivider={!!hasAm}
+                      />
+                    )}
+                    {!hasAm && !hasPm && (
+                      <Text style={styles.noSessionText}>
+                        No schedule for this date
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })
+          );
+        })()}
+      </ScrollView>
+
+      <TouchableOpacity
+        style={styles.downloadButton}
+        onPress={handlePrint}
+        activeOpacity={0.8}
+      >
+        <Image source={icons.printer} style={styles.downloadIcon} />
+        <Text style={styles.downloadText}>DOWNLOAD REPORT</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -417,135 +448,222 @@ const Attendance = () => {
 export default Attendance;
 
 const styles = StyleSheet.create({
-  fullContainer: {
-    flex: 1,
-    justifyContent: "space-between",
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
   },
-  buttonContainer: {
+  headerEventName: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+    marginBottom: theme.spacing.small,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: "rgba(251,241,229,0.2)",
+    marginBottom: theme.spacing.small,
+  },
+  headerInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.xsmall,
+  },
+  headerIcon: {
+    width: 16,
+    height: 16,
+    tintColor: theme.colors.secondary,
+    opacity: 0.7,
+  },
+  headerInfoText: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.secondary,
+    opacity: 0.9,
+  },
+  scrollviewContent: {
+    flexGrow: 1,
+    paddingBottom: 100,
+  },
+  dateCard: {
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.12)",
+    marginBottom: theme.spacing.small,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  dateHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(37,85,134,0.07)",
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+  },
+  dateAccent: {
+    width: 3,
+    height: 18,
+    borderRadius: 2,
+    backgroundColor: theme.colors.primary,
+    marginRight: theme.spacing.small,
+  },
+  dateText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.primary,
+    flex: 1,
+  },
+  attendanceBadge: {
+    borderRadius: theme.borderRadius.small,
+    paddingHorizontal: theme.spacing.small,
+    paddingVertical: 3,
+    minWidth: 48,
+    alignItems: "center",
+  },
+  badgeGreen: {
+    backgroundColor: "rgba(76,175,80,0.2)",
+  },
+  badgeYellow: {
+    backgroundColor: "rgba(255,193,7,0.2)",
+  },
+  badgeRed: {
+    backgroundColor: "rgba(244,67,54,0.2)",
+  },
+  badgeText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.primary,
+    fontWeight: "600",
+  },
+  sessionsWrapper: {
     paddingHorizontal: theme.spacing.medium,
     paddingVertical: theme.spacing.small,
   },
-  attendanceWrapper: {
-    flex: 1,
-    width: "100%",
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+  sessionDivider: {
+    height: 1,
+    backgroundColor: "rgba(37,85,134,0.1)",
+    marginHorizontal: theme.spacing.medium,
   },
-  eventTitle: {
-    fontSize: theme.fontSizes.huge,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-    textAlign: "center",
-    paddingVertical: theme.spacing.medium,
-  },
-  scrollviewContainer: {
-    paddingHorizontal: theme.spacing.medium,
-    paddingBottom: theme.spacing.large,
-  },
-  infoContainer: {
-    paddingHorizontal: theme.spacing.medium,
-    marginBottom: theme.spacing.large,
-  },
-  info: {
-    fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-    marginTop: theme.spacing.xsmall,
-  },
-  attendanceContainer: {
-    borderWidth: 3,
-    borderColor: theme.colors.primary,
-    marginBottom: theme.spacing.medium,
-  },
-  dateContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    borderBottomWidth: 3,
-    borderColor: theme.colors.primary,
-    height: 40,
-  },
-  date: {
-    fontSize: theme.fontSizes.extraLarge,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-    textAlign: "center",
-  },
-  sessionContainer: {
-    flex: 1,
-  },
-  morningText: {
-    fontSize: theme.fontSizes.extraLarge,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-  },
-  morningTextContainer: {
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logContainer: {
+  sessionRow: {
     flexDirection: "row",
-  },
-  timeContainer: {
-    width: "50%",
-    justifyContent: "center",
     alignItems: "center",
-  },
-  timeLabelContainer: {
-    borderWidth: 3,
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    borderColor: theme.colors.primary,
-    height: 50,
-  },
-  timeLabel: {
-    fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-  },
-  imageContainer: {
-    borderLeftWidth: 3,
-    borderBottomWidth: 2,
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    height: 50,
-    borderColor: theme.colors.primary,
-  },
-  absentIcon: {
-    width: 35,
-    height: 35,
-    tintColor: "red",
-  },
-  presentIcon: {
-    width: 35,
-    height: 35,
-    tintColor: theme.colors.green,
-  },
-  loadingText: {
-    fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-    textAlign: "center",
-    marginTop: theme.spacing.large,
-  },
-  noEventsText: {
-    fontSize: theme.fontSizes.medium,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.secondary,
-    textAlign: "center",
-    marginTop: theme.spacing.medium,
-  },
-  noSessionContainer: {
+    justifyContent: "space-between",
     paddingVertical: theme.spacing.medium,
-    justifyContent: "center",
+    paddingHorizontal: theme.spacing.small,
+  },
+  sessionLabel: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.primary,
+    flex: 1,
+  },
+  sessionStatus: {
+    flexDirection: "row",
+    gap: theme.spacing.large + theme.spacing.small,
     alignItems: "center",
+  },
+  statusIndicator: {
+    alignItems: "center",
+    gap: 4,
+  },
+  statusLabel: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.5,
+  },
+  statusChip: {
+    width: CHIP_SIZE,
+    height: CHIP_SIZE,
+    borderRadius: theme.borderRadius.small,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipPresent: {
+    backgroundColor: "rgba(76,175,80,0.15)",
+  },
+  chipAbsent: {
+    backgroundColor: "rgba(198,40,40,0.1)",
+  },
+  chipEmpty: {
+    backgroundColor: "rgba(37,85,134,0.05)",
+  },
+  chipIcon: {
+    width: 20,
+    height: 20,
   },
   noSessionText: {
-    fontSize: theme.fontSizes.medium,
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.primary,
+    opacity: 0.5,
+    textAlign: "center",
+    paddingVertical: theme.spacing.xsmall,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: theme.spacing.xlarge,
+  },
+  downloadButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.medium,
+    height: 50,
+    width: "100%",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
+    marginBottom: theme.spacing.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 5 },
+    }),
+  },
+  downloadIcon: {
+    width: 20,
+    height: 20,
+    tintColor: theme.colors.secondary,
+  },
+  downloadText: {
     fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
     color: theme.colors.secondary,
+  },
+  stateText: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.primary,
+    opacity: 0.6,
     textAlign: "center",
   },
 });

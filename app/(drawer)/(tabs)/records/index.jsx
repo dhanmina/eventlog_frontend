@@ -5,8 +5,9 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Platform,
 } from "react-native";
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import moment from "moment";
 import CustomSearch from "../../../../components/CustomSearch";
 import globalStyles from "../../../../constants/globalStyles";
@@ -22,6 +23,8 @@ import {
   fetchAllOngoingEvents,
 } from "../../../../services/api/records";
 
+const TABS = ["Ongoing", "Past"];
+
 const Records = () => {
   const { user } = useAuth();
   const { loading: eventsLoading, lastEventUpdate } = useEvents();
@@ -30,6 +33,7 @@ const Records = () => {
   const [ongoingEvents, setOngoingEvents] = useState([]);
   const [pastEvents, setPastEvents] = useState([]);
   const [studentId, setStudentId] = useState(null);
+  const [activeTab, setActiveTab] = useState("Ongoing");
 
   const canViewRecords = (userRoleId) => {
     return [1, 2, 3].includes(userRoleId);
@@ -77,11 +81,8 @@ const Records = () => {
         }));
       };
 
-      const processedOngoing = processEvents(ongoingEventsData);
-      const processedPast = processEvents(pastEventsData);
-
-      setOngoingEvents(processedOngoing);
-      setPastEvents(processedPast);
+      setOngoingEvents(processEvents(ongoingEventsData));
+      setPastEvents(processEvents(pastEventsData));
     } catch (error) {
       console.error("Error fetching records:", error);
     } finally {
@@ -91,56 +92,46 @@ const Records = () => {
 
   const processEventDates = (eventDates) => {
     if (!eventDates) return [];
-
     let dates = [];
-
     if (typeof eventDates === "string") {
       dates = eventDates
         .split(",")
-        .map((date) => date.trim())
+        .map((d) => d.trim())
         .filter(Boolean);
     } else if (Array.isArray(eventDates)) {
       dates = eventDates.filter(Boolean);
     } else {
       dates = [eventDates].filter(Boolean);
     }
-
     return dates
       .map((date) => {
-        const parsedDate = moment(date);
-        return parsedDate.isValid() ? parsedDate.format("YYYY-MM-DD") : null;
+        const parsed = moment(date);
+        return parsed.isValid() ? parsed.format("YYYY-MM-DD") : null;
       })
       .filter(Boolean);
   };
 
   useEffect(() => {
-    if (user) {
-      fetchRecordsData();
-    }
+    if (user) fetchRecordsData();
   }, [user, fetchRecordsData]);
 
   useEffect(() => {
     if (lastEventUpdate > 0) {
-      setTimeout(() => {
-        fetchRecordsData();
-      }, 1000);
+      setTimeout(() => fetchRecordsData(), 1000);
     }
   }, [lastEventUpdate, fetchRecordsData]);
 
   const { filteredOngoing, filteredPast } = useMemo(() => {
     if (!searchTerm.trim()) {
-      return {
-        filteredOngoing: ongoingEvents,
-        filteredPast: pastEvents,
-      };
+      return { filteredOngoing: ongoingEvents, filteredPast: pastEvents };
     }
-    const searchLower = searchTerm.toLowerCase();
+    const lower = searchTerm.toLowerCase();
     return {
-      filteredOngoing: ongoingEvents.filter((event) =>
-        event.event_name.toLowerCase().includes(searchLower)
+      filteredOngoing: ongoingEvents.filter((e) =>
+        e.event_name.toLowerCase().includes(lower),
       ),
-      filteredPast: pastEvents.filter((event) =>
-        event.event_name.toLowerCase().includes(searchLower)
+      filteredPast: pastEvents.filter((e) =>
+        e.event_name.toLowerCase().includes(lower),
       ),
     };
   }, [ongoingEvents, pastEvents, searchTerm]);
@@ -152,150 +143,186 @@ const Records = () => {
 
   const formatEventDates = useCallback((eventDates) => {
     if (!Array.isArray(eventDates) || eventDates.length === 0) {
-      return "No dates available";
+      return "No dates";
     }
-
     const validDates = eventDates
-      .map((date) => moment(date))
-      .filter((momentDate) => momentDate.isValid())
+      .map((d) => moment(d))
+      .filter((m) => m.isValid())
       .sort((a, b) => a.valueOf() - b.valueOf());
+    if (validDates.length === 0) return "No dates";
+    if (validDates.length === 1) return validDates[0].format("MMM DD, YYYY");
 
-    if (validDates.length === 0) {
-      return "No dates available";
-    }
-
-    if (validDates.length === 1) {
-      return validDates[0].format("MMM DD, YYYY");
-    }
-
-    let isConsecutive = true;
+    let consecutive = true;
     for (let i = 1; i < validDates.length; i++) {
-      const diff = validDates[i].diff(validDates[i - 1], "days");
-      if (diff !== 1) {
-        isConsecutive = false;
+      if (validDates[i].diff(validDates[i - 1], "days") !== 1) {
+        consecutive = false;
         break;
       }
     }
-
-    if (isConsecutive) {
-      const startDate = validDates[0];
-      const endDate = validDates[validDates.length - 1];
-
-      if (
-        startDate.year() === endDate.year() &&
-        startDate.month() === endDate.month()
-      ) {
-        return `${startDate.format("MMM DD")}-${endDate.format("DD, YYYY")}`;
-      } else {
-        return `${startDate.format("MMM DD")} - ${endDate.format(
-          "MMM DD, YYYY"
-        )}`;
+    if (consecutive) {
+      const start = validDates[0];
+      const end = validDates[validDates.length - 1];
+      if (start.year() === end.year() && start.month() === end.month()) {
+        return `${start.format("MMM DD")}-${end.format("DD, YYYY")}`;
       }
+      return `${start.format("MMM DD")} - ${end.format("MMM DD, YYYY")}`;
     }
-
-    const datesToShow = validDates.slice(0, 3);
-    const formatted = datesToShow
-      .map((date) => date.format("MMM DD, YYYY"))
+    const shown = validDates
+      .slice(0, 3)
+      .map((d) => d.format("MMM DD, YYYY"))
       .join(", ");
-
-    if (validDates.length > 3) {
-      return `${formatted}... (+${validDates.length - 3} more)`;
-    }
-
-    return formatted;
+    return validDates.length > 3
+      ? `${shown} +${validDates.length - 3} more`
+      : shown;
   }, []);
 
   const handleEventPress = useCallback(
     (eventId) => {
       if (user?.role_id === 1 || user?.role_id === 2) {
         router.push(
-          `/records/Attendance?eventId=${eventId}&studentId=${studentId}`
+          `/records/Attendance?eventId=${eventId}&studentId=${studentId}`,
         );
       } else if (user?.role_id === 3) {
         router.push(`/records/BlockList?eventId=${eventId}`);
       }
     },
-    [user?.role_id, studentId]
+    [user?.role_id, studentId],
   );
 
-  const renderEventSection = useCallback(
-    (title, events) => {
-      if (events.length === 0) return null;
-      return (
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          {events.map((event, index) => (
-            <TouchableOpacity
-              key={`${event.event_id}-${index}`}
-              style={styles.eventContainer}
-              onPress={() => handleEventPress(event.event_id)}
-            >
-              <Text style={styles.eventTitle}>{event.event_name}</Text>
-              <Text style={styles.eventDate}>
-                {formatEventDates(event.event_dates)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+  const activeList = activeTab === "Ongoing" ? filteredOngoing : filteredPast;
+  const totalCount = ongoingEvents.length + pastEvents.length;
+
+  const renderEventCard = (event, index, isOngoing) => (
+    <TouchableOpacity
+      key={`${event.event_id}-${index}`}
+      style={styles.eventCard}
+      onPress={() => handleEventPress(event.event_id)}
+      activeOpacity={0.75}
+    >
+      <View
+        style={[
+          styles.eventAccent,
+          isOngoing ? styles.eventAccentOngoing : styles.eventAccentPast,
+        ]}
+      />
+      <View style={styles.eventCardContent}>
+        {isOngoing && (
+          <View style={styles.ongoingBadge}>
+            <Text style={styles.ongoingBadgeText}>ONGOING</Text>
+          </View>
+        )}
+        <Text
+          style={[styles.eventTitle, !isOngoing && styles.eventTitlePast]}
+          numberOfLines={2}
+        >
+          {event.event_name}
+        </Text>
+        <View style={styles.datePill}>
+          <Text
+            style={[styles.datePillText, !isOngoing && styles.datePillTextPast]}
+          >
+            {formatEventDates(event.event_dates)}
+          </Text>
         </View>
-      );
-    },
-    [handleEventPress, formatEventDates]
+      </View>
+      <Text style={[styles.chevron, !isOngoing && styles.chevronPast]}>›</Text>
+    </TouchableOpacity>
   );
 
-  const renderContent = useCallback(() => {
+  const renderContent = () => {
     if (loading && ongoingEvents.length === 0 && pastEvents.length === 0) {
       return (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading records...</Text>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>Loading records...</Text>
         </View>
       );
     }
     if (!canViewRecords(user?.role_id)) {
       return (
-        <View style={styles.noEventsContainer}>
-          <Text style={styles.noEventsText}>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>
             Your role does not have permission to view records.
           </Text>
         </View>
       );
     }
-    const hasEvents = filteredOngoing.length > 0 || filteredPast.length > 0;
-    if (!hasEvents) {
+    if (activeList.length === 0) {
       return (
-        <View style={styles.noEventsContainer}>
-          <Text style={styles.noEventsText}>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateTitle}>
+            {searchTerm.trim() ? "No results" : "Nothing here yet"}
+          </Text>
+          <Text style={styles.emptyStateText}>
             {searchTerm.trim()
-              ? "No records found matching your search."
-              : "No records available."}
+              ? "No records match your search."
+              : activeTab === "Ongoing"
+                ? "No ongoing events with your attendance."
+                : "No past event records found."}
           </Text>
         </View>
       );
     }
-    return (
-      <>
-        {renderEventSection("Ongoing Events", filteredOngoing)}
-        {renderEventSection("Past Events", filteredPast)}
-      </>
+    return activeList.map((event, index) =>
+      renderEventCard(event, index, activeTab === "Ongoing"),
     );
-  }, [
-    loading,
-    ongoingEvents.length,
-    pastEvents.length,
-    canViewRecords,
-    user?.role_id,
-    filteredOngoing,
-    filteredPast,
-    searchTerm,
-    renderEventSection,
-  ]);
+  };
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <View style={styles.searchContainer}>
+      <View style={styles.headerCard}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>MY RECORDS</Text>
+            <Text style={styles.headerSub}>Event attendance history</Text>
+          </View>
+          {totalCount > 0 && (
+            <View style={styles.totalBadge}>
+              <Text style={styles.totalBadgeText}>{totalCount}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <View style={{ width: "100%" }}>
         <CustomSearch placeholder="Search records" onSearch={setSearchTerm} />
       </View>
+
+      <View style={styles.tabBar}>
+        {TABS.map((tab) => {
+          const count =
+            tab === "Ongoing" ? filteredOngoing.length : filteredPast.length;
+          const active = activeTab === tab;
+          return (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tabItem, active && styles.tabItemActive]}
+              onPress={() => setActiveTab(tab)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
+                {tab}
+              </Text>
+              {count > 0 && (
+                <View
+                  style={[styles.tabBadge, active && styles.tabBadgeActive]}
+                >
+                  <Text
+                    style={[
+                      styles.tabBadgeText,
+                      active && styles.tabBadgeTextActive,
+                    ]}
+                  >
+                    {count}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <ScrollView
-        style={styles.scrollView}
+        style={globalStyles.scrollView}
         contentContainerStyle={styles.scrollviewContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -316,72 +343,221 @@ const Records = () => {
 export default Records;
 
 const styles = StyleSheet.create({
-  searchContainer: {
-    width: "90%",
-    marginTop: 30,
-  },
-  scrollView: {
-    flex: 1,
+  headerCard: {
     width: "100%",
-    marginBottom: 20,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
   },
-  scrollviewContent: {
+  headerRow: {
+    flexDirection: "row",
     alignItems: "center",
-    flexGrow: 1,
+    justifyContent: "space-between",
   },
-  sectionContainer: {
-    width: "100%",
+  headerTitle: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.secondary,
+    opacity: 0.75,
+    marginTop: theme.spacing.xsmall,
+  },
+  totalBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: theme.borderRadius.large,
+    minWidth: 36,
+    height: 36,
     alignItems: "center",
-    justifyContent: "center",
-    marginTop: theme.spacing.large,
-  },
-  sectionTitle: {
-    fontSize: theme.fontSizes.title,
-    fontFamily: "SquadaOne",
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.small,
-  },
-  eventContainer: {
-    borderWidth: 2,
-    width: "90%",
-    minHeight: 50,
-    borderColor: theme.colors.primary,
-    marginTop: theme.spacing.medium,
     justifyContent: "center",
     paddingHorizontal: theme.spacing.small,
+  },
+  totalBadgeText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.secondary,
+  },
+  tabBar: {
+    flexDirection: "row",
+    width: "100%",
+    backgroundColor: "rgba(37,85,134,0.08)",
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.xsmall,
+    marginTop: theme.spacing.small,
+    marginBottom: theme.spacing.small,
+    gap: theme.spacing.xsmall,
+  },
+  tabItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: theme.spacing.small,
+    borderRadius: theme.borderRadius.medium,
+    gap: theme.spacing.xsmall,
+  },
+  tabItemActive: {
+    backgroundColor: theme.colors.primary,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.35,
+        shadowRadius: 6,
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  tabLabel: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.primary,
+    opacity: 0.5,
+  },
+  tabLabelActive: {
+    color: theme.colors.secondary,
+    opacity: 1,
+  },
+  tabBadge: {
+    backgroundColor: "rgba(37,85,134,0.12)",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing.xsmall,
+  },
+  tabBadgeActive: {
+    backgroundColor: "rgba(251,241,229,0.25)",
+  },
+  tabBadgeText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+  },
+  tabBadgeTextActive: {
+    color: theme.colors.secondary,
+  },
+  scrollviewContent: {
+    flexGrow: 1,
+    paddingBottom: 120,
+  },
+  eventCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    marginBottom: theme.spacing.small,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.12)",
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  eventAccent: {
+    width: 4,
+    alignSelf: "stretch",
+  },
+  eventAccentOngoing: {
+    backgroundColor: theme.colors.primary,
+  },
+  eventAccentPast: {
+    backgroundColor: theme.colors.primary,
+    opacity: 0.25,
+  },
+  eventCardContent: {
+    flex: 1,
+    paddingVertical: theme.spacing.small + 2,
+    paddingHorizontal: theme.spacing.small,
   },
   eventTitle: {
-    color: theme.colors.primary,
-    fontFamily: "SquadaOne",
-    fontSize: theme.fontSizes.large,
+    fontFamily: theme.fontFamily.ArialBold,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.gray,
+    marginBottom: theme.spacing.xsmall,
   },
-  eventDate: {
-    fontSize: theme.fontSizes.small,
-    fontFamily: "SquadaOne",
-    color: theme.colors.primary,
-    marginTop: 2,
+  eventTitlePast: {
+    opacity: 0.6,
   },
-  noEventsContainer: {
+  ongoingBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.small,
+    paddingHorizontal: theme.spacing.xsmall + 2,
+    paddingVertical: 2,
+    marginBottom: theme.spacing.xsmall,
+  },
+  ongoingBadgeText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    letterSpacing: 0.5,
+  },
+  datePill: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(37,85,134,0.1)",
+    borderRadius: theme.borderRadius.small,
+    paddingHorizontal: theme.spacing.small,
+    paddingVertical: 2,
+  },
+  datePillText: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+  },
+  datePillTextPast: {
+    opacity: 0.6,
+  },
+  chevron: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: 28,
+    color: theme.colors.primary,
+    opacity: 0.35,
+    paddingRight: theme.spacing.small,
+    lineHeight: 32,
+  },
+  chevronPast: {
+    opacity: 0.18,
+  },
+  emptyState: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: theme.spacing.large,
-    paddingHorizontal: theme.spacing.medium,
+    paddingHorizontal: theme.spacing.large,
+    paddingTop: theme.spacing.xlarge,
   },
-  noEventsText: {
-    fontSize: theme.fontSizes.medium,
-    fontFamily: "SquadaOne",
+  emptyStateTitle: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
     color: theme.colors.primary,
+    marginBottom: theme.spacing.xsmall,
     textAlign: "center",
   },
-  loadingContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: theme.spacing.large,
-  },
-  loadingText: {
-    fontSize: theme.fontSizes.large,
-    fontFamily: "SquadaOne",
+  emptyStateText: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
     color: theme.colors.primary,
+    opacity: 0.5,
+    textAlign: "center",
   },
 });
