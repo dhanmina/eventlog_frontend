@@ -1,16 +1,30 @@
 import { Tabs, TabList, TabTrigger, TabSlot } from "expo-router/ui";
+import { usePathname } from "expo-router";
 import { View, Image, Text, StyleSheet } from "react-native";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { getRoleID } from "../../../database/queries";
-
 import images from "../../../constants/images";
 import icons from "../../../constants/icons";
 import theme from "../../../constants/theme";
 
+const TabItem = ({ icon, label, active }) => (
+  <View style={styles.tabItem}>
+    {active && <View style={styles.activeBar} />}
+    <Image
+      source={icon}
+      style={[styles.tabIcon, !active && styles.tabIconInactive]}
+    />
+    <Text style={[styles.tabText, !active && styles.tabTextInactive]}>
+      {label}
+    </Text>
+  </View>
+);
+
 const TabsLayout = () => {
   const [roleId, setRoleId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
     const fetchRoleId = async () => {
@@ -23,9 +37,10 @@ const TabsLayout = () => {
         setLoading(false);
       }
     };
-
     fetchRoleId();
   }, []);
+
+  const isActive = (path) => pathname.startsWith(path);
 
   const getQRRoute = () => {
     if (roleId === null) return "/qr";
@@ -48,25 +63,18 @@ const TabsLayout = () => {
       <TabSlot />
       <TabList style={styles.tabList}>
         <TabTrigger name="Home" href="/(tabs)/home">
-          <View style={styles.tabItem}>
-            <Image source={icons.home} style={styles.tabIcon} />
-            <Text style={styles.tabText}>Home</Text>
-          </View>
+          <TabItem icon={icons.home} label="Home" active={isActive("/home")} />
         </TabTrigger>
 
-        <TabTrigger
-          name="center"
-          style={styles.logoContainer}
-          href="/(tabs)/center"
-        >
-          <Image source={images.logo} style={styles.logoImage} />
+        <TabTrigger name="center" style={styles.logoContainer} href="/(tabs)/center">
+          <Image
+            source={images.logo}
+            style={[styles.logoImage, isActive("/center") && styles.logoImageActive]}
+          />
         </TabTrigger>
 
         <TabTrigger name="QR Code" href={getQRRoute()}>
-          <View style={styles.tabItem}>
-            <Image source={icons.scanner} style={styles.tabIcon} />
-            <Text style={styles.tabText}>QR Code</Text>
-          </View>
+          <TabItem icon={icons.scanner} label="QR" active={isActive("/qr")} />
         </TabTrigger>
       </TabList>
     </Tabs>
@@ -75,39 +83,26 @@ const TabsLayout = () => {
       <TabSlot />
       <TabList style={styles.tabList}>
         <TabTrigger name="Home" href="/(tabs)/home">
-          <View style={styles.tabItem}>
-            <Image source={icons.home} style={styles.tabIcon} />
-            <Text style={styles.tabText}>Home</Text>
-          </View>
+          <TabItem icon={icons.home} label="Home" active={isActive("/home")} />
         </TabTrigger>
 
         <TabTrigger name="QR Code" href={getQRRoute()}>
-          <View style={styles.tabItem}>
-            <Image source={icons.scanner} style={styles.tabIcon} />
-            <Text style={styles.tabText}>QR Code</Text>
-          </View>
+          <TabItem icon={icons.scanner} label="QR" active={isActive("/qr")} />
         </TabTrigger>
 
-        <TabTrigger
-          name="center"
-          style={styles.logoContainer}
-          href="/(tabs)/center"
-        >
-          <Image source={images.logo} style={styles.logoImage} />
+        <TabTrigger name="center" style={styles.logoContainer} href="/(tabs)/center">
+          <Image
+            source={images.logo}
+            style={[styles.logoImage, isActive("/center") && styles.logoImageActive]}
+          />
         </TabTrigger>
 
         <TabTrigger name="records" href="/(tabs)/records">
-          <View style={styles.tabItem}>
-            <Image source={icons.calendar} style={styles.tabIcon} />
-            <Text style={styles.tabText}>Records</Text>
-          </View>
+          <TabItem icon={icons.calendar} label="Records" active={isActive("/records")} />
         </TabTrigger>
 
         <TabTrigger name="Account" href="/(tabs)/account">
-          <View style={styles.tabItem}>
-            <Image source={icons.user} style={styles.tabIcon} />
-            <Text style={styles.tabText}>Account</Text>
-          </View>
+          <TabItem icon={icons.user} label="Account" active={isActive("/account")} />
         </TabTrigger>
       </TabList>
     </Tabs>
@@ -137,21 +132,36 @@ const styles = StyleSheet.create({
   tabItem: {
     alignItems: "center",
     width: 60,
+    paddingTop: 6,
+  },
+  activeBar: {
+    position: "absolute",
+    top: 0,
+    width: 24,
+    height: 2.5,
+    borderRadius: 2,
+    backgroundColor: theme.colors.secondary,
   },
   tabIcon: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     tintColor: theme.colors.secondary,
+  },
+  tabIconInactive: {
+    opacity: 0.4,
   },
   tabText: {
     color: theme.colors.secondary,
+    fontFamily: theme.fontFamily.Arial,
     fontSize: theme.fontSizes.extraSmall,
     paddingTop: 4,
+  },
+  tabTextInactive: {
+    opacity: 0.4,
   },
   logoContainer: {
     position: "relative",
     bottom: 20,
-    transform: [{ translateY: 0 }],
   },
   logoImage: {
     height: 90,
@@ -164,6 +174,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
     elevation: 8,
+  },
+  logoImageActive: {
+    borderColor: theme.colors.secondary,
+    borderWidth: 3,
   },
 });
 
