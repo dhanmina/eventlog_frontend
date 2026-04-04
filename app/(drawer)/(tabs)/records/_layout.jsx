@@ -7,16 +7,16 @@ const RecordsLayout = () => (
       name="index"
       options={{
         headerShown: true,
+        headerTitle: "",
         headerStyle: { backgroundColor: theme.colors.primary },
         headerTintColor: theme.colors.secondary,
-        title: "",
       }}
     />
     <Stack.Screen
       name="Attendance"
       options={{
-        headerTitle: "Attendance",
         headerShown: true,
+        headerTitle: "",
         headerStyle: { backgroundColor: theme.colors.primary },
         headerTintColor: theme.colors.secondary,
       }}

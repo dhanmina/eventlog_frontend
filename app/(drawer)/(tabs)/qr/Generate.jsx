@@ -8,7 +8,6 @@ import {
   Platform,
 } from "react-native";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "expo-router";
 import QRCode from "react-native-qrcode-svg";
 import { getStoredUser } from "../../../../database/queries";
@@ -159,7 +158,7 @@ const Generate = () => {
       <View style={styles.ticketCard}>
         <View style={styles.ticketHeader}>
           <View style={styles.ticketHeaderTop}>
-            <Text style={styles.ticketBrand}>EVENTLOG</Text>
+            <Text style={styles.ticketBrand}>ATTENDANCE PASS</Text>
             {roleLabel ? (
               <View style={styles.roleBadge}>
                 <Text style={styles.roleBadgeText}>{roleLabel}</Text>
@@ -247,7 +246,14 @@ const Generate = () => {
             </Text>
           )}
 
-          {user ? <Text style={styles.ticketUserName}>{fullName}</Text> : null}
+          {user && (
+            <View style={styles.ticketUserRow}>
+              <Text style={styles.ticketUserName} numberOfLines={1}>{fullName}</Text>
+              {!!user.block_name && (
+                <Text style={styles.ticketUserBlock}>{user.block_name}</Text>
+              )}
+            </View>
+          )}
         </View>
 
         <View style={styles.ticketTear}>
@@ -302,23 +308,17 @@ const Generate = () => {
             </TouchableOpacity>
           )}
 
-          {user ? (
-            <View style={styles.metaRow}>
-              <Text style={styles.metaText}>{user.id_number}</Text>
-              <View style={styles.metaDot} />
-              <Text style={styles.metaText}>{user.course_code}</Text>
-              <View style={styles.metaDot} />
-              <Text style={styles.metaText}>{user.block_name}</Text>
-            </View>
-          ) : null}
+          {user && (
+            <Text style={styles.metaId}>{user.id_number}</Text>
+          )}
+
+          <View style={styles.ticketFooter}>
+            <Text style={styles.note}>
+              Approach the officer in-charge to have your QR code scanned.
+            </Text>
+          </View>
         </View>
       </View>
-
-      <Text style={styles.note}>
-        Approach the officer in-charge to have your QR code scanned.
-      </Text>
-
-      <StatusBar style="light" />
     </View>
   );
 };
@@ -409,12 +409,23 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: theme.spacing.xsmall,
   },
+  ticketUserRow: {
+    marginTop: theme.spacing.xsmall,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,241,229,0.15)",
+    paddingTop: theme.spacing.xsmall,
+    gap: 2,
+  },
   ticketUserName: {
-    fontFamily: theme.fontFamily.Arial,
+    fontFamily: theme.fontFamily.ArialBold,
     fontSize: theme.fontSizes.small,
     color: theme.colors.secondary,
-    opacity: 0.75,
-    marginTop: theme.spacing.xsmall,
+  },
+  ticketUserBlock: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
   },
   ticketTear: {
     backgroundColor: theme.colors.primary,
@@ -497,29 +508,25 @@ const styles = StyleSheet.create({
     textAlign: "center",
     opacity: 0.6,
   },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.small,
-  },
-  metaDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.primary,
-    opacity: 0.4,
-  },
-  metaText: {
+  metaId: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.small,
+    fontSize: theme.fontSizes.medium,
     color: theme.colors.primary,
+    opacity: 0.5,
+    letterSpacing: 1,
+  },
+  ticketFooter: {
+    borderTopWidth: 1,
+    borderTopColor: "rgba(37,85,134,0.08)",
+    paddingTop: theme.spacing.small,
+    width: "100%",
+    alignItems: "center",
   },
   note: {
     fontFamily: theme.fontFamily.Arial,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.small,
-    opacity: 0.6,
+    fontSize: theme.fontSizes.extraSmall,
+    opacity: 0.45,
     textAlign: "center",
-    paddingHorizontal: theme.spacing.medium,
   },
 });
