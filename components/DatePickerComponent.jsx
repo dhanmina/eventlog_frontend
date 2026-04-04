@@ -211,14 +211,12 @@ const DatePickerComponent = ({
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            {/* Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {mode === "multiple" ? "Select Dates" : "Select Date"}
               </Text>
             </View>
 
-            {/* Calendar — fixed */}
             <View style={styles.pickerWrapper}>
               <DateTimePicker
                 value={tempDate || new Date()}
@@ -229,7 +227,6 @@ const DatePickerComponent = ({
               />
             </View>
 
-            {/* Add Date button + scrollable list — multiple mode only */}
             {mode === "multiple" && (
               <View style={styles.multiSection}>
                 <TouchableOpacity
@@ -296,7 +293,6 @@ const DatePickerComponent = ({
               </View>
             )}
 
-            {/* Actions */}
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -312,7 +308,6 @@ const DatePickerComponent = ({
         </View>
       </Modal>
 
-      {/* Selected dates outside modal */}
       {mode === "multiple" && count > 0 && (
         <View style={styles.selectedDatesDisplay}>
           <Text style={styles.selectedDatesTitle}>SELECTED DATES</Text>
