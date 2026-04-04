@@ -79,3 +79,12 @@ export const disableDepartment = async (departmentId) => {
     throw error;
   }
 };
+
+export const enableDepartment = async (departmentId) => {
+  const response = await axios.patch(
+    `${API_URL}/api/departments/${departmentId}/status`,
+    { status: "Active" },
+  );
+  if (response.data.success) return response.data.message;
+  throw new Error("Failed to enable department");
+};

@@ -1,18 +1,16 @@
+import { useState } from "react";
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
-  ActivityIndicator,
+  Platform,
 } from "react-native";
-import React, { useState } from "react";
-import { StatusBar } from "expo-status-bar";
-import TabsComponent from "../../../../components/TabsComponent";
+import { addDepartment } from "../../../../services/api/departments";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomButton from "../../../../components/CustomButton";
-import { addDepartment } from "../../../../services/api/departments";
 import CustomModal from "../../../../components/CustomModal";
 
 const AddDepartment = () => {
@@ -20,74 +18,30 @@ const AddDepartment = () => {
     department_name: "",
     department_code: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modal, setModal] = useState({ visible: false, title: "", message: "", type: "success" });
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const handleChange = (name, value) =>
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
-  const handleChange = (name, value) => {
-    setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
-  };
+  const isFormValid =
+    formData.department_name.trim() && formData.department_code.trim();
 
   const handleSubmit = async () => {
+    setIsSubmitting(true);
     try {
-      if (
-        !formData.department_name.trim() ||
-        !formData.department_code.trim()
-      ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
-        return;
-      }
-
-      const submitData = {
+      await addDepartment({
         department_name: formData.department_name,
         department_code: formData.department_code,
-      };
-
-      setIsLoading(true);
-      await addDepartment(submitData);
-
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Department added successfully!",
-        type: "success",
       });
-
-      setFormData({
-        department_name: "",
-        department_code: "",
-      });
+      setModal({ visible: true, title: "Success", message: "Department added successfully!", type: "success" });
+      setFormData({ department_name: "", department_code: "" });
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message:
-          error.response?.data?.message ||
-          "Failed to add department. Please try again.",
-        type: "error",
-      });
+      setModal({ visible: true, title: "Error", message: error.response?.data?.message || "Failed to add department.", type: "error" });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
 
   return (
     <View style={globalStyles.secondaryContainer}>
@@ -96,15 +50,20 @@ const AddDepartment = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={() => setModal((m) => ({ ...m, visible: false }))}
         cancelTitle="CLOSE"
       />
 
-      <Text style={styles.headerText}>ADD DEPARTMENT</Text>
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>ADD DEPARTMENT</Text>
+        <Text style={styles.headerSubtitle}>Create a new department</Text>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <FormField
           title="Department Name"
@@ -118,13 +77,14 @@ const AddDepartment = () => {
           value={formData.department_code}
           onChangeText={(text) => handleChange("department_code", text)}
         />
-        <View style={styles.buttonWrapper}>
-          <CustomButton title="ADD" onPress={handleSubmit} />
+        <View style={styles.buttonContainer}>
+          <CustomButton
+            title={isSubmitting ? "ADDING..." : "ADD DEPARTMENT"}
+            onPress={handleSubmit}
+            disabled={!isFormValid || isSubmitting}
+          />
         </View>
       </ScrollView>
-
-      <TabsComponent />
-      <StatusBar style="auto" />
     </View>
   );
 };
@@ -132,12 +92,33 @@ const AddDepartment = () => {
 export default AddDepartment;
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
-    marginBottom: theme.spacing.small,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
   },
   scrollView: {
     flex: 1,
@@ -147,7 +128,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 120,
   },
-  buttonWrapper: {
+  buttonContainer: {
     marginTop: theme.spacing.medium,
   },
 });

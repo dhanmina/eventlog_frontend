@@ -77,6 +77,15 @@ export const editCourse = async (courseId, courseData) => {
   }
 };
 
+export const enableCourse = async (courseId) => {
+  const response = await axios.patch(
+    `${API_URL}/api/courses/${courseId}/status`,
+    { status: "Active" }
+  );
+  if (response.data.success) return response.data.message;
+  throw new Error("Failed to enable course");
+};
+
 export const disableCourse = async (courseId) => {
   try {
     const response = await axios.patch(

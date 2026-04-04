@@ -1,171 +1,107 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
-  ActivityIndicator,
+  Platform,
 } from "react-native";
-import { StatusBar } from "expo-status-bar";
-import TabsComponent from "../../../../components/TabsComponent";
+import { addBlock } from "../../../../services/api/blocks";
+import { fetchYearLevels } from "../../../../services/api/roles";
+import { fetchDepartments } from "../../../../services/api/departments";
+import { fetchCoursesByDepartmentId } from "../../../../services/api/courses";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import FormField from "../../../../components/FormField";
 import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
 import CustomDropdown from "../../../../components/CustomDropdown";
-import { addBlock } from "../../../../services/api/blocks";
-import { fetchYearLevels } from "../../../../services/api/roles";
-import { fetchDepartments } from "../../../../services/api/departments";
-
-import { fetchCoursesByDepartmentId } from "../../../../services/api/courses";
 
 const AddBlock = () => {
   const [formData, setFormData] = useState({
     name: "",
+    department: "",
     course: "",
     year_level: "",
   });
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modal, setModal] = useState({ visible: false, title: "", message: "", type: "success" });
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [yearLevels, setYearLevels] = useState([]);
-  const [selectedDepartment, setSelectedDepartment] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true);
       try {
-        const response = await fetchDepartments();
-        if (response.success) {
+        const [deptResponse, yearLevelsData] = await Promise.all([
+          fetchDepartments(),
+          fetchYearLevels(),
+        ]);
+        if (deptResponse.success) {
           setDepartments(
-            response.departments.map((department) => ({
-              label: department.department_name,
-              value: department.department_id,
+            deptResponse.departments.map((d) => ({
+              label: d.department_name,
+              value: d.department_id,
             }))
           );
-        } else {
-          throw new Error("Failed to fetch departments");
         }
-
-        const yearLevelsData = await fetchYearLevels();
         setYearLevels(
-          yearLevelsData.map((yearLevel) => ({
-            label: yearLevel.year_level_name,
-            value: yearLevel.year_level_id,
+          yearLevelsData.map((y) => ({
+            label: y.year_level_name,
+            value: y.year_level_id,
           }))
         );
       } catch (error) {
-        console.error("Error fetching dropdown data:", error.message);
-        setModal({
-          visible: true,
-          title: "Error",
-          message: error.message || "Failed to load dropdown data.",
-          type: "error",
-        });
-      } finally {
-        setIsLoading(false);
+        setModal({ visible: true, title: "Error", message: error.message || "Failed to load data.", type: "error" });
       }
     };
-
     fetchData();
   }, []);
 
   const handleChange = (name, value) =>
-    setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
   const handleDepartmentChange = async (item) => {
-    setSelectedDepartment(item.value);
-
+    if (!item) {
+      handleChange("department", "");
+      handleChange("course", "");
+      setCourses([]);
+      return;
+    }
+    handleChange("department", item.value);
+    handleChange("course", "");
     try {
       const coursesData = await fetchCoursesByDepartmentId(item.value);
-      setCourses(
-        coursesData.map((course) => ({
-          label: course.course_code,
-          value: course.course_id,
-        }))
-      );
-    } catch (error) {
-      console.error("Error fetching courses:", error.message);
-      setModal({
-        visible: true,
-        title: "Error",
-        message: error.message || "Failed to load courses.",
-        type: "error",
-      });
+      setCourses(coursesData.map((c) => ({ label: c.course_code, value: c.course_id })));
+    } catch {
+      setModal({ visible: true, title: "Error", message: "Failed to load courses.", type: "error" });
     }
   };
 
-  const handleSubmit = async () => {
-    try {
-      if (
-        !formData.name.trim() ||
-        !formData.course ||
-        !formData.year_level ||
-        !selectedDepartment
-      ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
-        return;
-      }
+  const isFormValid =
+    formData.name.trim() &&
+    formData.department &&
+    formData.course &&
+    formData.year_level;
 
-      const submitData = {
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      await addBlock({
         name: formData.name,
         course_id: formData.course,
         year_level_id: formData.year_level,
-        department_id: selectedDepartment,
-      };
-
-      setIsLoading(true);
-
-      await addBlock(submitData);
-
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Block added successfully!",
-        type: "success",
+        department_id: formData.department,
       });
-
-      setFormData({
-        name: "",
-        course: "",
-        year_level: "",
-      });
-      setSelectedDepartment(null);
+      setModal({ visible: true, title: "Success", message: "Block added successfully!", type: "success" });
+      setFormData({ name: "", department: "", course: "", year_level: "" });
       setCourses([]);
     } catch (error) {
-      console.error("Error adding block:", error.message || error);
-
-      setModal({
-        visible: true,
-        title: "Error",
-        message: error.response?.data?.message || "Failed to add block.",
-        type: "error",
-      });
+      setModal({ visible: true, title: "Error", message: error.response?.data?.message || "Failed to add block.", type: "error" });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
-
-  if (isLoading)
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
 
   return (
     <View style={globalStyles.secondaryContainer}>
@@ -174,15 +110,20 @@ const AddBlock = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={() => setModal((m) => ({ ...m, visible: false }))}
         cancelTitle="CLOSE"
       />
 
-      <Text style={styles.headerText}>ADD BLOCK</Text>
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>ADD BLOCK</Text>
+        <Text style={styles.headerSubtitle}>Create a new section</Text>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <FormField
           title="Block Name"
@@ -194,7 +135,7 @@ const AddBlock = () => {
           title="Department"
           data={departments}
           placeholder="Select Department"
-          value={selectedDepartment}
+          value={formData.department}
           onSelect={handleDepartmentChange}
         />
         <CustomDropdown
@@ -202,22 +143,23 @@ const AddBlock = () => {
           data={courses}
           placeholder="Select Course"
           value={formData.course}
-          onSelect={(item) => handleChange("course", item.value)}
+          onSelect={(item) => handleChange("course", item?.value ?? "")}
         />
         <CustomDropdown
           title="Year Level"
           data={yearLevels}
           placeholder="Select Year Level"
           value={formData.year_level}
-          onSelect={(item) => handleChange("year_level", item.value)}
+          onSelect={(item) => handleChange("year_level", item?.value ?? "")}
         />
-        <View style={styles.buttonWrapper}>
-          <CustomButton title="ADD" onPress={handleSubmit} />
+        <View style={styles.buttonContainer}>
+          <CustomButton
+            title={isSubmitting ? "ADDING..." : "ADD BLOCK"}
+            onPress={handleSubmit}
+            disabled={!isFormValid || isSubmitting}
+          />
         </View>
       </ScrollView>
-
-      <TabsComponent />
-      <StatusBar style="auto" />
     </View>
   );
 };
@@ -225,12 +167,33 @@ const AddBlock = () => {
 export default AddBlock;
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
-    marginBottom: theme.spacing.small,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
   },
   scrollView: {
     flex: 1,
@@ -240,7 +203,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 120,
   },
-  buttonWrapper: {
+  buttonContainer: {
     marginTop: theme.spacing.medium,
   },
 });

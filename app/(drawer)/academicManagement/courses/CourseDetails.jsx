@@ -1,110 +1,132 @@
-import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useEffect, useState } from "react";
-import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
-
-import TabsComponent from "../../../../components/TabsComponent";
+import { useState, useCallback } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Platform,
+} from "react-native";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { fetchCourseById, disableCourse, enableCourse } from "../../../../services/api/courses";
+import globalStyles from "../../../../constants/globalStyles";
+import theme from "../../../../constants/theme";
 import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
 
-import globalStyles from "../../../../constants/globalStyles";
-import theme from "../../../../constants/theme";
-import {
-  fetchCourseById,
-  disableCourse,
-} from "../../../../services/api/courses";
-import { useLocalSearchParams } from "expo-router";
+const Row = ({ label, value, last }) => (
+  <View style={[styles.row, last && styles.rowLast]}>
+    <Text style={styles.rowLabel}>{label}</Text>
+    <Text style={styles.rowValue}>{value || "—"}</Text>
+  </View>
+);
 
 const CourseDetails = () => {
   const { id: course_id } = useLocalSearchParams();
-  const [courseDetails, setCourseDetails] = useState(null);
+  const [details, setDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDisableModalVisible, setIsDisableModalVisible] = useState(false);
+  const [isToggleModalVisible, setIsToggleModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const fetchCourseDetails = async () => {
+  const fetchDetails = async () => {
     try {
       if (!course_id) throw new Error("Invalid course ID");
-
-      const courseData = await fetchCourseById(course_id);
-      if (!courseData) throw new Error("Course details not found");
-
-      setCourseDetails(courseData);
+      const data = await fetchCourseById(course_id);
+      if (!data || Object.keys(data).length === 0) throw new Error("Course not found");
+      setDetails(data);
     } catch (error) {
-      console.error("Error fetching course details:", error);
+      console.error(error.message || error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setIsLoading(true);
-      fetchCourseDetails();
-    }, [course_id]),
+      fetchDetails();
+    }, [course_id])
   );
 
-  if (isLoading) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
-
-  if (!courseDetails) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.errorText}>Course details not found.</Text>
-      </View>
-    );
-  }
-
-  const handleDisablePress = () => {
-    setIsDisableModalVisible(true);
-  };
-
-  const handleConfirmDisable = async () => {
+  const handleConfirmToggle = async () => {
+    const isDisabled = details.status === "Disabled";
     try {
-      await disableCourse(courseDetails.course_id);
-
-      setCourseDetails((prevDetails) =>
-        prevDetails ? { ...prevDetails, status: "Disabled" } : null,
-      );
-
-      setIsDisableModalVisible(false);
+      if (isDisabled) {
+        await enableCourse(details.course_id);
+      } else {
+        await disableCourse(details.course_id);
+      }
+      setIsToggleModalVisible(false);
+      setSuccessMessage(`Course ${isDisabled ? "enabled" : "disabled"} successfully!`);
       setIsSuccessModalVisible(true);
     } catch (error) {
-      console.error("Error disabling course:", error);
+      console.error(error.message || error);
     }
   };
 
+  if (isLoading)
+    return (
+      <View style={globalStyles.secondaryContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+
+  if (!details)
+    return (
+      <View style={globalStyles.secondaryContainer}>
+        <Text style={styles.errorText}>Course not found.</Text>
+      </View>
+    );
+
+  const isDisabled = details.status === "Disabled";
+
   return (
     <View style={globalStyles.secondaryContainer}>
-      <Text style={styles.headerText}>Course Details</Text>
+      <CustomModal
+        visible={isToggleModalVisible}
+        title={isDisabled ? "Enable Course" : "Disable Course"}
+        message={`Are you sure you want to ${isDisabled ? "enable" : "disable"} ${details.course_name}?`}
+        type="warning"
+        onClose={() => setIsToggleModalVisible(false)}
+        onConfirm={handleConfirmToggle}
+        cancelTitle="Cancel"
+        confirmTitle={isDisabled ? "Enable" : "Disable"}
+      />
+      <CustomModal
+        visible={isSuccessModalVisible}
+        title="Success"
+        message={successMessage}
+        type="success"
+        onClose={() => {
+          setIsSuccessModalVisible(false);
+          fetchDetails();
+        }}
+        cancelTitle="CLOSE"
+      />
+
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>{details.course_name}</Text>
+        <Text style={styles.headerSubtitle}>
+          {[details.course_code, details.department_name].filter(Boolean).join("  ·  ")}
+        </Text>
+        <View style={[styles.statusBadge, isDisabled && styles.statusBadgeDisabled]}>
+          <Text style={[styles.statusText, isDisabled && styles.statusTextDisabled]}>
+            {details.status}
+          </Text>
+        </View>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.detailsWrapper}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Course Name:</Text>
-          <Text style={styles.detail}>{courseDetails.course_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Course Code:</Text>
-          <Text style={styles.detail}>{courseDetails.course_code || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Department:</Text>
-          <Text style={styles.detail}>
-            {courseDetails.department_name || "-"}
-          </Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Status:</Text>
-          <Text style={styles.detail}>{courseDetails.status || "-"}</Text>
+        <View style={styles.infoCard}>
+          <Row label="Course Name" value={details.course_name} />
+          <Row label="Course Code" value={details.course_code} />
+          <Row label="Department" value={details.department_name} />
+          <Row label="Status" value={details.status} last />
         </View>
       </ScrollView>
 
@@ -113,45 +135,18 @@ const CourseDetails = () => {
           <CustomButton
             title="EDIT"
             onPress={() =>
-              router.push(
-                `/academicManagement/courses/EditCourse?id=${courseDetails.course_id}`,
-              )
+              router.push(`/academicManagement/courses/EditCourse?id=${details.course_id}`)
             }
           />
         </View>
-        {courseDetails.status === "Disabled" ? null : (
-          <View style={styles.button}>
-            <CustomButton
-              title="DISABLE"
-              type="secondary"
-              onPress={handleDisablePress}
-            />
-          </View>
-        )}
+        <View style={styles.button}>
+          <CustomButton
+            title={isDisabled ? "ENABLE" : "DISABLE"}
+            type="secondary"
+            onPress={() => setIsToggleModalVisible(true)}
+          />
+        </View>
       </View>
-
-      <CustomModal
-        visible={isDisableModalVisible}
-        title="Confirm Disable"
-        message={`Are you sure you want to disable ${courseDetails.course_name}?`}
-        type="warning"
-        onClose={() => setIsDisableModalVisible(false)}
-        onConfirm={handleConfirmDisable}
-        cancelTitle="Cancel"
-        confirmTitle="Disable"
-      />
-
-      <CustomModal
-        visible={isSuccessModalVisible}
-        title="Success"
-        message="Course disabled successfully!"
-        type="success"
-        onClose={() => setIsSuccessModalVisible(false)}
-        cancelTitle="CLOSE"
-      />
-
-      <TabsComponent />
-      <StatusBar style="light" />
     </View>
   );
 };
@@ -159,12 +154,52 @@ const CourseDetails = () => {
 export default CourseDetails;
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    gap: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
-    marginBottom: theme.spacing.small,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+  },
+  statusBadge: {
+    alignSelf: "flex-start",
+    marginTop: theme.spacing.xsmall,
+    backgroundColor: "rgba(251,241,229,0.2)",
+    borderRadius: theme.borderRadius.small,
+    paddingHorizontal: theme.spacing.small,
+    paddingVertical: 2,
+  },
+  statusBadgeDisabled: {
+    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  statusText: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+  },
+  statusTextDisabled: {
+    opacity: 0.6,
   },
   scrollView: {
     flex: 1,
@@ -174,9 +209,47 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingVertical: theme.spacing.small,
   },
+  infoCard: {
+    width: "100%",
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.1)",
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  row: {
+    flexDirection: "row",
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(37,85,134,0.07)",
+  },
+  rowLast: {
+    borderBottomWidth: 0,
+  },
+  rowLabel: {
+    width: "40%",
+    fontFamily: theme.fontFamily.ArialBold,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.primary,
+  },
+  rowValue: {
+    flex: 1,
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.primary,
+  },
   buttonContainer: {
     flexDirection: "row",
-    justifyContent: "center",
     gap: theme.spacing.small,
     paddingTop: theme.spacing.medium,
     paddingBottom: 80 + theme.spacing.medium,
@@ -185,39 +258,11 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
   },
-  detailsContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    borderBottomWidth: 2,
-    borderColor: theme.colors.primary,
-    paddingVertical: theme.spacing.small,
-  },
-  detailTitle: {
-    fontFamily: theme.fontFamily.ArialBold,
-    fontSize: theme.fontSizes.medium,
-    color: theme.colors.primary,
-    width: "40%",
-    flexShrink: 1,
-  },
-  detail: {
-    fontFamily: theme.fontFamily.Arial,
-    fontSize: theme.fontSizes.medium,
-    color: theme.colors.primary,
-    width: "60%",
-    flexShrink: 1,
-  },
-  loadingText: {
-    fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.Arial,
-    color: theme.colors.primary,
-    textAlign: "center",
-    marginTop: theme.spacing.medium,
-  },
   errorText: {
-    fontSize: theme.fontSizes.large,
     fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
     color: theme.colors.primary,
+    opacity: 0.5,
     textAlign: "center",
-    marginTop: theme.spacing.medium,
   },
 });

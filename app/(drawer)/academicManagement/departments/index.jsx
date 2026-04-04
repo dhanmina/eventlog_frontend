@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,11 +7,10 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  Platform,
 } from "react-native";
-import TabsComponent from "../../../../components/TabsComponent";
-import { StatusBar } from "expo-status-bar";
-import { fetchDepartments, disableDepartment } from "../../../../services/api/departments";
 import { router, useFocusEffect } from "expo-router";
+import { fetchDepartments, disableDepartment, enableDepartment } from "../../../../services/api/departments";
 import icons from "../../../../constants/icons";
 import SearchBar from "../../../../components/CustomSearch";
 import CustomModal from "../../../../components/CustomModal";
@@ -22,204 +21,226 @@ import theme from "../../../../constants/theme";
 export default function DepartmentsScreen() {
   const [departments, setDepartments] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isDisableModalVisible, setIsDisableModalVisible] = useState(false);
+  const [isToggleModalVisible, setIsToggleModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
-  const [departmentToDisable, setDepartmentToDisable] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [deptToToggle, setDeptToToggle] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadDepartments = async () => {
     try {
       const response = await fetchDepartments();
-      if (!response || !Array.isArray(response.departments)) {
-        throw new Error("Invalid data format: Expected 'departments' array.");
-      }
+      if (!response || !Array.isArray(response.departments)) return;
       setDepartments(response.departments);
-    } catch (err) {}
+    } catch {}
   };
 
   const refreshData = async () => {
     setRefreshing(true);
     try {
       await loadDepartments();
-    } catch (error) {
     } finally {
       setRefreshing(false);
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadDepartments();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadDepartments(); }, []));
 
-  const filteredDepartments = Array.isArray(departments)
-    ? departments.filter((dept) => {
-        if (!searchQuery.trim()) return true;
+  const filteredDepartments = departments.filter((d) => {
+    const name = d.department_name?.toLowerCase() || "";
+    const code = d.department_code?.toLowerCase() || "";
+    const q = searchQuery.toLowerCase();
+    return name.includes(q) || code.includes(q);
+  });
 
-        const departmentName = dept.department_name?.toLowerCase() || "";
-        const status = dept.status?.toLowerCase() || "";
-        const departmentId = dept.department_id?.toString().toLowerCase() || "";
-        const query = searchQuery.toLowerCase().trim();
+  const activeCount = departments.filter((d) => d.status === "Active").length;
+  const disabledCount = departments.filter((d) => d.status === "Disabled").length;
 
-        return (
-          departmentName.includes(query) ||
-          status.includes(query) ||
-          departmentId.includes(query)
-        );
-      })
-    : [];
-
-  const handleDisablePress = (departmentId) => {
-    const department = departments.find(
-      (dept) => dept.department_id === departmentId
-    );
-    if (!department) return;
-    setDepartmentToDisable(department);
-    setIsDisableModalVisible(true);
+  const handleTogglePress = (dept) => {
+    setDeptToToggle(dept);
+    setIsToggleModalVisible(true);
   };
 
-  const handleDisableModalClose = () => {
-    setIsDisableModalVisible(false);
-    setDepartmentToDisable(null);
-  };
-
-  const handleConfirmDisable = async () => {
-    if (!departmentToDisable) return;
+  const handleConfirmToggle = async () => {
+    if (!deptToToggle) return;
+    const isDisabled = deptToToggle.status === "Disabled";
     try {
-      await disableDepartment(departmentToDisable.department_id);
-      setDepartments((prevDepartments) =>
-        prevDepartments.map((dept) =>
-          dept.department_id === departmentToDisable.department_id
-            ? { ...dept, status: "Disabled" }
-            : dept
+      if (isDisabled) {
+        await enableDepartment(deptToToggle.department_id);
+      } else {
+        await disableDepartment(deptToToggle.department_id);
+      }
+      setDepartments((prev) =>
+        prev.map((d) =>
+          d.department_id === deptToToggle.department_id
+            ? { ...d, status: isDisabled ? "Active" : "Disabled" }
+            : d
         )
       );
-      handleDisableModalClose();
+      setIsToggleModalVisible(false);
+      setSuccessMessage(`Department ${isDisabled ? "enabled" : "disabled"} successfully!`);
       setIsSuccessModalVisible(true);
-    } catch (error) {}
-  };
-
-  const handleSearchChange = (query) => {
-    setSearchQuery(query);
-  };
-
-  const handleClearSearch = () => {
-    setSearchQuery("");
+    } catch {}
   };
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <Text style={styles.headerText}>DEPARTMENTS</Text>
+      <CustomModal
+        visible={isToggleModalVisible}
+        title={deptToToggle?.status === "Disabled" ? "Enable Department" : "Disable Department"}
+        message={`Are you sure you want to ${deptToToggle?.status === "Disabled" ? "enable" : "disable"} ${deptToToggle?.department_name}?`}
+        type="warning"
+        onClose={() => { setIsToggleModalVisible(false); setDeptToToggle(null); }}
+        onConfirm={handleConfirmToggle}
+        cancelTitle="Cancel"
+        confirmTitle={deptToToggle?.status === "Disabled" ? "Enable" : "Disable"}
+      />
+      <CustomModal
+        visible={isSuccessModalVisible}
+        title="Success"
+        message={successMessage}
+        type="success"
+        onClose={() => setIsSuccessModalVisible(false)}
+        cancelTitle="CLOSE"
+      />
+
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>DEPARTMENTS</Text>
+        <Text style={styles.headerSubtitle}>Manage academic departments</Text>
+        {departments.length > 0 && (
+          <View style={styles.headerFooter}>
+            <Text style={styles.headerStat}>{activeCount} Active</Text>
+            <Text style={styles.headerStatDivider}>·</Text>
+            <Text style={styles.headerStat}>{disabledCount} Disabled</Text>
+          </View>
+        )}
+      </View>
+
       <View style={{ width: "100%" }}>
         <SearchBar
           placeholder="Search departments..."
-          value={searchQuery}
-          onSearch={handleSearchChange}
-          onChangeText={handleSearchChange}
-          onClear={handleClearSearch}
+          onSearch={(q) => setSearchQuery(q)}
         />
       </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshData} />}
       >
         {filteredDepartments.length > 0 ? (
-          filteredDepartments.map((department) => (
-            <TouchableOpacity
-              key={department.department_id}
-              style={styles.departmentContainer}
-              onPress={() =>
-                router.push(
-                  `/academicManagement/departments/DepartmentDetails?id=${department.department_id}`
-                )
-              }
-            >
-              <View style={styles.textContainer}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {department.department_name}
-                </Text>
-                <Text style={styles.departmentCode} numberOfLines={1}>
-                  Status: {department.status}
-                </Text>
-              </View>
-              <View style={styles.iconContainer}>
-                <TouchableOpacity
-                  style={styles.iconBtn}
-                  onPress={() =>
-                    router.push(
-                      `/academicManagement/departments/EditDepartment?id=${department.department_id}`
-                    )
-                  }
-                >
-                  <Image source={icons.edit} style={styles.icon} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.iconBtn, { opacity: department.status === "Disabled" ? 0.3 : 1 }]}
-                  onPress={() => handleDisablePress(department.department_id)}
-                  disabled={department.status === "Disabled"}
-                >
-                  <Image source={icons.disabled} style={styles.icon} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))
+          filteredDepartments.map((dept) => {
+            const isDisabled = dept.status === "Disabled";
+            return (
+              <TouchableOpacity
+                key={dept.department_id}
+                style={styles.card}
+                onPress={() =>
+                  router.push(`/academicManagement/departments/DepartmentDetails?id=${dept.department_id}`)
+                }
+                activeOpacity={0.8}
+              >
+                <View style={[styles.cardLeft, isDisabled && styles.cardLeftDisabled]} />
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardName} numberOfLines={1}>
+                    {dept.department_name}
+                  </Text>
+                  <Text style={styles.cardSub} numberOfLines={1}>
+                    {dept.department_code}
+                  </Text>
+                </View>
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() =>
+                      router.push(`/academicManagement/departments/EditDepartment?id=${dept.department_id}`)
+                    }
+                  >
+                    <Image source={icons.edit} style={styles.icon} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => handleTogglePress(dept)}
+                  >
+                    <Image
+                      source={isDisabled ? icons.check : icons.disabled}
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            );
+          })
         ) : (
-          <Text style={styles.noResults}>
-            {searchQuery.trim()
-              ? `No departments found matching "${searchQuery}"`
-              : "No departments found"}
-          </Text>
+          <View style={styles.emptyState}>
+            <Image source={icons.department} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>No departments found</Text>
+            <Text style={styles.emptySub}>
+              {searchQuery ? "Try a different search term" : "Add a department to get started"}
+            </Text>
+          </View>
         )}
       </ScrollView>
 
       <View style={styles.buttonContainer}>
         <CustomButton
           title="ADD DEPARTMENT"
-          onPress={() =>
-            router.push("/academicManagement/departments/AddDepartment")
-          }
+          onPress={() => router.push("/academicManagement/departments/AddDepartment")}
         />
       </View>
       <View style={styles.tabSpacer} />
-
-      <CustomModal
-        visible={isDisableModalVisible}
-        title="Confirm Disable"
-        message={`Are you sure you want to disable ${departmentToDisable?.department_name}?`}
-        type="warning"
-        onClose={handleDisableModalClose}
-        onConfirm={handleConfirmDisable}
-        cancelTitle="Cancel"
-        confirmTitle="Disable"
-      />
-
-      <CustomModal
-        visible={isSuccessModalVisible}
-        title="Success"
-        message="Department disabled successfully!"
-        type="success"
-        onClose={() => setIsSuccessModalVisible(false)}
-        cancelTitle="CLOSE"
-      />
-
-      <TabsComponent />
-      <StatusBar style="auto" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
-    fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
     marginBottom: theme.spacing.small,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
+  },
+  headerFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
+    paddingTop: theme.spacing.small,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,241,229,0.15)",
+  },
+  headerStat: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.7,
+  },
+  headerStatDivider: {
+    color: theme.colors.secondary,
+    opacity: 0.3,
   },
   scrollView: {
     flex: 1,
@@ -228,62 +249,99 @@ const styles = StyleSheet.create({
   },
   scrollview: {
     flexGrow: 1,
-    paddingBottom: 200,
+    paddingBottom: theme.spacing.medium,
   },
-  departmentContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+  card: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.small,
-    paddingVertical: theme.spacing.small,
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.1)",
     marginBottom: theme.spacing.small,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
   },
-  textContainer: {
+  cardLeft: {
+    width: 4,
+    alignSelf: "stretch",
+    backgroundColor: theme.colors.primary,
+    opacity: 0.7,
+  },
+  cardLeftDisabled: {
+    backgroundColor: "rgba(0,0,0,0.15)",
+    opacity: 1,
+  },
+  cardBody: {
     flex: 1,
-    flexDirection: "column",
-    justifyContent: "center",
-    marginRight: theme.spacing.small,
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+    gap: 3,
   },
-  icon: {
-    width: 20,
-    height: 20,
-    tintColor: theme.colors.primary,
+  cardName: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.primary,
   },
-  iconContainer: {
+  cardSub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.5,
+    marginTop: 2,
+  },
+  actions: {
     flexDirection: "row",
     alignItems: "center",
+    paddingRight: theme.spacing.xsmall,
   },
   iconBtn: {
     padding: theme.spacing.xsmall,
     marginLeft: theme.spacing.xsmall,
   },
-  name: {
+  icon: {
+    width: 18,
+    height: 18,
+    tintColor: theme.colors.primary,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 60,
+    gap: theme.spacing.small,
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    tintColor: theme.colors.primary,
+    opacity: 0.2,
+  },
+  emptyTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
     fontSize: theme.fontSizes.large,
-    flexShrink: 1,
-  },
-  departmentCode: {
-    fontFamily: theme.fontFamily.SquadaOne,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.small,
-    flexShrink: 1,
+    opacity: 0.4,
   },
-  noResults: {
-    textAlign: "center",
-    fontFamily: theme.fontFamily.SquadaOne,
+  emptySub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
     color: theme.colors.primary,
-    fontSize: theme.fontSizes.medium,
-    marginTop: theme.spacing.medium,
+    opacity: 0.3,
   },
   buttonContainer: {
-    alignSelf: "center",
-    width: "80%",
+    width: "100%",
     paddingVertical: theme.spacing.small,
   },
   tabSpacer: {
-    height: 110,
+    height: 80,
   },
 });

@@ -95,3 +95,13 @@ export const disableBlock = async (blockId) => {
     throw error;
   }
 };
+
+export const enableBlock = async (blockId) => {
+  try {
+    const response = await axios.patch(`${API_URL}/api/blocks/${blockId}/status`, { status: "Active" });
+    if (response.data.success) return response.data.message;
+    throw new Error("Failed to enable block");
+  } catch (error) {
+    throw error;
+  }
+};

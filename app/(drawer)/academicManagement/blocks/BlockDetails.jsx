@@ -1,33 +1,40 @@
-import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useEffect, useState } from "react";
-import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
-
-import TabsComponent from "../../../../components/TabsComponent";
+import { useState, useCallback } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Platform,
+} from "react-native";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { fetchBlockById, disableBlock, enableBlock } from "../../../../services/api/blocks";
+import globalStyles from "../../../../constants/globalStyles";
+import theme from "../../../../constants/theme";
 import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
 
-import globalStyles from "../../../../constants/globalStyles";
-import theme from "../../../../constants/theme";
-import { fetchBlockById, disableBlock } from "../../../../services/api/blocks";
-import { useLocalSearchParams } from "expo-router";
+const Row = ({ label, value }) => (
+  <View style={styles.row}>
+    <Text style={styles.rowLabel}>{label}</Text>
+    <Text style={styles.rowValue}>{value || "—"}</Text>
+  </View>
+);
 
 const BlockDetails = () => {
   const { id: block_id } = useLocalSearchParams();
   const [blockDetails, setBlockDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDisableModalVisible, setIsDisableModalVisible] = useState(false);
+  const [isToggleModalVisible, setIsToggleModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const fetchBlockDetails = async () => {
     try {
       if (!block_id) throw new Error("Invalid block ID");
-
       const blockData = await fetchBlockById(block_id);
-      if (!blockData || Object.keys(blockData).length === 0) {
+      if (!blockData || Object.keys(blockData).length === 0)
         throw new Error("Block details not found");
-      }
-
       setBlockDetails(blockData);
     } catch (error) {
       console.error(error.message || error);
@@ -37,71 +44,98 @@ const BlockDetails = () => {
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setIsLoading(true);
       fetchBlockDetails();
     }, [block_id])
   );
 
-  if (isLoading) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
-
-  if (!blockDetails) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.errorText}>
-          Block details not found. Please check the block ID.
-        </Text>
-      </View>
-    );
-  }
-
-  const handleDisablePress = () => setIsDisableModalVisible(true);
-
-  const handleConfirmDisable = async () => {
+  const handleConfirmToggle = async () => {
+    const isDisabled = blockDetails.status === "Disabled";
     try {
-      await disableBlock(blockDetails.block_id);
-      setIsDisableModalVisible(false);
+      if (isDisabled) {
+        await enableBlock(blockDetails.block_id);
+      } else {
+        await disableBlock(blockDetails.block_id);
+      }
+      setIsToggleModalVisible(false);
+      setSuccessMessage(`Block ${isDisabled ? "enabled" : "disabled"} successfully!`);
       setIsSuccessModalVisible(true);
     } catch (error) {
       console.error(error.message || error);
     }
   };
 
-  const handleSuccessModalClose = () => {
-    setIsSuccessModalVisible(false);
-    fetchBlockDetails();
-  };
+  if (isLoading)
+    return (
+      <View style={globalStyles.secondaryContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+
+  if (!blockDetails)
+    return (
+      <View style={globalStyles.secondaryContainer}>
+        <Text style={styles.errorText}>Block not found.</Text>
+      </View>
+    );
+
+  const isDisabled = blockDetails.status === "Disabled";
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <Text style={styles.headerText}>Block Details</Text>
+      <CustomModal
+        visible={isToggleModalVisible}
+        title={isDisabled ? "Enable Block" : "Disable Block"}
+        message={`Are you sure you want to ${isDisabled ? "enable" : "disable"} ${blockDetails.course_code} ${blockDetails.block_name}?`}
+        type="warning"
+        onClose={() => setIsToggleModalVisible(false)}
+        onConfirm={handleConfirmToggle}
+        cancelTitle="Cancel"
+        confirmTitle={isDisabled ? "Enable" : "Disable"}
+      />
+      <CustomModal
+        visible={isSuccessModalVisible}
+        title="Success"
+        message={successMessage}
+        type="success"
+        onClose={() => {
+          setIsSuccessModalVisible(false);
+          fetchBlockDetails();
+        }}
+        cancelTitle="CLOSE"
+      />
+
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>
+          {`${blockDetails.course_code || ""} ${blockDetails.block_name || ""}`.trim()}
+        </Text>
+        <Text style={styles.headerSubtitle}>
+          {[blockDetails.course_name, blockDetails.year_level_name]
+            .filter(Boolean)
+            .join("  ·  ")}
+        </Text>
+        <View style={[styles.statusBadge, isDisabled && styles.statusBadgeDisabled]}>
+          <Text style={[styles.statusText, isDisabled && styles.statusTextDisabled]}>
+            {blockDetails.status}
+          </Text>
+        </View>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.detailsWrapper}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Block Name:</Text>
-          <Text style={styles.detail}>{blockDetails.block_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Course:</Text>
-          <Text style={styles.detail}>{blockDetails.course_code}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Year Level:</Text>
-          <Text style={styles.detail}>{blockDetails.year_level_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Status:</Text>
-          <Text style={styles.detail}>{blockDetails.status}</Text>
+        <View style={styles.infoCard}>
+          <Row label="Block Name" value={blockDetails.block_name} />
+          <Row label="Course" value={`${blockDetails.course_code} — ${blockDetails.course_name}`} />
+          <Row label="Year Level" value={blockDetails.year_level_name} />
+          <Row label="Department" value={blockDetails.department_name} />
+          <View style={[styles.row, styles.rowLast]}>
+            <Text style={styles.rowLabel}>Status</Text>
+            <Text style={styles.rowValue}>{blockDetails.status}</Text>
+          </View>
         </View>
       </ScrollView>
 
@@ -110,45 +144,18 @@ const BlockDetails = () => {
           <CustomButton
             title="EDIT"
             onPress={() =>
-              router.push(
-                `/academicManagement/blocks/EditBlock?id=${blockDetails.block_id}`
-              )
+              router.push(`/academicManagement/blocks/EditBlock?id=${blockDetails.block_id}`)
             }
           />
         </View>
-        {blockDetails.status !== "Disabled" && (
-          <View style={styles.button}>
-            <CustomButton
-              title="DISABLE"
-              type="secondary"
-              onPress={handleDisablePress}
-            />
-          </View>
-        )}
+        <View style={styles.button}>
+          <CustomButton
+            title={isDisabled ? "ENABLE" : "DISABLE"}
+            type="secondary"
+            onPress={() => setIsToggleModalVisible(true)}
+          />
+        </View>
       </View>
-
-      <CustomModal
-        visible={isDisableModalVisible}
-        title="Confirm Disable"
-        message={`Are you sure you want to disable ${blockDetails.block_name}?`}
-        type="warning"
-        onClose={() => setIsDisableModalVisible(false)}
-        onConfirm={handleConfirmDisable}
-        cancelTitle="Cancel"
-        confirmTitle="Disable"
-      />
-
-      <CustomModal
-        visible={isSuccessModalVisible}
-        title="Success"
-        message="Block disabled successfully!"
-        type="success"
-        onClose={handleSuccessModalClose}
-        cancelTitle="CLOSE"
-      />
-
-      <TabsComponent />
-      <StatusBar style="light" />
     </View>
   );
 };
@@ -156,12 +163,52 @@ const BlockDetails = () => {
 export default BlockDetails;
 
 const styles = StyleSheet.create({
-  headerText: {
-    color: theme.colors.primary,
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.medium,
+    gap: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.title,
-    textAlign: "center",
-    marginBottom: theme.spacing.small,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+  },
+  statusBadge: {
+    alignSelf: "flex-start",
+    marginTop: theme.spacing.xsmall,
+    backgroundColor: "rgba(251,241,229,0.2)",
+    borderRadius: theme.borderRadius.small,
+    paddingHorizontal: theme.spacing.small,
+    paddingVertical: 2,
+  },
+  statusBadgeDisabled: {
+    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  statusText: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+  },
+  statusTextDisabled: {
+    opacity: 0.6,
   },
   scrollView: {
     flex: 1,
@@ -171,9 +218,47 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingVertical: theme.spacing.small,
   },
+  infoCard: {
+    width: "100%",
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.1)",
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  row: {
+    flexDirection: "row",
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(37,85,134,0.07)",
+  },
+  rowLast: {
+    borderBottomWidth: 0,
+  },
+  rowLabel: {
+    width: "40%",
+    fontFamily: theme.fontFamily.ArialBold,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.primary,
+  },
+  rowValue: {
+    flex: 1,
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.primary,
+  },
   buttonContainer: {
     flexDirection: "row",
-    justifyContent: "center",
     gap: theme.spacing.small,
     paddingTop: theme.spacing.medium,
     paddingBottom: 80 + theme.spacing.medium,
@@ -182,39 +267,11 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
   },
-  detailsContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    borderBottomWidth: 2,
-    borderColor: theme.colors.primary,
-    paddingVertical: theme.spacing.small,
-  },
-  detailTitle: {
-    fontFamily: theme.fontFamily.ArialBold,
-    fontSize: theme.fontSizes.medium,
-    color: theme.colors.primary,
-    width: "40%",
-    flexShrink: 1,
-  },
-  detail: {
-    fontFamily: theme.fontFamily.Arial,
-    fontSize: theme.fontSizes.medium,
-    color: theme.colors.primary,
-    width: "60%",
-    flexShrink: 1,
-  },
-  loadingText: {
-    fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.Arial,
-    color: theme.colors.primary,
-    textAlign: "center",
-    marginTop: theme.spacing.medium,
-  },
   errorText: {
-    fontSize: theme.fontSizes.large,
     fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
     color: theme.colors.primary,
+    opacity: 0.5,
     textAlign: "center",
-    marginTop: theme.spacing.medium,
   },
 });

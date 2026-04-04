@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { useState, useEffect } from "react";
+import { StyleSheet, Text, View, TouchableOpacity, Platform } from "react-native";
 import { Dropdown, MultiSelect } from "react-native-element-dropdown";
 import theme from "../constants/theme";
 
@@ -21,6 +21,7 @@ const CustomDropdown = ({
   selectedEventFontSize = theme.fontSizes.medium,
 }) => {
   const [value, setValue] = useState(initialValue || (multiSelect ? [] : null));
+  const [isFocused, setIsFocused] = useState(false);
   const [selectAllLabel, setSelectAllLabel] = useState("Select All");
 
   useEffect(() => {
@@ -29,35 +30,29 @@ const CustomDropdown = ({
 
   useEffect(() => {
     if (multiSelect && data.length > 0) {
-      if (value.length === data.length) {
-        setSelectAllLabel("Deselect All");
-      } else {
-        setSelectAllLabel("Select All");
-      }
+      setSelectAllLabel(value.length === data.length ? "Deselect All" : "Select All");
     }
   }, [value, data, multiSelect]);
 
   const handleChange = (selectedItem) => {
     if (multiSelect) {
       const selectAllValue = "select_all";
-      const allValuesExceptSelectAll = data
+      const allValues = data
         .filter((item) => item.value !== selectAllValue)
         .map((item) => item.value);
 
       if (selectedItem.includes(selectAllValue) && data.length > 0) {
-        if (value.length === data.length) {
-          setValue([]);
-          onSelect?.([]);
-        } else {
-          setValue(allValuesExceptSelectAll);
-          onSelect?.(allValuesExceptSelectAll);
-        }
+        const next = value.length === data.length ? [] : allValues;
+        setValue(next);
+        onSelect?.(next);
       } else {
-        setValue(selectedItem.filter((item) => item !== selectAllValue));
-        onSelect?.(selectedItem.filter((item) => item !== selectAllValue));
+        const filtered = selectedItem.filter((item) => item !== selectAllValue);
+        setValue(filtered);
+        onSelect?.(filtered);
       }
     } else {
-      if (value === selectedItem) {
+      const currentValue = typeof value === "object" && value !== null ? value?.value : value;
+      if (currentValue === selectedItem.value) {
         setValue(null);
         onSelect?.(null);
       } else {
@@ -67,108 +62,100 @@ const CustomDropdown = ({
     }
   };
 
-  const getDropdownStyle = () => {
-    const resolvedBorderColor =
-      borderColor === "secondary" ? theme.colors.secondary : theme.colors.primary;
-    const baseStyle = {
-      height: 50,
-      borderWidth: 2,
-      borderColor: resolvedBorderColor,
-      backgroundColor: theme.colors.secondary,
-      padding: theme.spacing.medium,
-    };
-    return display === "sharp"
-      ? { ...baseStyle, borderRadius: 0 }
-      : { ...baseStyle, borderRadius: theme.borderRadius.medium };
+  const resolvedTitleColor =
+    titleColor === "secondary" ? theme.colors.secondary : theme.colors.primary;
+
+  const hasValue = multiSelect
+    ? Array.isArray(value) && value.length > 0
+    : value !== null && value !== undefined && value !== "";
+
+  const radius = display === "sharp" ? 0 : theme.borderRadius.medium;
+
+  const dropdownStyle = {
+    height: 46,
+    borderWidth: 1.5,
+    borderColor: isFocused ? theme.colors.primary : "rgba(37,85,134,0.4)",
+    backgroundColor: theme.colors.secondary,
+    paddingHorizontal: theme.spacing.medium,
+    borderRadius: radius,
+    ...Platform.select({
+      ios: isFocused
+        ? { shadowColor: theme.colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6 }
+        : {},
+      android: isFocused ? { elevation: 2 } : {},
+    }),
   };
 
-  const getTitleStyle = () => {
-    const color =
-      titleColor === "primary" ? theme.colors.primary : theme.colors.secondary;
-    return { ...styles.title, color, fontFamily: theme.fontFamily.ArialBold };
+  const placeholderStyle = {
+    fontFamily: theme.fontFamily[fontFamily] || theme.fontFamily.Arial,
+    fontSize: placeholderFontSize,
+    color: hasValue ? theme.colors.primary : placeholderColor,
   };
 
-  const customPlaceholder = () => {
-    if (multiSelect && Array.isArray(value) && value.length > 0) {
-      return `${value.length} selected`;
-    }
-    return placeholder;
+  const selectedTextStyle = {
+    fontFamily: theme.fontFamily[selectedEventFont] || theme.fontFamily.Arial,
+    fontSize: selectedEventFontSize,
+    color: selectedEventColor,
   };
 
-  const getPlaceholderStyle = () => {
-    return {
-      ...styles.placeholderStyle,
-      fontSize: placeholderFontSize,
-      color: (
-        multiSelect ? Array.isArray(value) && value.length > 0 : value !== null
-      )
-        ? theme.colors.primary
-        : placeholderColor,
-      fontFamily,
-    };
-  };
-
-  const getMultiSelectData = () => {
-    if (data.length > 0) {
-      return [{ label: selectAllLabel, value: "select_all" }, ...data];
-    }
-    return data;
+  const itemTextStyle = {
+    color: theme.colors.primary,
+    fontFamily: theme.fontFamily[fontFamily] || theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
   };
 
   return (
     <View style={styles.container}>
-      {title ? <Text style={getTitleStyle()}>{title}</Text> : null}
+      {title ? (
+        <Text style={[styles.title, { color: resolvedTitleColor }]}>{title}</Text>
+      ) : null}
       {multiSelect ? (
         <MultiSelect
-          data={getMultiSelectData()}
+          data={data.length > 0 ? [{ label: selectAllLabel, value: "select_all" }, ...data] : data}
           labelField="label"
           valueField="value"
           value={value}
           onChange={handleChange}
-          placeholder={customPlaceholder()}
-          style={getDropdownStyle()}
-          placeholderStyle={getPlaceholderStyle()}
-          selectedTextStyle={{
-            ...styles.selectedTextStyle,
-            fontFamily: selectedEventFont,
-            color: selectedEventColor,
-            fontSize: selectedEventFontSize,
-          }}
-          itemTextStyle={{ ...styles.itemTextStyle, fontFamily }}
-          itemContainerStyle={styles.itemContainerStyle}
+          placeholder={hasValue ? `${value.length} selected` : placeholder}
+          style={dropdownStyle}
+          placeholderStyle={placeholderStyle}
+          selectedTextStyle={selectedTextStyle}
+          itemTextStyle={itemTextStyle}
+          itemContainerStyle={styles.itemContainer}
           containerStyle={styles.listContainer}
-          inputSearchStyle={styles.inputSearchStyle}
-          searchPlaceholderTextColor={theme.colors.gray}
+          inputSearchStyle={styles.inputSearch}
+          searchPlaceholderTextColor={theme.colors.placeholder}
           iconColor={theme.colors.primary}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           renderSelectedItem={(item, unSelect) => (
             <TouchableOpacity onPress={() => unSelect && unSelect(item)} />
           )}
         />
       ) : (
         <Dropdown
-          data={data.length > 0 ? data : []}
+          data={data}
           labelField="label"
           valueField="value"
           value={value}
           onChange={handleChange}
           placeholder={placeholder}
-          style={getDropdownStyle()}
-          placeholderStyle={getPlaceholderStyle()}
-          selectedTextStyle={{
-            ...styles.selectedTextStyle,
-            fontFamily: selectedEventFont,
-            color: selectedEventColor,
-            fontSize: selectedEventFontSize,
-          }}
-          itemTextStyle={{ ...styles.itemTextStyle, fontFamily }}
-          itemContainerStyle={styles.itemContainerStyle}
+          style={dropdownStyle}
+          placeholderStyle={placeholderStyle}
+          selectedTextStyle={selectedTextStyle}
+          itemTextStyle={itemTextStyle}
+          itemContainerStyle={styles.itemContainer}
           containerStyle={styles.listContainer}
           iconColor={theme.colors.primary}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
         />
       )}
     </View>
   );
 };
+
+export default CustomDropdown;
 
 const styles = StyleSheet.create({
   container: {
@@ -176,29 +163,34 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.fontSizes.medium,
+    fontFamily: theme.fontFamily.ArialBold,
     marginBottom: theme.spacing.small,
   },
-  placeholderStyle: {
-    fontSize: theme.fontSizes.medium,
-  },
-  selectedTextStyle: {
-    fontSize: 16,
-  },
-  itemTextStyle: {
-    color: theme.colors.primary,
-  },
-  itemContainerStyle: {
+  itemContainer: {
     backgroundColor: theme.colors.secondary,
   },
   listContainer: {
     backgroundColor: theme.colors.secondary,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderRadius: 0,
+    borderWidth: 1.5,
+    borderColor: "rgba(37,85,134,0.4)",
+    borderRadius: theme.borderRadius.medium,
     overflow: "hidden",
-    elevation: 0,
-    shadowColor: "transparent",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  inputSearch: {
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.15)",
+    borderRadius: theme.borderRadius.small,
+    color: theme.colors.primary,
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.medium,
   },
 });
-
-export default CustomDropdown;
