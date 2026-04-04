@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   Platform,
+  Share,
 } from "react-native";
 import theme from "../../../../constants/theme";
 import globalStyles from "../../../../constants/globalStyles";
@@ -14,7 +15,7 @@ import icons from "../../../../constants/icons";
 import { useLocalSearchParams } from "expo-router";
 import moment from "moment";
 import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
+import { File, Directory, Paths } from "expo-file-system";
 import CustomModal from "../../../../components/CustomModal";
 import { getStudentAttSummary } from "../../../../services/api/records";
 import { getStoredUser } from "../../../../database/queries";
@@ -144,9 +145,7 @@ const Attendance = () => {
 
           setEventName(event_name);
 
-          const courseBlock = storedUser
-            ? `${storedUser.course_code || ""} ${storedUser.block_name || ""}`.trim()
-            : "";
+          const courseBlock = storedUser?.block_name || "";
 
           setStudentDetails({
             name: student_name,
@@ -198,10 +197,14 @@ const Attendance = () => {
   }, [eventId, studentId]);
 
   const handlePrint = async () => {
-    let pdfStudentName = "Student"; // Capture for error logging
+    let pdfStudentName = "Student";
+    let hasError = false;
 
     try {
-      console.log("🔄 [PDF Download] Initiating PDF download...", { eventId, studentId });
+      console.log("🔄 [PDF Download] Initiating PDF download...", {
+        eventId,
+        studentId,
+      });
 
       const response = await getStudentAttSummary(eventId, studentId);
       if (!response?.success || !response.data) {
@@ -231,9 +234,14 @@ const Attendance = () => {
       if (available_time_periods.hasPmOut)
         tableHeaders += '<span class="col-time">PM Out</span>';
       tableHeaders += `<span class="col-count">Present</span><span class="col-count">Absent</span>`;
-      console.log("✅ [PDF] Headers created:", { hasAmIn: available_time_periods.hasAmIn, hasPmIn: available_time_periods.hasPmIn });
+      console.log("✅ [PDF] Headers created:", {
+        hasAmIn: available_time_periods.hasAmIn,
+        hasPmIn: available_time_periods.hasPmIn,
+      });
 
-      console.log("📊 [PDF] Processing attendance rows...", { totalDates: Object.keys(attendance_summary || {}).length });
+      console.log("📊 [PDF] Processing attendance rows...", {
+        totalDates: Object.keys(attendance_summary || {}).length,
+      });
       const tableRows = Object.entries(attendance_summary || {})
         .map(([date, summary]) => {
           let rowColumns = `<span class="col-date">${moment(date).format("MMMM D, YYYY")}</span>`;
@@ -249,7 +257,10 @@ const Attendance = () => {
           return `<div class="record-line">${rowColumns}</div>`;
         })
         .join("");
-      console.log("✅ [PDF] Rows processed, count:", Object.keys(attendance_summary || {}).length);
+      console.log(
+        "✅ [PDF] Rows processed, count:",
+        Object.keys(attendance_summary || {}).length,
+      );
 
       const htmlContent = `
         <html>
@@ -375,31 +386,57 @@ const Attendance = () => {
       `;
 
       try {
-        const pdfName = `${student_name || "Student"} - Attendance Report.pdf`;
-        console.log("📝 [PDF] Target filename:", pdfName);
+        const safeName = (student_name || "Student").replace(
+          /[^a-zA-Z0-9]/g,
+          "",
+        );
+        const safeEvent = (event_name || "Event").replace(/[^a-zA-Z0-9]/g, "");
+        const pdfName = `${safeName}_${safeEvent}.pdf`;
+        console.log("📝 [PDF] Target filename:", pdfName, {
+          student_name,
+          event_name,
+        });
 
         console.log("🔄 [PDF] Starting PDF generation...");
-        const { uri: tempUri } = await Print.printToFileAsync({ html: htmlContent });
+        const { uri: tempUri } = await Print.printToFileAsync({
+          html: htmlContent,
+        });
         console.log("✅ [PDF] Generated temp file:", tempUri);
 
-        console.log("📤 [PDF] Sharing with filename:", pdfName);
-        await Sharing.shareAsync(tempUri, {
-          mimeType: "application/pdf",
-          UTI: ".pdf",
-          filename: pdfName,
-        });
-        console.log("✅ [PDF] Shared successfully with filename:", pdfName);
+        console.log("📂 [PDF] Moving to named file...");
+        const tempFile = new File(tempUri);
+        const documentsDir = new Directory(Paths.document);
+        const existingFile = new File(documentsDir, pdfName);
+        if (existingFile.exists) {
+          existingFile.delete();
+        }
+        tempFile.move(documentsDir);
+        tempFile.rename(pdfName);
+        console.log("✅ [PDF] File moved to:", tempFile.uri);
 
-        setModalConfig({
-          title: "Download Successful",
-          message: "Your attendance record has been downloaded successfully.",
-          type: "success",
-          cancelTitle: "OK",
+        console.log("📤 [PDF] Sharing file:", pdfName);
+        const shareResult = await Share.share({
+          url: tempFile.uri,
+          title: pdfName,
         });
+        console.log("✅ [PDF] Share result:", shareResult.action);
+
+        if (shareResult.action === Share.sharedAction) {
+          setModalConfig({
+            title: "Report Saved",
+            message: "Your attendance report has been saved successfully.",
+            type: "success",
+            cancelTitle: "OK",
+          });
+          setModalVisible(true);
+        }
       } catch (fileError) {
         console.error("❌ [PDF File Error]", {
-          stage: fileError.message?.includes("share") ? "share" :
-                  fileError.message?.includes("Print") ? "generate" : "unknown",
+          stage: fileError.message?.includes("share")
+            ? "share"
+            : fileError.message?.includes("Print")
+              ? "generate"
+              : "unknown",
           message: fileError.message,
           code: fileError.code,
           studentName: pdfStudentName,
@@ -413,14 +450,19 @@ const Attendance = () => {
       console.error("❌ [PDF Generation Error]", {
         message: error.message,
         code: error.code,
-        stage: error.message?.includes("JSON") ? "html" :
-               error.message?.includes("File") ? "file" :
-               error.message?.includes("share") ? "share" : "unknown",
+        stage: error.message?.includes("JSON")
+          ? "html"
+          : error.message?.includes("File")
+            ? "file"
+            : error.message?.includes("share")
+              ? "share"
+              : "unknown",
         eventId,
         studentId,
         studentName: pdfStudentName,
       });
 
+      hasError = true;
       setModalConfig({
         title: "Download Failed",
         message: `An error occurred: ${error.message || "Unknown error"}. Please try again or contact support.`,
@@ -428,7 +470,7 @@ const Attendance = () => {
         cancelTitle: "OK",
       });
     } finally {
-      setModalVisible(true);
+      if (hasError) setModalVisible(true);
     }
   };
 

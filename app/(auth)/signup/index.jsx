@@ -48,8 +48,10 @@ const SignUp = () => {
 
   const loadDepartments = async () => {
     setLoading(true);
+    console.log("[Signup] Loading departments...");
     try {
       const depts = await fetchPublicDepartments();
+      console.log("[Signup] Departments loaded:", depts?.length);
       setDepartments(
         depts.map((dept) => ({
           label: dept.department_name,
@@ -57,6 +59,11 @@ const SignUp = () => {
         })),
       );
     } catch (error) {
+      console.error("[Signup] Failed to load departments:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
       showModal("Failed to load departments. Please try again.", "error");
     } finally {
       setLoading(false);
@@ -112,6 +119,7 @@ const SignUp = () => {
     }
 
     setLoading(true);
+    console.log("[Signup] Submitting registration for:", formData.id_number);
     try {
       await signup({
         id_number: formData.id_number,
@@ -124,10 +132,17 @@ const SignUp = () => {
         department_id: formData.department_id,
       });
 
+      console.log("[Signup] Registration successful for:", formData.id_number);
       showModal("Registration successful!", "success");
       resetForm();
       setTimeout(() => router.push("/login"), 2000);
     } catch (error) {
+      console.error("[Signup] Registration failed:", {
+        id_number: formData.id_number,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
       showModal(
         error.response?.data?.message || "Something went wrong.",
         "error",
