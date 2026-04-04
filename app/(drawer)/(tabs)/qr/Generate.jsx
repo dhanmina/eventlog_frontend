@@ -154,7 +154,7 @@ const Generate = () => {
   const canGenerate = !!currentEvent && !!user;
 
   return (
-    <View style={globalStyles.secondaryContainer}>
+    <View style={[globalStyles.secondaryContainer, { paddingBottom: 80 }]}>
       <View style={styles.ticketCard}>
         <View style={styles.ticketHeader}>
           <View style={styles.ticketHeaderTop}>

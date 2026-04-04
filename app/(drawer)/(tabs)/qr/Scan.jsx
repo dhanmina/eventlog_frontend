@@ -403,6 +403,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     gap: theme.spacing.small,
+    paddingBottom: 80,
   },
   cameraWrapper: {
     height: 420,
