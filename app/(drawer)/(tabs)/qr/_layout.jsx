@@ -34,6 +34,7 @@ const QRLayout = () => {
         name="index"
         options={{
           headerShown: showHeader,
+          headerTitle: "",
           headerStyle: { backgroundColor: theme.colors.primary },
           headerTintColor: theme.colors.secondary,
           title: "QR Code",
