@@ -14,7 +14,7 @@ const AcademicManagementLayout = () => {
           headerStyle: {
             backgroundColor: theme.colors.secondary,
           },
-          title: "",
+          headerTitle: "",
         }}
       />
       <Stack.Screen
@@ -149,7 +149,7 @@ const AcademicManagementLayout = () => {
           headerStyle: {
             backgroundColor: theme.colors.secondary,
           },
-          title: "",
+          headerTitle: "",
         }}
       />
     </Stack>

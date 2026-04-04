@@ -6,16 +6,16 @@ import icons from "../../../constants/icons";
 
 const ITEMS = [
   {
-    label: "Events",
-    desc: "Create and manage school events",
-    icon: icons.calendarStar,
-    route: "/eventManagement/events",
-  },
-  {
     label: "Event Names",
     desc: "Manage reusable event name templates",
     icon: icons.event,
     route: "/eventManagement/eventnames",
+  },
+  {
+    label: "Events",
+    desc: "Create and manage school events",
+    icon: icons.calendarStar,
+    route: "/eventManagement/events",
   },
   {
     label: "Records",

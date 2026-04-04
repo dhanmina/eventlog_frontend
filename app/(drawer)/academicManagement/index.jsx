@@ -6,10 +6,10 @@ import icons from "../../../constants/icons";
 
 const ITEMS = [
   {
-    label: "Departments",
-    desc: "Manage academic departments",
-    icon: icons.department,
-    route: "/academicManagement/departments",
+    label: "Blocks",
+    desc: "Manage sections per course and year level",
+    icon: icons.blocks,
+    route: "/academicManagement/blocks",
   },
   {
     label: "Courses",
@@ -18,10 +18,10 @@ const ITEMS = [
     route: "/academicManagement/courses",
   },
   {
-    label: "Blocks",
-    desc: "Manage sections per course and year level",
-    icon: icons.blocks,
-    route: "/academicManagement/blocks",
+    label: "Departments",
+    desc: "Manage academic departments",
+    icon: icons.department,
+    route: "/academicManagement/departments",
   },
   {
     label: "School Year",

@@ -12,16 +12,16 @@ const ITEMS = [
     route: "/userManagement/admins",
   },
   {
-    label: "Students",
-    desc: "Manage student and officer accounts",
-    icon: icons.student,
-    route: "/userManagement/students",
-  },
-  {
     label: "Roles",
     desc: "View system roles and permissions",
     icon: icons.role,
     route: "/userManagement/roles",
+  },
+  {
+    label: "Students",
+    desc: "Manage student and officer accounts",
+    icon: icons.student,
+    route: "/userManagement/students",
   },
 ];
 
