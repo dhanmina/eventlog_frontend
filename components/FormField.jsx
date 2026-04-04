@@ -5,8 +5,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Text,
+  Platform,
 } from "react-native";
-import React, { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 
 import theme from "../constants/theme.js";
 import globalStyles from "../constants/globalStyles.js";
@@ -28,7 +29,9 @@ const FormField = ({
   example,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const inputs = useRef([]);
+  const inputRef = useRef(null);
 
   const handleInputChange = useCallback(
     (text, index) => {
@@ -159,14 +162,20 @@ const FormField = ({
       <View
         style={[
           styles.inputWrapper,
-          { borderColor: resolvedBorderColor, borderRadius },
+          {
+            borderColor: isFocused ? resolvedBorderColor : "rgba(37,85,134,0.4)",
+            borderRadius,
+          },
+          isFocused && styles.inputWrapperFocused,
           multiline && styles.multilineInputWrapper,
         ]}
+        onTouchEnd={() => inputRef.current?.focus()}
       >
         {iconShow && getIcon() && (
           <Image source={getIcon()} style={globalStyles.icons} />
         )}
         <TextInput
+          ref={inputRef}
           style={[
             styles.textInput,
             multiline && styles.multilineInput,
@@ -177,6 +186,8 @@ const FormField = ({
           placeholderTextColor={theme.colors.placeholder}
           value={value}
           onChangeText={handleInputChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           secureTextEntry={type === "password" && !showPassword}
           keyboardType={
             type === "id"
@@ -228,7 +239,18 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.secondary,
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 2,
+    borderWidth: 1.5,
+  },
+  inputWrapperFocused: {
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
   },
   multilineInputWrapper: {
     height: 92,
