@@ -14,7 +14,7 @@ import icons from "../../../../constants/icons";
 import { useLocalSearchParams } from "expo-router";
 import moment from "moment";
 import * as Print from "expo-print";
-import { File, Paths } from "expo-file-system";
+import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import CustomModal from "../../../../components/CustomModal";
 import { getStudentAttSummary } from "../../../../services/api/records";
@@ -199,6 +199,8 @@ const Attendance = () => {
   }, [eventId, studentId]);
 
   const handlePrint = async () => {
+    let pdfStudentName = "Student"; // Capture for error logging
+
     try {
       console.log("🔄 [PDF Download] Initiating PDF download...", { eventId, studentId });
 
@@ -216,6 +218,8 @@ const Attendance = () => {
         attendance_summary,
         available_time_periods = {},
       } = response.data;
+
+      pdfStudentName = student_name || "Student";
 
       console.log("📋 [PDF] Building table headers...");
       let tableHeaders = `<span class="col-date">Date</span>`;
@@ -373,23 +377,31 @@ const Attendance = () => {
 
       try {
         console.log("🔄 [PDF] Starting PDF generation...");
-        const { uri } = await Print.printToFileAsync({ html: htmlContent });
-        console.log("✅ [PDF] Generated from Print:", uri);
+        const { uri: tempUri } = await Print.printToFileAsync({ html: htmlContent });
+        console.log("✅ [PDF] Generated from Print:", tempUri);
 
         const pdfName = `${student_name || "Student"} - Individual Attendance Report.pdf`;
         console.log("📝 [PDF] Creating file:", pdfName);
 
-        const src = new File(uri);
-        console.log("📂 [PDF] Source file created:", uri);
+        const documentsDir = FileSystem.documentDirectory;
+        console.log("📂 [PDF] Documents directory:", documentsDir);
 
-        const dest = new File(Paths.document, pdfName);
-        console.log("📂 [PDF] Destination path:", Paths.document, pdfName);
+        const destPath = `${documentsDir}${pdfName}`;
+        console.log("📂 [PDF] Destination path:", destPath);
 
-        src.move(dest);
-        console.log("✅ [PDF] File moved successfully to:", dest.uri);
+        await FileSystem.copyAsync({ from: tempUri, to: destPath });
+        console.log("✅ [PDF] File copied successfully to:", destPath);
+
+        // Clean up temp file
+        try {
+          await FileSystem.deleteAsync(tempUri, { idempotent: true });
+          console.log("🗑️ [PDF] Temp file cleaned up");
+        } catch (cleanupError) {
+          console.warn("⚠️ [PDF] Temp file cleanup warning:", cleanupError.message);
+        }
 
         console.log("📤 [PDF] Initiating share dialog...");
-        await Sharing.shareAsync(dest.uri, {
+        await Sharing.shareAsync(destPath, {
           mimeType: "application/pdf",
           UTI: ".pdf",
         });
@@ -403,13 +415,12 @@ const Attendance = () => {
         });
       } catch (fileError) {
         console.error("❌ [PDF File Error]", {
-          stage: fileError.message?.includes("move") ? "move" :
+          stage: fileError.message?.includes("copy") ? "copy" :
                   fileError.message?.includes("share") ? "share" :
                   fileError.message?.includes("Print") ? "generate" : "unknown",
           message: fileError.message,
           code: fileError.code,
-          stack: fileError.stack,
-          studentName: student_name,
+          studentName: pdfStudentName,
           eventId,
           studentId,
         });
@@ -425,7 +436,7 @@ const Attendance = () => {
                error.message?.includes("share") ? "share" : "unknown",
         eventId,
         studentId,
-        studentName: student_name,
+        studentName: pdfStudentName,
       });
 
       setModalConfig({
