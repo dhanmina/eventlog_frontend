@@ -245,26 +245,119 @@ const Attendance = () => {
           <head>
             <meta charset="utf-8" />
             <style>
-              body { font-family: Arial, sans-serif; padding: 0px 40px 20px 40px; color: black; font-size: 11px; }
-              h2, h3, h4 { color: black; }
-              .header-line { color: black; font-weight: bold; margin-bottom: 10px; display: flex; }
-              .record-line { color: black; margin-bottom: 2px; display: flex; }
-              .col-date { width: 120px; text-align: left; }
-              .col-time { width: 60px; text-align: center; font-size: 11px; }
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body {
+                font-family: Arial, sans-serif;
+                color: #333;
+                font-size: 11px;
+                line-height: 1.5;
+              }
+              .container { padding: 40px; }
+              .header {
+                border-bottom: 3px solid #255586;
+                padding-bottom: 20px;
+                margin-bottom: 25px;
+              }
+              .title {
+                font-size: 24px;
+                font-weight: bold;
+                color: #255586;
+                margin-bottom: 5px;
+              }
+              .subtitle {
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 10px;
+              }
+              .generated-date {
+                font-size: 10px;
+                color: #999;
+                margin-bottom: 15px;
+              }
+              .student-info {
+                background-color: #f5f5f5;
+                border-left: 4px solid #255586;
+                padding: 12px 15px;
+                margin-bottom: 20px;
+                border-radius: 3px;
+              }
+              .student-info p {
+                margin: 4px 0;
+                font-size: 11px;
+              }
+              .student-name {
+                font-weight: bold;
+                color: #255586;
+                font-size: 12px;
+              }
+              .table-section {
+                margin-top: 20px;
+              }
+              .table-label {
+                font-size: 12px;
+                font-weight: bold;
+                color: #255586;
+                margin-bottom: 8px;
+                padding-bottom: 5px;
+                border-bottom: 2px solid #e0e0e0;
+              }
+              .header-line {
+                display: flex;
+                font-weight: bold;
+                background-color: #255586;
+                color: white;
+                padding: 8px;
+                margin-bottom: 1px;
+                font-size: 10px;
+              }
+              .record-line {
+                display: flex;
+                padding: 6px 8px;
+                border-bottom: 1px solid #e0e0e0;
+                font-size: 10px;
+                background-color: #fafafa;
+              }
+              .record-line:nth-child(even) {
+                background-color: #fff;
+              }
+              .col-date { width: 120px; text-align: left; padding-right: 10px; }
+              .col-time { width: 60px; text-align: center; }
               .col-count { width: 60px; text-align: center; }
+              .footer {
+                margin-top: 30px;
+                padding-top: 15px;
+                border-top: 1px solid #ddd;
+                font-size: 9px;
+                color: #999;
+                text-align: center;
+              }
             </style>
           </head>
           <body>
-            <div style="padding-top: 10px;">
-              <h2 style="color: black; text-align: left; margin-bottom: 3px;">${event_name || "Unknown Event"}</h2>
-              <h3 style="color: black; text-align: left; margin-bottom: 3px;">Individual Attendance Report</h3>
-              <h4 style="color: black; text-align: left; margin-bottom: 3px;">Generated: ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</h4>
-              <h3 style="color: black; text-align: left; margin-bottom: 10px;">${student_name || "N/A"} (${student_id || "N/A"})</h3>
-              <div style="margin-bottom: 15px;">
-                <p style="margin: 5px 0; text-align: left;"><strong>Course/Block:</strong> ${studentDetails?.courseBlock || "N/A"}</p>
+            <div class="container">
+              <div class="header">
+                <div class="title">EVENTLOG</div>
+                <div class="subtitle">Attendance Report</div>
+                <div class="generated-date">Generated on ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
               </div>
-              <div class="header-line">${tableHeaders}</div>
-              ${tableRows}
+
+              <div class="student-info">
+                <p class="student-name">${student_name || "N/A"}</p>
+                <p><strong>Student ID:</strong> ${student_id || "N/A"}</p>
+                <p><strong>Event:</strong> ${event_name || "Unknown Event"}</p>
+                <p><strong>Course/Block:</strong> ${studentDetails?.courseBlock || "N/A"}</p>
+              </div>
+
+              <div class="table-section">
+                <div class="table-label">Attendance Details</div>
+                <div class="header-line">${tableHeaders}</div>
+                ${tableRows}
+              </div>
+
+              <div class="footer">
+                <p>This is an official attendance report generated by EVENTLOG system.</p>
+                <p>For inquiries, please contact your administrator.</p>
+              </div>
             </div>
           </body>
         </html>

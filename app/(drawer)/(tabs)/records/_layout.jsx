@@ -36,7 +36,7 @@ const RecordsLayout = () => {
           headerShown: showHeader,
           headerStyle: { backgroundColor: theme.colors.primary },
           headerTintColor: theme.colors.secondary,
-          title: "Records",
+          title: "",
         }}
       />
       <Stack.Screen
