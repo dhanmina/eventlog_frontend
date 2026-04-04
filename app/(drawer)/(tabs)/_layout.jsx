@@ -4,7 +4,6 @@ import { View, Image, Text, StyleSheet } from "react-native";
 import { useEffect, useState } from "react";
 
 import { getRoleID } from "../../../database/queries";
-import images from "../../../constants/images";
 import icons from "../../../constants/icons";
 import theme from "../../../constants/theme";
 
@@ -43,7 +42,6 @@ const TabsLayout = () => {
   const isActive = (path) => pathname.startsWith(path);
 
   const getQRRoute = () => {
-    if (roleId === null) return "/qr";
     if (roleId === 1) return "/qr/Generate";
     if (roleId === 2) return "/(tabs)/qr";
     if (roleId === 3 || roleId === 4) return "/qr/Scan";
@@ -58,49 +56,40 @@ const TabsLayout = () => {
     );
   }
 
-  return roleId === 4 ? (
+  // Admins & Super Admins
+  if (roleId === 3 || roleId === 4) {
+    return (
+      <Tabs>
+        <TabSlot />
+        <TabList style={styles.tabList}>
+          <TabTrigger name="Home" href="/(tabs)/home">
+            <TabItem icon={icons.home} label="Home" active={isActive("/home")} />
+          </TabTrigger>
+          <TabTrigger name="QR Code" href={getQRRoute()}>
+            <TabItem icon={icons.scanner} label="QR" active={isActive("/qr")} />
+          </TabTrigger>
+          <TabTrigger name="Account" href="/(tabs)/account">
+            <TabItem icon={icons.user} label="Account" active={isActive("/account")} />
+          </TabTrigger>
+        </TabList>
+      </Tabs>
+    );
+  }
+
+  // Students & Officers
+  return (
     <Tabs>
       <TabSlot />
       <TabList style={styles.tabList}>
         <TabTrigger name="Home" href="/(tabs)/home">
           <TabItem icon={icons.home} label="Home" active={isActive("/home")} />
         </TabTrigger>
-
-        <TabTrigger name="center" style={styles.logoContainer} href="/(tabs)/center">
-          <Image
-            source={images.logo}
-            style={[styles.logoImage, isActive("/center") && styles.logoImageActive]}
-          />
-        </TabTrigger>
-
         <TabTrigger name="QR Code" href={getQRRoute()}>
           <TabItem icon={icons.scanner} label="QR" active={isActive("/qr")} />
         </TabTrigger>
-      </TabList>
-    </Tabs>
-  ) : (
-    <Tabs>
-      <TabSlot />
-      <TabList style={styles.tabList}>
-        <TabTrigger name="Home" href="/(tabs)/home">
-          <TabItem icon={icons.home} label="Home" active={isActive("/home")} />
-        </TabTrigger>
-
-        <TabTrigger name="QR Code" href={getQRRoute()}>
-          <TabItem icon={icons.scanner} label="QR" active={isActive("/qr")} />
-        </TabTrigger>
-
-        <TabTrigger name="center" style={styles.logoContainer} href="/(tabs)/center">
-          <Image
-            source={images.logo}
-            style={[styles.logoImage, isActive("/center") && styles.logoImageActive]}
-          />
-        </TabTrigger>
-
         <TabTrigger name="records" href="/(tabs)/records">
           <TabItem icon={icons.calendar} label="Records" active={isActive("/records")} />
         </TabTrigger>
-
         <TabTrigger name="Account" href="/(tabs)/account">
           <TabItem icon={icons.user} label="Account" active={isActive("/account")} />
         </TabTrigger>
@@ -131,7 +120,7 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     alignItems: "center",
-    width: 60,
+    width: 64,
     paddingTop: 6,
   },
   activeBar: {
@@ -158,26 +147,6 @@ const styles = StyleSheet.create({
   },
   tabTextInactive: {
     opacity: 0.4,
-  },
-  logoContainer: {
-    position: "relative",
-    bottom: 20,
-  },
-  logoImage: {
-    height: 90,
-    width: 90,
-    borderWidth: 6,
-    borderColor: theme.colors.primary,
-    borderRadius: 50,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  logoImageActive: {
-    borderColor: theme.colors.secondary,
-    borderWidth: 3,
   },
 });
 
