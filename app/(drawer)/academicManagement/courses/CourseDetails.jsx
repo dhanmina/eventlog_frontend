@@ -38,7 +38,7 @@ const CourseDetails = () => {
     React.useCallback(() => {
       setIsLoading(true);
       fetchCourseDetails();
-    }, [course_id])
+    }, [course_id]),
   );
 
   if (isLoading) {
@@ -66,7 +66,7 @@ const CourseDetails = () => {
       await disableCourse(courseDetails.course_id);
 
       setCourseDetails((prevDetails) =>
-        prevDetails ? { ...prevDetails, status: "Disabled" } : null
+        prevDetails ? { ...prevDetails, status: "Disabled" } : null,
       );
 
       setIsDisableModalVisible(false);
@@ -114,7 +114,7 @@ const CourseDetails = () => {
             title="EDIT"
             onPress={() =>
               router.push(
-                `/academicManagement/courses/EditCourse?id=${courseDetails.course_id}`
+                `/academicManagement/courses/EditCourse?id=${courseDetails.course_id}`,
               )
             }
           />
@@ -130,7 +130,6 @@ const CourseDetails = () => {
         )}
       </View>
 
-      {/* Confirm Disable Modal */}
       <CustomModal
         visible={isDisableModalVisible}
         title="Confirm Disable"
@@ -142,7 +141,6 @@ const CourseDetails = () => {
         confirmTitle="Disable"
       />
 
-      {/* Success Modal */}
       <CustomModal
         visible={isSuccessModalVisible}
         title="Success"
