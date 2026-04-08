@@ -14,7 +14,7 @@ import ArialFont from "../../assets/fonts/Arial.ttf";
 import ArialBoldFont from "../../assets/fonts/ArialBold.ttf";
 import ArialItalicFont from "../../assets/fonts/ArialItalic.ttf";
 import SquadaOneFont from "../../assets/fonts/SquadaOne.ttf";
-import { fetchAttendanceSummaryOfEvent } from "../../services/api/records";
+import { fetchAttendanceSummaryOfEvent } from "../../services/api/attendance";
 import { fetchBlocks, fetchDepartments } from "../../services/api";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system";

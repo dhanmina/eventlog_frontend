@@ -10,7 +10,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import {
   fetchBlocksOfEvents,
   fetchAttendanceSummaryPerBlock,
-} from "../../../../services/api/records";
+} from "../../../../services/api/attendance";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import CustomButton from "../../../../components/CustomButton";

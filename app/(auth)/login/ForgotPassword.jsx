@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import axios from "axios";
 
 import FormField from "../../../components/FormField";
 import CustomButton from "../../../components/CustomButton";
@@ -11,7 +10,7 @@ import CustomModal from "../../../components/CustomModal";
 
 import globalStyles from "../../../constants/globalStyles";
 import theme from "../../../constants/theme";
-import { API_URL } from "../../../config/config";
+import { resetPassword } from "../../../services/api";
 
 const validateEmail = (email) => {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -38,18 +37,13 @@ const ForgotPassword = () => {
     }
 
     try {
-      const response = await axios.post(`${API_URL}/api/auth/reset-password`, {
-        email: email,
-      });
-
-      if (response.status === 200) {
-        router.push(`/login/VerifyCode?email=${encodeURIComponent(email)}`);
-      }
+      await resetPassword(email);
+      router.push(`/login/VerifyCode?email=${encodeURIComponent(email)}`);
     } catch (error) {
       setModalType("error");
       setModalTitle("Error");
       setModalMessage(
-        "No account found with this email. Please check your email or register."
+        error.message || "No account found with this email. Please check your email or register."
       );
       setModalVisible(true);
     }

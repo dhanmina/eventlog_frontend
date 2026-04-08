@@ -8,7 +8,7 @@ import {
   Image,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { fetchStudentAttendanceByEventAndBlock } from "../../../../services/api/records";
+import { fetchStudentAttendanceByEventAndBlock } from "../../../../services/api/attendance";
 
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";

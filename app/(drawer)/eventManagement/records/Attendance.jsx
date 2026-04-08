@@ -17,8 +17,8 @@ import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import CustomModal from "../../../../components/CustomModal";
-import { fetchStudentAttendanceByEventAndBlock } from "../../../../services/api/records";
-import { getStudentAttSummary } from "../../../../services/api/records";
+import { fetchStudentAttendanceByEventAndBlock } from "../../../../services/api/attendance";
+import { getStudentAttSummary } from "../../../../services/api/attendance";
 
 const SessionLog = ({ label, data, sessionType = "am" }) => {
   const now = moment.now();

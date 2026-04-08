@@ -11,7 +11,7 @@ import { getRoleID } from "../../../../database/queries";
 import {
   fetchAllPastEvents,
   fetchAllOngoingEvents,
-} from "../../../../services/api/records";
+} from "../../../../services/api/attendance";
 import moment from "moment";
 import CustomSearch from "../../../../components/CustomSearch";
 import globalStyles from "../../../../constants/globalStyles";

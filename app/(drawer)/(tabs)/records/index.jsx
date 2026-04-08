@@ -20,7 +20,7 @@ import {
   fetchUserPastEvents,
   fetchAllPastEvents,
   fetchAllOngoingEvents,
-} from "../../../../services/api/records";
+} from "../../../../services/api/attendance";
 
 const Records = () => {
   const { user } = useAuth();

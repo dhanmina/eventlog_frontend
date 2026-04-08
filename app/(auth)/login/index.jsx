@@ -9,7 +9,6 @@ import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import Checkbox from "expo-checkbox";
-import axios from "axios";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFonts } from "expo-font";
@@ -20,8 +19,8 @@ import globalStyles from "../../../constants/globalStyles";
 import Header from "../../../components/Header";
 import FormField from "../../../components/FormField";
 import CustomButton from "../../../components/CustomButton";
-import { API_URL } from "../../../config/config";
 import { useAuth } from "../../../context/AuthContext";
+import { login } from "../../../services/api";
 
 import ArialFont from "../../../assets/fonts/Arial.ttf";
 import ArialBoldFont from "../../../assets/fonts/ArialBold.ttf";
@@ -134,69 +133,61 @@ const Login = () => {
     }
 
     try {
-      const response = await axios.post(`${API_URL}/api/auth/login`, {
-        id_number: id,
-        password: password,
-      });
+      const response = await login(id, password);
 
-      if (response.status === 200) {
-        const roleId = parseInt(response.data.user.role_id);
+      const roleId = parseInt(response.user.role_id);
 
-        if (Platform.OS === "web" && roleId !== 3 && roleId !== 4) {
-          setModalTitle("Access Denied");
-          setModalMessage("Invalid account.");
-          setModalType("error");
-          setModalVisible(true);
-          return;
-        }
-
-        const userData = {
-          ...response.data.user,
-          full_name: `${response.data.user.first_name} ${
-            response.data.user.middle_name ?? ""
-          } ${response.data.user.last_name}`
-            .replace(/\s+/g, " ")
-            .trim(),
-        };
-
-        await authLogin(userData, response.data.token);
-
-        await AsyncStorage.setItem("userToken", response.data.token);
-        await AsyncStorage.setItem("id_number", response.data.user.id_number);
-        await AsyncStorage.setItem("email", response.data.user.email);
-        await AsyncStorage.setItem(
-          "role_id",
-          String(response.data.user.role_id)
-        );
-        await AsyncStorage.setItem("full_name", userData.full_name);
-
-        try {
-          await storeUser(response.data.user);
-        } catch (dbError) {
-          console.error("Error storing user in local database:", dbError);
-        }
-
-        if (isChecked) {
-          await AsyncStorage.setItem("rememberedId", id);
-          await AsyncStorage.setItem("rememberedPassword", password);
-          await AsyncStorage.setItem("rememberedChecked", "true");
-        } else {
-          await AsyncStorage.removeItem("rememberedId");
-          await AsyncStorage.removeItem("rememberedPassword");
-          await AsyncStorage.removeItem("rememberedChecked");
-        }
-
-        router.replace(Platform.OS === "web" ? "/web" : "/(tabs)/home");
-      } else {
-        setModalTitle("Login Failed");
-        setModalMessage(
-          response.data.message || "Invalid credentials. Please try again."
-        );
+      if (Platform.OS === "web" && roleId !== 3 && roleId !== 4) {
+        setModalTitle("Access Denied");
+        setModalMessage("Invalid account.");
         setModalType("error");
         setModalVisible(true);
+        return;
       }
+
+      const userData = {
+        ...response.user,
+        full_name: `${response.user.first_name} ${
+          response.user.middle_name ?? ""
+        } ${response.user.last_name}`
+          .replace(/\s+/g, " ")
+          .trim(),
+      };
+
+      await authLogin(userData, response.token);
+
+      await AsyncStorage.setItem("userToken", response.token);
+      await AsyncStorage.setItem("id_number", response.user.id_number);
+      await AsyncStorage.setItem("email", response.user.email);
+      await AsyncStorage.setItem(
+        "role_id",
+        String(response.user.role_id)
+      );
+      await AsyncStorage.setItem("full_name", userData.full_name);
+
+      try {
+        await storeUser(response.user);
+      } catch (dbError) {
+        console.error("Error storing user in local database:", dbError);
+      }
+
+      if (isChecked) {
+        await AsyncStorage.setItem("rememberedId", id);
+        await AsyncStorage.setItem("rememberedPassword", password);
+        await AsyncStorage.setItem("rememberedChecked", "true");
+      } else {
+        await AsyncStorage.removeItem("rememberedId");
+        await AsyncStorage.removeItem("rememberedPassword");
+        await AsyncStorage.removeItem("rememberedChecked");
+      }
+
+      router.replace(Platform.OS === "web" ? "/web" : "/(tabs)/home");
     } catch (error) {
       setModalTitle("Login Error");
+      setModalMessage(error.message || "An error occurred. Please try again.");
+      setModalType("error");
+      setModalVisible(true);
+    }
       setModalMessage(
         error.response?.data?.message || "An error occurred during login."
       );

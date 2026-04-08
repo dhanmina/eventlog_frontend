@@ -58,3 +58,15 @@ export const syncAttendance = async (data) => {
   if (!res.data.success) throw new Error(res.data.message || "Failed to sync attendance");
   return res.data;
 };
+
+export const fetchAllPastEvents = async (page = 1, limit = 10, search = "") => {
+  const res = await api.get("/events", { params: { page, limit, search, status: "past" } });
+  if (!res.data.success) throw new Error(res.data.message || "Failed to fetch past events");
+  return res.data;
+};
+
+export const fetchAllOngoingEvents = async (page = 1, limit = 10, search = "") => {
+  const res = await api.get("/events", { params: { page, limit, search, status: "ongoing" } });
+  if (!res.data.success) throw new Error(res.data.message || "Failed to fetch ongoing events");
+  return res.data;
+};

@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import axios from "axios";
 
 import FormField from "../../../components/FormField";
 import CustomButton from "../../../components/CustomButton";
@@ -11,7 +10,7 @@ import CustomModal from "../../../components/CustomModal";
 
 import globalStyles from "../../../constants/globalStyles";
 import theme from "../../../constants/theme";
-import { API_URL } from "../../../config/config";
+import { resetPassword, confirmResetPassword } from "../../../services/api";
 
 const VerifyCode = () => {
   const { email } = useLocalSearchParams();
@@ -34,26 +33,15 @@ const VerifyCode = () => {
   const handleResend = async () => {
     try {
       setTimer(60);
-
-      const response = await axios.post(`${API_URL}/api/auth/reset-password`, {
-        email,
-      });
-
-      if (response.status === 200) {
-        setModalType("success");
-        setModalTitle("Success");
-        setModalMessage("A new code has been sent to your email.");
-        setModalVisible(true);
-      } else {
-        throw new Error("Failed to resend the code. Please try again later.");
-      }
+      await resetPassword(email);
+      setModalType("success");
+      setModalTitle("Success");
+      setModalMessage("A new code has been sent to your email.");
+      setModalVisible(true);
     } catch (error) {
       setModalType("error");
       setModalTitle("Error");
-      setModalMessage(
-        error.response?.data?.message ||
-          "Failed to resend the code. Please try again later."
-      );
+      setModalMessage(error.message || "Failed to resend the code. Please try again later.");
       setModalVisible(true);
     }
   };
@@ -61,35 +49,15 @@ const VerifyCode = () => {
   const handleVerifyCode = async () => {
     const enteredCode = code.join("");
     try {
-      const response = await axios.post(
-        `${API_URL}/api/auth/reset-password/confirm`,
-        {
-          email,
-          reset_code: enteredCode,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      await confirmResetPassword(email, enteredCode, "");
+      setTimeout(() =>
+        router.push(`/login/NewPassword?email=${encodeURIComponent(email)}`)
       );
-
-      if (response.status === 200) {
-        setTimeout(() =>
-          router.push(`/login/NewPassword?email=${encodeURIComponent(email)}`)
-        );
-      } else {
-        setIsCodeValid(false);
-        setModalType("error");
-        setModalTitle("Error");
-        setModalMessage("Invalid code, please try again.");
-        setModalVisible(true);
-      }
     } catch (error) {
       setIsCodeValid(false);
       setModalType("error");
       setModalTitle("Error");
-      setModalMessage("Please check the code and try again.");
+      setModalMessage(error.message || "Please check the code and try again.");
       setModalVisible(true);
     }
   };

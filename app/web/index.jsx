@@ -20,7 +20,7 @@ import { router } from "expo-router";
 import {
   fetchAllPastEvents,
   fetchAllOngoingEvents,
-} from "../../services/api/records";
+} from "../../services/api/attendance";
 import moment from "moment";
 
 import ArialFont from "../../assets/fonts/Arial.ttf";

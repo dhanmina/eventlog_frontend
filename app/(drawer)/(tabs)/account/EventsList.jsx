@@ -12,15 +12,14 @@ import {
 import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import axios from "axios";
 import { router } from "expo-router";
 
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import images from "../../../../constants/images";
-import { API_URL } from "../../../../config/config";
 
 import CustomSearch from "../../../../components/CustomSearch";
+import { fetchEvents } from "../../../../services/api";
 
 const EventsList = () => {
   const [events, setEvents] = useState([]);
@@ -28,14 +27,12 @@ const EventsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    const fetchEvents = async () => {
+    const fetchEventsData = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${API_URL}/api/events/editable`, {
-          params: { search: searchQuery },
-        });
-        if (response.data.success) {
-          setEvents(response.data.events);
+        const res = await fetchEvents({ search: searchQuery });
+        if (res.success) {
+          setEvents(res.data || res.events || []);
         }
       } catch (error) {
         console.error("Error fetching events:", error);
@@ -44,7 +41,7 @@ const EventsList = () => {
       }
     };
 
-    fetchEvents();
+    fetchEventsData();
   }, [searchQuery]);
 
   const formatDates = (dates) => {

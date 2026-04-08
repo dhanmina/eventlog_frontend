@@ -8,9 +8,9 @@ import {
 import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import axios from "axios";
 import { API_URL } from "../../../config/config";
 import { useRouter } from "expo-router";
+import { fetchDepartments, addUser } from "../../../services/api";
 
 import theme from "../../../constants/theme";
 import globalStyles from "../../../constants/globalStyles";
@@ -43,19 +43,16 @@ const SignUp = () => {
   const router = useRouter();
 
   useEffect(() => {
-    fetchDepartments();
+    fetchDepartmentsData();
   }, []);
 
-  const fetchDepartments = async () => {
+  const fetchDepartmentsData = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${API_URL}/api/departments`
-      );
-
-      if (response.data?.departments) {
+      const res = await fetchDepartments();
+      if (res.data?.departments) {
         setDepartments(
-          response.data.departments.map((dept) => ({
+          res.data.departments.map((dept) => ({
             label: dept.department_name,
             value: dept.department_id,
           }))
@@ -120,7 +117,7 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/api/auth/signup`, {
+      await addUser({
         id_number: formData.id_number,
         first_name: formData.first_name,
         middle_name: formData.middle_name,
@@ -131,21 +128,14 @@ const SignUp = () => {
         department_id: formData.department_id,
       });
 
-      if (response.data.success) {
-        showModal("Registration successful!", "success");
+      showModal("Registration successful!", "success");
 
-        resetForm();
-        setTimeout(() => {
-          router.push("/login");
-        }, 2000);
-      } else {
-        showModal(response.data.message || "Registration failed.", "error");
-      }
+      resetForm();
+      setTimeout(() => {
+        router.push("/login");
+      }, 2000);
     } catch (error) {
-      showModal(
-        error.response?.data?.message || "Something went wrong.",
-        "error"
-      );
+      showModal(error.message || "Something went wrong.", "error");
     } finally {
       setLoading(false);
     }

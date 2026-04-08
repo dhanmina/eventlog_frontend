@@ -11,4 +11,3 @@ export * from "./yearLevels";
 export * from "./eventNames";
 export * from "./schoolYears";
 export * from "./attendance";
-export * from "./records";
