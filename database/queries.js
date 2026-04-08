@@ -1,11 +1,28 @@
 import { Platform } from "react-native";
-import initDB from "./database";
+import { getDatabase } from "./database";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Ensures a minimal user row exists before inserting FK-dependent records.
+const ensureUserExists = async (db, userId, fullName) => {
+  if (!userId) return;
+  const existing = await db.getFirstAsync(
+    "SELECT id_number FROM users WHERE id_number = ?",
+    [userId],
+  );
+  if (!existing) {
+    const [firstName, ...rest] = fullName?.split(" ") || ["N/A"];
+    const lastName = rest.join(" ") || "N/A";
+    await db.runAsync(
+      `INSERT INTO users (id_number, first_name, last_name, role_id, role_name) VALUES (?, ?, ?, ?, ?)`,
+      [userId, firstName, lastName, 1, "User"],
+    );
+  }
+};
 
 export const storeUser = async (user) => {
   if (Platform.OS !== "web") {
     try {
-      const dbInstance = await initDB();
+      const dbInstance = await getDatabase();
       if (!dbInstance) return;
 
       const insertQuery = `
@@ -43,7 +60,7 @@ export const storeUser = async (user) => {
 export const clearAllTablesData = async () => {
   if (Platform.OS !== "web") {
     try {
-      const dbInstance = await initDB();
+      const dbInstance = await getDatabase();
       if (!dbInstance) return;
 
       await dbInstance.execAsync("PRAGMA foreign_keys = OFF");
@@ -63,7 +80,7 @@ export const getRoleID = async () => {
       const idNumber = await AsyncStorage.getItem("id_number");
       if (!idNumber) return null;
 
-      const dbInstance = await initDB();
+      const dbInstance = await getDatabase();
       if (!dbInstance) return null;
 
       const result = await dbInstance.getFirstAsync(
@@ -85,7 +102,7 @@ export const getStoredUser = async () => {
       const idNumber = await AsyncStorage.getItem("id_number");
       if (!idNumber) return null;
 
-      const dbInstance = await initDB();
+      const dbInstance = await getDatabase();
       if (!dbInstance) return null;
 
       const result = await dbInstance.getFirstAsync(
@@ -130,27 +147,11 @@ export const storeEvent = async (event, allApiEventIds = []) => {
     if (event.status !== "Approved" && event.status !== "Archived")
       return { success: true, skipped: true };
 
-    const db = await initDB();
+    const db = await getDatabase();
     if (!db) return { success: false, error: "Failed to initialize database" };
 
-    const ensureUserExists = async (userId, fullName) => {
-      if (!userId) return;
-      const existingUser = await db.getFirstAsync(
-        "SELECT id_number FROM users WHERE id_number = ?",
-        [userId],
-      );
-      if (!existingUser) {
-        const [firstName, ...rest] = fullName?.split(" ") || ["N/A"];
-        const lastName = rest.join(" ") || "N/A";
-        await db.runAsync(
-          `INSERT INTO users (id_number, first_name, last_name, role_id, role_name) VALUES (?, ?, ?, ?, ?)`,
-          [userId, firstName, lastName, 1, "User"],
-        );
-      }
-    };
-
-    await ensureUserExists(event.created_by_id, event.created_by);
-    await ensureUserExists(event.approved_by_id, event.approved_by);
+    await ensureUserExists(db, event.created_by_id, event.created_by);
+    await ensureUserExists(db, event.approved_by_id, event.approved_by);
 
     await db.execAsync("BEGIN TRANSACTION");
     try {
@@ -247,7 +248,7 @@ export const cleanupOutdatedEvents = async (allApiEventIds = []) => {
   }
 
   try {
-    const db = await initDB();
+    const db = await getDatabase();
     if (!db) return { success: false, error: "Failed to initialize database" };
 
     const storedEvents = await db.getAllAsync("SELECT id FROM events");
@@ -278,7 +279,7 @@ export const getStoredEvents = async () => {
   if (Platform.OS === "web") return [];
 
   try {
-    const db = await initDB();
+    const db = await getDatabase();
     if (!db) return [];
 
     const eventsQuery = `
@@ -391,20 +392,19 @@ export const isAlreadyLogged = async (
   student_id_number,
   type,
 ) => {
-  if (Platform.OS !== "web") {
-    try {
-      const dbInstance = await initDB();
-      if (!dbInstance) return false;
+  if (Platform.OS === "web") return false;
+  try {
+    const dbInstance = await getDatabase();
+    if (!dbInstance) return false;
 
-      const typeColumn = type.toLowerCase();
-      const existingRecord = await dbInstance.getFirstAsync(
-        "SELECT * FROM attendance WHERE event_date_id = ? AND student_id_number = ?",
-        [event_date_id, student_id_number],
-      );
+    const typeColumn = type.toLowerCase();
+    const existingRecord = await dbInstance.getFirstAsync(
+      "SELECT * FROM attendance WHERE event_date_id = ? AND student_id_number = ?",
+      [event_date_id, student_id_number],
+    );
 
-      return existingRecord?.[typeColumn] || false;
-    } catch {
-      return false;
-    }
+    return existingRecord?.[typeColumn] || false;
+  } catch {
+    return false;
   }
 };

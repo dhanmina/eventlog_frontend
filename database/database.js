@@ -205,60 +205,6 @@ export const getDatabase = async () => {
   return db;
 };
 
-export const insertUserIfMissing = async (user) => {
-  const dbInstance = await getDatabase();
-  await dbInstance.runAsync(
-    `INSERT OR IGNORE INTO users (id_number, first_name, last_name, role_id, role_name) VALUES (?, ?, ?, ?, ?)`,
-    [
-      user.id_number,
-      user.first_name,
-      user.last_name,
-      user.role_id || 1,
-      user.role_name || "User",
-    ],
-  );
-};
-
-export const storeEvent = async (event) => {
-  const dbInstance = await getDatabase();
-  await insertUserIfMissing({
-    id_number: event.created_by_id,
-    first_name: event.created_by.split(" ")[0],
-    last_name: event.created_by.split(" ")[1] || "",
-  });
-  if (event.approved_by_id) {
-    await insertUserIfMissing({
-      id_number: event.approved_by_id,
-      first_name: event.approved_by.split(" ")[0],
-      last_name: event.approved_by.split(" ")[1] || "",
-    });
-  }
-  const blockIdsText = Array.isArray(event.block_ids)
-    ? JSON.stringify(event.block_ids)
-    : event.block_ids || "";
-  await dbInstance.runAsync(
-    `INSERT INTO events (event_name, venue, description, scan_personnel, status, created_by_id, created_by, approved_by_id, approved_by, am_in, am_out, pm_in, pm_out, duration, block_ids)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      event.event_name,
-      event.venue,
-      event.description,
-      event.scan_personnel,
-      event.status,
-      event.created_by_id,
-      event.created_by,
-      event.approved_by_id,
-      event.approved_by,
-      event.am_in,
-      event.am_out,
-      event.pm_in,
-      event.pm_out,
-      event.duration,
-      blockIdsText,
-    ],
-  );
-};
-
 let initPromise = null;
 export const ensureInitialized = async () => {
   if (!initPromise) initPromise = initDB();
@@ -270,3 +216,4 @@ if (Platform.OS === "android" || Platform.OS === "ios") {
 }
 
 export default initDB;
+
