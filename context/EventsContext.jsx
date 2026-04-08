@@ -2,11 +2,12 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useCallback,
 } from "react";
 import socketService from "../services/socketService";
-import { getStoredEvents } from "../database/queries";
+import { getStoredEvents, deleteStoredEvent } from "../database/queries";
 import { useAuth } from "./AuthContext";
 
 const EventsContext = createContext();
@@ -61,18 +62,18 @@ export const EventsProvider = ({ children }) => {
     }
   }, [user]);
 
-  const fetchAndStoreEvents = useCallback(async () => {
+  const fetchAndStoreEvents = useCallback(async (force = false) => {
     if (!user) return;
 
     const now = Date.now();
-    if (now - lastFetchTime < 2000) return;
+    if (!force && now - lastFetchTime < 2000) return;
     setLastFetchTime(now);
 
     try {
       const { fetchUpcomingEvents } = await import("../services/api/events");
       const { storeEvent, cleanupOutdatedEvents } = await import("../database/queries");
 
-      const response = await fetchUpcomingEvents(null);
+      const response = await fetchUpcomingEvents(user.block_id || null);
 
       if (!response?.success) throw new Error("Failed to fetch events from API.");
 
@@ -82,14 +83,21 @@ export const EventsProvider = ({ children }) => {
       const allApiEventIds = allEvents.map((e) => e.event_id);
       await cleanupOutdatedEvents(allApiEventIds);
 
-      const storePromises = allEvents.map((event) => storeEvent(event, allApiEventIds));
-      await Promise.allSettled(storePromises);
+      for (const event of allEvents) {
+        await storeEvent(event);
+      }
 
       await refreshEventsFromDatabase();
     } catch {
       await refreshEventsFromDatabase();
     }
   }, [user, lastFetchTime, refreshEventsFromDatabase]);
+
+  const isFetchingRef = useRef(false);
+  const fetchAndStoreEventsRef = useRef(fetchAndStoreEvents);
+  useEffect(() => {
+    fetchAndStoreEventsRef.current = fetchAndStoreEvents;
+  }, [fetchAndStoreEvents]);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -100,39 +108,61 @@ export const EventsProvider = ({ children }) => {
     refreshEventsFromDatabase();
     socketService.connect();
 
-    if ([1, 2, 3, 4].includes(user.role_id) && user.block_id) {
+    if ([1, 2].includes(user.role_id) && user.block_id) {
       socketService.joinRoom(`block-${user.block_id}`);
     }
+    if ([3, 4].includes(user.role_id)) {
+      socketService.joinRoom("all-events");
+    }
 
-    const handleDatabaseUpdated = () => {
-      refreshEventsFromDatabase();
+    const triggerFullRefresh = async () => {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+      try {
+        await fetchAndStoreEventsRef.current(true);
+      } finally {
+        isFetchingRef.current = false;
+      }
     };
 
     const handleNewApprovedEvent = (data) => {
       if (isEventRelevantToUser(data?.block_ids, user.block_id, user.role_id)) {
         setLastEventUpdate(Date.now());
       }
+      triggerFullRefresh();
     };
 
-    const handleEventStatusChanged = (data) => {
-      if (data.newStatus === "Approved") {
-        if (isEventRelevantToUser(data.block_ids, user.block_id, user.role_id)) {
-          setLastEventUpdate(Date.now());
-        }
-      } else {
-        setEvents((prev) => prev.filter((event) => event.event_id !== data.eventId));
-      }
+    const handleEventDeleted = async (data) => {
+      const { event_id } = data;
+      if (!event_id) return;
+      await deleteStoredEvent(event_id);
+      setEvents((prev) => prev.filter((e) => e.event_id !== event_id));
     };
 
-    const eventTypes = ["database-updated", "newApprovedEvent", "event-status-changed"];
+    const eventTypes = [
+      "database-updated",
+      "newApprovedEvent",
+      "new-event-added",
+      "events-list-updated",
+      "upcoming-events-updated",
+      "event-updated",
+      "event-deleted",
+    ];
     eventTypes.forEach((type) => socketService.socket?.off(type));
 
-    socketService.socket?.on("database-updated", handleDatabaseUpdated);
+    socketService.socket?.on("database-updated", triggerFullRefresh);
     socketService.socket?.on("newApprovedEvent", handleNewApprovedEvent);
-    socketService.socket?.on("event-status-changed", handleEventStatusChanged);
+    socketService.socket?.on("new-event-added", triggerFullRefresh);
+    socketService.socket?.on("events-list-updated", triggerFullRefresh);
+    socketService.socket?.on("upcoming-events-updated", triggerFullRefresh);
+    socketService.socket?.on("event-updated", triggerFullRefresh);
+    socketService.socket?.on("event-deleted", handleEventDeleted);
 
     return () => {
       eventTypes.forEach((type) => socketService.socket?.off(type));
+      if ([3, 4].includes(user.role_id)) {
+        socketService.leaveRoom("all-events");
+      }
     };
   }, [user, authLoading, refreshEventsFromDatabase]);
 

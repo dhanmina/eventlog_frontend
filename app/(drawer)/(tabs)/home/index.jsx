@@ -148,9 +148,8 @@ const Home = () => {
     const now = Date.now();
     if (now - lastFetchRef.current < 5000) return;
     lastFetchRef.current = now;
-    if (loading) return;
     await fetchAndStoreEvents();
-  }, [loading, fetchAndStoreEvents]);
+  }, [fetchAndStoreEvents]);
 
   useFocusEffect(
     useCallback(() => {

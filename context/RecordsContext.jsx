@@ -88,7 +88,11 @@ export const RecordsProvider = ({ children }) => {
           groupedEvents[event_id] = {
             event_id,
             event_name,
-            event_dates: event_dates ? event_dates.split(",") : [],
+            event_dates: Array.isArray(event_dates)
+              ? event_dates
+              : typeof event_dates === "string" && event_dates
+              ? event_dates.split(",")
+              : [],
           };
         }
       });

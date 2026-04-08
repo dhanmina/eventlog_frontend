@@ -6,10 +6,11 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { Platform } from "react-native";
+import { Platform, AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { getStoredUser } from "../database/queries";
+import { getStoredUser, clearAllTablesData } from "../database/queries";
+import { stopSync } from "../services/api/sync";
 import { io } from "socket.io-client";
 import { API_URL } from "../config/config";
 
@@ -90,7 +91,7 @@ export const AuthProvider = ({ children }) => {
         router.replace("/login");
       }, 3000);
     },
-    [logout, showGlobalModal]
+    [logout, showGlobalModal],
   );
 
   useEffect(() => {
@@ -98,26 +99,85 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
+    const userIdStr = String(user.id_number);
+
     const handleUserDisabled = (eventData) => {
-      const userIdStr = String(user.id_number);
       const isCurrentUser =
         eventData.userId === userIdStr ||
         eventData.id_number === userIdStr ||
         eventData.email === user.email;
-
       if (isCurrentUser) {
-        handleSessionExpired("Please log in again.");
+        handleSessionExpired(
+          "Your account has been disabled. Please contact support for assistance.",
+        );
       }
     };
 
+    const handleAdminDisabled = (eventData) => {
+      if (String(eventData.id_number) === userIdStr) {
+        handleSessionExpired(
+          "Your account has been disabled. Please contact support for assistance.",
+        );
+      }
+    };
+
+    const handleBlockStatusUpdated = (eventData) => {
+      if (
+        (user.role_id === 1 || user.role_id === 2) &&
+        user.block_id &&
+        String(eventData.block_id) === String(user.block_id) &&
+        eventData.status === "Disabled"
+      ) {
+        handleSessionExpired(
+          "Your block has been disabled. Please contact support for assistance.",
+        );
+      }
+    };
+
+    const handleSchoolYearChanged = async () => {
+      try {
+        stopSync();
+        await clearAllTablesData();
+      } catch {}
+      await logout();
+      showGlobalModal(
+        "New School Year",
+        "A new school year has started. Please log in again.",
+        "warning",
+      );
+      setTimeout(() => {
+        router.replace("/login");
+      }, 3000);
+    };
+
     socketRef.current.on("user-disabled", handleUserDisabled);
+    socketRef.current.on("admin-disabled", handleAdminDisabled);
+    socketRef.current.on("block-status-updated", handleBlockStatusUpdated);
+    socketRef.current.on("school-year-changed", handleSchoolYearChanged);
 
     return () => {
       if (socketRef.current) {
         socketRef.current.off("user-disabled", handleUserDisabled);
+        socketRef.current.off("admin-disabled", handleAdminDisabled);
+        socketRef.current.off("block-status-updated", handleBlockStatusUpdated);
+        socketRef.current.off("school-year-changed", handleSchoolYearChanged);
       }
     };
-  }, [user, handleSessionExpired]);
+  }, [user, handleSessionExpired, logout, showGlobalModal]);
+
+  useEffect(() => {
+    if (!user) return;
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (
+        nextState === "active" &&
+        socketRef.current &&
+        !socketRef.current.connected
+      ) {
+        socketRef.current.connect();
+      }
+    });
+    return () => subscription.remove();
+  }, [user]);
 
   useEffect(() => {
     const loadStoredUser = async () => {
@@ -169,7 +229,7 @@ export const AuthProvider = ({ children }) => {
       showGlobalModal(
         "Access Denied",
         "Your account has been disabled. Please contact support for assistance.",
-        "error"
+        "error",
       );
       return false;
     }
@@ -198,7 +258,7 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       setIsAuthenticated(true);
     },
-    [handleSessionExpired]
+    [handleSessionExpired],
   );
 
   const validateSession = useCallback(async () => {

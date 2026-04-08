@@ -1,11 +1,11 @@
 import axios from "axios";
 import { API_URL } from "../../config/config";
-import initDB from "../../database/database";
+import { getDatabase } from "../../database/database";
 
 let syncInterval;
 
 export const syncAttendance = async () => {
-  const dbInstance = await initDB();
+  const dbInstance = await getDatabase();
   if (!dbInstance) {
     throw new Error("Failed to initialize database.");
   }

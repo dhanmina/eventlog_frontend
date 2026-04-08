@@ -14,6 +14,7 @@ import {
   fetchBlocksOfEvents,
   fetchAttendanceSummaryPerBlock,
 } from "../../../../services/api/records";
+import socketService from "../../../../services/socketService";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import icons from "../../../../constants/icons";
@@ -106,6 +107,40 @@ const BlockList = ({
       }
     };
     loadEventData();
+  }, [eventId]);
+
+  useEffect(() => {
+    if (!eventId) return;
+    const room = `event-${eventId}`;
+    socketService.joinRoom(room);
+
+    const handleAttendanceUpdated = (data) => {
+      if (String(data.eventId) !== String(eventId)) return;
+      const event_id = Number(eventId);
+      if (isNaN(event_id) || event_id <= 0) return;
+      fetchBlocksOfEvents(event_id, "", "")
+        .then((blocksData) => {
+          if (!blocksData?.success) return;
+          const mappedBlocks =
+            blocksData.data?.blocks?.map((block) => ({
+              ...block,
+              display_name: block.course_code
+                ? `${block.course_code} ${block.block_name}`
+                : block.block_name,
+            })) || [];
+          baseBlocksRef.current = mappedBlocks;
+          setAllBlocks(mappedBlocks);
+          setBlocks(mappedBlocks);
+        })
+        .catch(() => {});
+    };
+
+    socketService.socket?.on("attendance-updated", handleAttendanceUpdated);
+
+    return () => {
+      socketService.socket?.off("attendance-updated", handleAttendanceUpdated);
+      socketService.leaveRoom(room);
+    };
   }, [eventId]);
 
   useEffect(() => {

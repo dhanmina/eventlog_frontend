@@ -138,6 +138,19 @@ export const cleanupOutdatedEvents = async (allApiEventIds = []) => {
   }
 };
 
+export const deleteStoredEvent = async (eventId) => {
+  if (Platform.OS === "web") return { success: true };
+  try {
+    const db = await getDatabase();
+    if (!db) return { success: false };
+    await db.runAsync("DELETE FROM event_dates WHERE event_id = ?", [eventId]);
+    await db.runAsync("DELETE FROM events WHERE id = ?", [eventId]);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 export const getStoredEvents = async () => {
   if (Platform.OS === "web") return [];
 

@@ -2,10 +2,6 @@ import { Platform } from "react-native";
 import { getDatabase } from "../database";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-/**
- * Inserts a minimal stub user row if one doesn't already exist.
- * Used before inserting FK-dependent records (events, attendance).
- */
 export const ensureUserExists = async (db, userId, fullName) => {
   if (!userId) return;
   const existing = await db.getFirstAsync(

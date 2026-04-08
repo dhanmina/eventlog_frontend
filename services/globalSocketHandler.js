@@ -47,10 +47,6 @@ class GlobalSocketHandler {
     );
     socketService.socket?.on("new-event-added", this.handleNewEventAddedBound);
     socketService.socket?.on(
-      "event-status-changed",
-      this.handleEventStatusChangedBound
-    );
-    socketService.socket?.on(
       "upcoming-events-updated",
       this.handleUpcomingEventsUpdatedBound
     );
@@ -74,10 +70,6 @@ class GlobalSocketHandler {
         this.handleNewEventAddedBound
       );
       socketService.socket.off(
-        "event-status-changed",
-        this.handleEventStatusChangedBound
-      );
-      socketService.socket.off(
         "upcoming-events-updated",
         this.handleUpcomingEventsUpdatedBound
       );
@@ -96,10 +88,6 @@ class GlobalSocketHandler {
 
   handleNewEventAddedBound = (data) => {
     this.handleNewEventAdded(data);
-  };
-
-  handleEventStatusChangedBound = (data) => {
-    this.handleEventStatusChanged(data);
   };
 
   handleUpcomingEventsUpdatedBound = (data) => {
@@ -173,17 +161,6 @@ class GlobalSocketHandler {
 
     if (isRelevantToUser && data.event?.status === "Approved") {
       this.saveEventToDatabase(data.event);
-    }
-  }
-
-  handleEventStatusChanged(data) {
-    if (
-      data.newStatus === "Approved" &&
-      data.block_ids?.includes(this.currentUser?.block_id?.toString())
-    ) {
-      if (data.eventData) {
-        this.saveEventToDatabase(data.eventData);
-      }
     }
   }
 
