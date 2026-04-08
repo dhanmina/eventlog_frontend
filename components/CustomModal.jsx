@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from "react";
 import {
   Modal,
   View,
@@ -6,12 +5,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Dimensions,
+  Platform,
 } from "react-native";
 import theme from "../constants/theme";
 import icons from "../constants/icons";
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 const CustomModal = ({
   visible,
@@ -24,33 +21,18 @@ const CustomModal = ({
   cancelTitle = "Cancel",
   confirmTitle = "Confirm",
 }) => {
-  const [showContent, setShowContent] = useState(false);
-
-  useEffect(() => {
-    if (visible) {
-      setShowContent(false);
-      const timer = setTimeout(() => {
-        setShowContent(true);
-      }, 150);
-      return () => clearTimeout(timer);
-    } else {
-      setShowContent(false);
-    }
-  }, [visible]);
-
   let iconSource;
+  let iconTint = theme.colors.primary;
   if (type === "success") {
     iconSource = icons.success;
+    iconTint = theme.colors.green;
   } else if (type === "error") {
     iconSource = icons.error;
+    iconTint = "#C62828";
   } else if (type === "warning") {
     iconSource = icons.warning;
+    iconTint = "#E65100";
   }
-
-  const modalWidth = screenWidth * 0.8;
-  const modalHeight = 280;
-  const centerX = (screenWidth - modalWidth) / 2;
-  const centerY = (screenHeight - modalHeight) / 2;
 
   return (
     <Modal
@@ -60,126 +42,132 @@ const CustomModal = ({
       onRequestClose={onClose || onCancel}
     >
       <View style={styles.overlay}>
-        {showContent && (
-          <View
-            style={[
-              styles.modalContainer,
-              {
-                position: "absolute",
-                left: centerX,
-                top: centerY,
-                width: modalWidth,
-              },
-            ]}
-          >
-            {iconSource && <Image source={iconSource} style={styles.icon} />}
-            {title && <Text style={styles.title}>{title}</Text>}
-            <Text style={styles.message}>{message}</Text>
-            <View
-              style={[
-                styles.buttonContainer,
-                { justifyContent: onConfirm ? "space-between" : "center" },
-              ]}
-            >
-              <TouchableOpacity
-                onPress={onCancel || onClose}
-                style={styles.cancelButton}
-              >
-                <Text style={styles.cancelButtonText}>{cancelTitle}</Text>
-              </TouchableOpacity>
-
-              {onConfirm && (
-                <TouchableOpacity
-                  onPress={onConfirm}
-                  style={styles.confirmButton}
-                >
-                  <Text style={styles.confirmButtonText}>{confirmTitle}</Text>
-                </TouchableOpacity>
-              )}
+        <View style={styles.card}>
+          {iconSource && (
+            <View style={[styles.iconWrap, { backgroundColor: iconTint + "15" }]}>
+              <Image
+                source={iconSource}
+                style={[styles.icon, { tintColor: iconTint }]}
+              />
             </View>
+          )}
+
+          {title && <Text style={styles.title}>{title}</Text>}
+          {message && <Text style={styles.message}>{message}</Text>}
+
+          <View style={styles.actions}>
+            {onConfirm && (
+              <TouchableOpacity style={styles.confirmButton} onPress={onConfirm} activeOpacity={0.8}>
+                <Text style={styles.confirmButtonText}>{confirmTitle}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.cancelButton, !onConfirm && styles.cancelButtonFull]}
+              onPress={onCancel || onClose}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.cancelButtonText, !onConfirm && styles.cancelButtonTextSingle]}>
+                {cancelTitle}
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
       </View>
     </Modal>
   );
 };
 
+export default CustomModal;
+
 const styles = StyleSheet.create({
   overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: screenWidth,
-    height: screenHeight,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: theme.spacing.large,
   },
-  modalContainer: {
-    padding: 20,
+  card: {
+    width: "100%",
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.large,
+    alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.18,
+        shadowRadius: 16,
+      },
+      android: { elevation: 12 },
+    }),
+  },
+  iconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.secondary,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 100,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+    marginBottom: theme.spacing.medium,
+  },
+  icon: {
+    width: 32,
+    height: 32,
   },
   title: {
-    fontSize: theme.fontSizes.huge,
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
     color: theme.colors.primary,
-    marginBottom: 10,
-    fontFamily: "SquadaOne",
     textAlign: "center",
+    marginBottom: theme.spacing.xsmall,
   },
   message: {
-    fontSize: theme.fontSizes.medium,
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
     color: theme.colors.primary,
-    marginBottom: 20,
-    fontFamily: "Arial",
+    opacity: 0.65,
     textAlign: "center",
+    lineHeight: 20,
+    marginBottom: theme.spacing.large,
   },
-  buttonContainer: {
-    flexDirection: "row",
+  actions: {
     width: "100%",
-  },
-  cancelButton: {
-    backgroundColor: theme.colors.secondary,
-    paddingVertical: 10,
-    paddingHorizontal: theme.spacing.medium,
-    borderRadius: theme.borderRadius.medium,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    width: "40%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    color: theme.colors.primary,
-    fontSize: theme.fontSizes.medium,
-    fontFamily: "SquadaOne",
+    gap: theme.spacing.small,
   },
   confirmButton: {
     backgroundColor: theme.colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: theme.spacing.medium,
     borderRadius: theme.borderRadius.medium,
-    width: "40%",
-    justifyContent: "center",
+    height: 46,
+    width: "100%",
     alignItems: "center",
+    justifyContent: "center",
   },
   confirmButtonText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
     color: theme.colors.secondary,
-    fontSize: theme.fontSizes.large,
-    fontFamily: "SquadaOne",
   },
-  icon: {
-    width: 100,
-    height: 100,
-    tintColor: theme.colors.primary,
-    marginBottom: theme.spacing.medium,
+  cancelButton: {
+    alignItems: "center",
+    paddingVertical: theme.spacing.small,
+  },
+  cancelButtonFull: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.medium,
+    height: 46,
+    justifyContent: "center",
+  },
+  cancelButtonText: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
+    color: theme.colors.primary,
+    opacity: 0.5,
+  },
+  cancelButtonTextSingle: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
+    opacity: 1,
   },
 });
-
-export default CustomModal;
