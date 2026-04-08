@@ -8,7 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { fetchUserById, disableUser, enableUser } from "../../../../services/api/users";
+import { fetchUserById, updateUserStatus } from "../../../../services/api/users";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import CustomButton from "../../../../components/CustomButton";
@@ -28,6 +28,8 @@ const StudentDetails = () => {
   const [isToggleModalVisible, setIsToggleModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const fetchData = async () => {
     try {
@@ -48,16 +50,14 @@ const StudentDetails = () => {
     if (!studentDetails) return;
     const isDisabled = studentDetails.status === "Disabled";
     try {
-      if (isDisabled) {
-        await enableUser(studentDetails.id_number);
-      } else {
-        await disableUser(studentDetails.id_number);
-      }
+      await updateUserStatus(studentDetails.id_number, isDisabled ? "Active" : "Disabled");
       setIsToggleModalVisible(false);
       setSuccessMessage(`Student ${isDisabled ? "enabled" : "disabled"} successfully!`);
       setIsSuccessModalVisible(true);
     } catch (error) {
-      console.error("Error toggling student:", error);
+      setIsToggleModalVisible(false);
+      setErrorMessage(error?.response?.data?.message || error?.message || "Failed to update student status.");
+      setIsErrorModalVisible(true);
     }
   };
 
@@ -99,6 +99,14 @@ const StudentDetails = () => {
           setIsSuccessModalVisible(false);
           fetchData();
         }}
+        cancelTitle="CLOSE"
+      />
+      <CustomModal
+        visible={isErrorModalVisible}
+        title="Error"
+        message={errorMessage}
+        type="error"
+        onClose={() => setIsErrorModalVisible(false)}
         cancelTitle="CLOSE"
       />
 

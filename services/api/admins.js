@@ -52,18 +52,16 @@ export const editAdmin = async (id_number, adminData) => {
   }
 };
 
-export const disableAdmin = async (id_number) => {
+export const updateAdminStatus = async (id_number, status) => {
   try {
     const response = await axios.patch(
       `${API_URL}/api/admins/${id_number}/status`,
-      { status: "Disabled" }
+      { status }
     );
-
     if (response.data.success) {
       return response.data;
     }
-
-    throw new Error(response.data.message || "Failed to disable admin");
+    throw new Error(response.data.message || "Failed to update admin status");
   } catch (error) {
     throw error;
   }

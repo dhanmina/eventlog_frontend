@@ -54,17 +54,16 @@ export const updateUser = async (idNumber, userData) => {
   }
 };
 
-export const disableUser = async (idNumber) => {
+export const updateUserStatus = async (idNumber, status) => {
   try {
     const response = await axios.patch(
       `${API_URL}/api/users/${idNumber}/status`,
-      { status: "Disabled" }
+      { status }
     );
-
     if (response.data.success) {
       return response.data;
     }
-    throw new Error(response.data.message || "Failed to disable user");
+    throw new Error(response.data.message || "Failed to update user status");
   } catch (error) {
     throw error;
   }

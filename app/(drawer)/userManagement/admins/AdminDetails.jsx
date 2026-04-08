@@ -8,7 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { fetchAdminById, disableAdmin, enableAdmin } from "../../../../services/api/admins";
+import { fetchAdminById, updateAdminStatus } from "../../../../services/api/admins";
 import { getStoredUser } from "../../../../database/queries";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
@@ -31,6 +31,8 @@ const AdminDetails = () => {
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [isOwnAccountModalVisible, setIsOwnAccountModalVisible] = useState(false);
+  const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const fetchData = async () => {
     try {
@@ -69,15 +71,15 @@ const AdminDetails = () => {
     if (!adminDetails) return;
     const isDisabled = adminDetails.status === "Disabled";
     try {
-      if (isDisabled) {
-        await enableAdmin(adminDetails.id_number);
-      } else {
-        await disableAdmin(adminDetails.id_number);
-      }
+      await updateAdminStatus(adminDetails.id_number, isDisabled ? "Active" : "Disabled");
       setIsToggleModalVisible(false);
       setSuccessMessage(`${adminDetails.first_name} ${adminDetails.last_name} has been ${isDisabled ? "enabled" : "disabled"} successfully.`);
       setIsSuccessModalVisible(true);
-    } catch {}
+    } catch (error) {
+      setIsToggleModalVisible(false);
+      setErrorMessage(error?.response?.data?.message || error?.message || "Failed to update admin status.");
+      setIsErrorModalVisible(true);
+    }
   };
 
   if (isLoading)
@@ -127,6 +129,14 @@ const AdminDetails = () => {
         message="You cannot disable your own account."
         type="warning"
         onClose={() => setIsOwnAccountModalVisible(false)}
+        cancelTitle="CLOSE"
+      />
+      <CustomModal
+        visible={isErrorModalVisible}
+        title="Error"
+        message={errorMessage}
+        type="error"
+        onClose={() => setIsErrorModalVisible(false)}
         cancelTitle="CLOSE"
       />
 
