@@ -1,14 +1,16 @@
 import axios from "axios";
 import { API_URL } from "../../config/config";
 
-export const uploadSchoolYearFile = async (fileUri, type) => {
+export const uploadSchoolYearFile = async (file, type, extraFields = {}) => {
   try {
     const formData = new FormData();
     formData.append("file", {
-      uri: fileUri,
-      name: "student_list.csv",
-      type: "text/csv",
+      uri: file.uri,
+      name: file.name,
+      type: file.mimeType,
     });
+    if (extraFields.department_code) formData.append("department_code", extraFields.department_code);
+    if (extraFields.course_code) formData.append("course_code", extraFields.course_code);
 
     const response = await axios.post(
       `${API_URL}/api/school-years/students`,
@@ -30,14 +32,16 @@ export const uploadSchoolYearFile = async (fileUri, type) => {
   }
 };
 
-export const changeSchoolYear = async (fileUri) => {
+export const changeSchoolYear = async (file, extraFields = {}) => {
   try {
     const formData = new FormData();
     formData.append("file", {
-      uri: fileUri,
-      name: "student_list.csv",
-      type: "text/csv",
+      uri: file.uri,
+      name: file.name,
+      type: file.mimeType,
     });
+    if (extraFields.department_code) formData.append("department_code", extraFields.department_code);
+    if (extraFields.course_code) formData.append("course_code", extraFields.course_code);
 
     const response = await axios.post(
       `${API_URL}/api/school-years/change-school-year`,
