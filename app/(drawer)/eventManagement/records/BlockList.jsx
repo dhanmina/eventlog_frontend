@@ -5,6 +5,9 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
+  Image,
+  Platform,
+  Share,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import {
@@ -13,15 +16,13 @@ import {
 } from "../../../../services/api/records";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
-import CustomButton from "../../../../components/CustomButton";
+import icons from "../../../../constants/icons";
 import CustomDropdown from "../../../../components/CustomDropdown";
 import CustomSearch from "../../../../components/CustomSearch";
 import PrintFilterModal from "../../../../components/PrintFilterModal";
 import * as Print from "expo-print";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
+import { File, Directory, Paths } from "expo-file-system";
 import CustomModal from "../../../../components/CustomModal";
-import TabsComponent from "../../../../components/TabsComponent";
 
 const BlockList = ({
   studentListPath = "eventManagement/records/StudentsList",
@@ -58,9 +59,8 @@ const BlockList = ({
         if (isNaN(event_id) || event_id <= 0) return;
         const blocksData = await fetchBlocksOfEvents(event_id, "", "");
         if (!blocksData.success) throw new Error("Failed to load blocks");
-        const eventTitle =
-          blocksData.data?.event_title || "Event Title Not Found";
-        setEventTitle(eventTitle);
+        const title = blocksData.data?.event_title || "Event Title Not Found";
+        setEventTitle(title);
         const mappedBlocks =
           blocksData.data?.blocks?.map((block) => ({
             ...block,
@@ -80,11 +80,10 @@ const BlockList = ({
               ?.department_name || String(deptId),
           value: String(deptId),
         }));
-        const departmentsWithAll = [
+        setDepartments([
           { label: "All Departments", value: "" },
           ...deptOptions,
-        ];
-        setDepartments(departmentsWithAll);
+        ]);
         const uniqueYearLevels = [
           ...new Set(mappedBlocks.map((b) => b.year_level_id)),
         ];
@@ -94,11 +93,10 @@ const BlockList = ({
               ?.year_level_name || `Year ${yearId}`,
           value: String(yearId),
         }));
-        const yearLevelsWithAll = [
+        setYearLevels([
           { label: "All Year Levels", value: "" },
           ...yearOptions,
-        ];
-        setYearLevels(yearLevelsWithAll);
+        ]);
       } catch (error) {
         setFetchError(true);
         setAllBlocks([]);
@@ -128,7 +126,7 @@ const BlockList = ({
         const blocksData = await fetchBlocksOfEvents(
           event_id,
           selectedDepartment || undefined,
-          selectedYearLevel || undefined
+          selectedYearLevel || undefined,
         );
         let mappedBlocks = [];
         if (blocksData?.data?.blocks?.length > 0) {
@@ -158,7 +156,7 @@ const BlockList = ({
     }
     const lowerQuery = searchQuery.toLowerCase();
     const filtered = allBlocks.filter((block) =>
-      (block.display_name || "").toLowerCase().includes(lowerQuery)
+      (block.display_name || "").toLowerCase().includes(lowerQuery),
     );
     setBlocks(filtered);
   }, [searchQuery, allBlocks]);
@@ -219,7 +217,7 @@ const BlockList = ({
             const summary = await fetchAttendanceSummaryPerBlock(
               Number(eventId),
               block.block_id,
-              attendanceFilter
+              attendanceFilter,
             );
             return summary;
           } catch (error) {
@@ -237,7 +235,7 @@ const BlockList = ({
               },
             };
           }
-        })
+        }),
       );
 
       let eventStartDate = null;
@@ -338,152 +336,158 @@ const BlockList = ({
         };
       });
 
+      const filterLabel =
+        attendanceFilter === "all"
+          ? "General List"
+          : attendanceFilter === "present"
+            ? "Present List"
+            : "Absent List";
+
       const generateBlockPage = (blockName, blockData, isFirst = false) => {
         const { students, availableTimePeriods } = blockData;
 
-        let headerColumns = `
-          <span class="col-id">ID Number</span>
-          <span class="col-name">Name</span>
-        `;
-        if (availableTimePeriods.hasAmIn) {
+        let headerColumns = `<span class="col-id">ID Number</span><span class="col-name">Name</span>`;
+        if (availableTimePeriods.hasAmIn)
           headerColumns += '<span class="col-time">AM In</span>';
-        }
-        if (availableTimePeriods.hasAmOut) {
+        if (availableTimePeriods.hasAmOut)
           headerColumns += '<span class="col-time">AM Out</span>';
-        }
-        if (availableTimePeriods.hasPmIn) {
+        if (availableTimePeriods.hasPmIn)
           headerColumns += '<span class="col-time">PM In</span>';
-        }
-        if (availableTimePeriods.hasPmOut) {
+        if (availableTimePeriods.hasPmOut)
           headerColumns += '<span class="col-time">PM Out</span>';
-        }
-        headerColumns += `
-          <span class="col-count">Present</span>
-          <span class="col-count">Absent</span>
-        `;
+        headerColumns += `<span class="col-count">Present</span><span class="col-count">Absent</span>`;
 
         const studentRows =
           students.length === 0
-            ? `<div style="text-align: center; margin-top: 20px; font-style: italic; color: #666;">
-               No records
-             </div>`
+            ? `<div class="no-records">No records found for this block.</div>`
             : students
-                .map((record) => {
-                  let rowColumns = `
-                <span class="col-id">${record.id}</span>
-                <span class="col-name">${record.name}</span>
-              `;
-                  if (availableTimePeriods.hasAmIn) {
+                .map((record, i) => {
+                  let rowColumns = `<span class="col-id">${record.id}</span><span class="col-name">${record.name}</span>`;
+                  if (availableTimePeriods.hasAmIn)
                     rowColumns += `<span class="col-time">${record.am_in}</span>`;
-                  }
-                  if (availableTimePeriods.hasAmOut) {
+                  if (availableTimePeriods.hasAmOut)
                     rowColumns += `<span class="col-time">${record.am_out}</span>`;
-                  }
-                  if (availableTimePeriods.hasPmIn) {
+                  if (availableTimePeriods.hasPmIn)
                     rowColumns += `<span class="col-time">${record.pm_in}</span>`;
-                  }
-                  if (availableTimePeriods.hasPmOut) {
+                  if (availableTimePeriods.hasPmOut)
                     rowColumns += `<span class="col-time">${record.pm_out}</span>`;
-                  }
-                  rowColumns += `
-                <span class="col-count">${record.present}</span>
-                <span class="col-count">${record.absent}</span>
-              `;
-                  return `<div class="record-line">${rowColumns}</div>`;
+                  rowColumns += `<span class="col-count">${record.present}</span><span class="col-count">${record.absent}</span>`;
+                  return `<div class="record-line ${i % 2 === 0 ? "row-odd" : "row-even"}">${rowColumns}</div>`;
                 })
                 .join("");
 
+        const pageBreak = isFirst ? "" : `style="page-break-before: always;"`;
+
         return `
-          <div style="${
-            isFirst
-              ? "padding-top: 10px;"
-              : "page-break-before: always; padding-top: 10px;"
-          }">
-            <h2 style="color: black; text-align: left; margin-bottom: 3px;">${eventTitle}</h2>
-            <h3 style="color: black; text-align: left; margin-bottom: 3px;">${
-              attendanceFilter === "all"
-                ? "General List"
-                : attendanceFilter === "present"
-                ? "Present List"
-                : "Absent List"
-            }</h3>
-            <h4 style="color: black; text-align: left; margin-bottom: 3px;">Date: ${dateString}</h4>
-            <h3 style="color: black; text-align: left; margin-bottom: 10px;">${blockName}</h3>
-            <div class="header-line">
-              ${headerColumns}
+          <div class="page" ${pageBreak}>
+            ${
+              isFirst
+                ? `
+            <div class="header">
+              <div class="brand">EVENTLOG</div>
+              <div class="subtitle">Attendance Report — ${filterLabel}</div>
+              <div class="generated-date">Generated on ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</div>
             </div>
+            <div class="event-card">
+              <p class="event-name">${eventTitle}</p>
+              <p><strong>Date:</strong> ${dateString}</p>
+              <p><strong>Report Type:</strong> ${filterLabel}</p>
+            </div>
+            `
+                : `
+            <div class="page-mini-header">
+              <span class="mini-brand">EVENTLOG</span>
+              <span class="mini-meta">${eventTitle} · ${filterLabel}</span>
+            </div>
+            `
+            }
+            <div class="block-section">
+              <div class="block-label">${blockName}</div>
+              <div class="student-count">${students.length} student${students.length !== 1 ? "s" : ""}</div>
+            </div>
+            <div class="header-line">${headerColumns}</div>
             ${studentRows}
           </div>
         `;
       };
 
+      const blockEntries = Object.entries(studentsByBlock);
       const html = `
-        <html>
-          <head>
-            <meta charset="utf-8" />
-            <style>
-              body { 
-                font-family: Arial, sans-serif; 
-                padding: 0px 20px 20px 20px; 
-                color: black;
-                font-size: 11px;
-              }
-              h1, h2, h3 { 
-                color: black; 
-                text-align: center;
-              }
-              .header-line {
-                color: black;
-                font-weight: bold;
-                margin-bottom: 10px;
-                display: flex;
-              }
-              .record-line {
-                color: black;
-                margin-bottom: 2px;
-                display: flex;
-              }
-              .col-id { width: 90px; }
-              .col-name { width: 200px; }
-              .col-time { width: 55px; text-align: center; font-size: 11px; }
-              .col-count { width: 55px; text-align: center; }
-            </style>
-          </head>
-          <body>
-            ${Object.entries(studentsByBlock)
-              .map(([blockName, blockData], index) =>
-                generateBlockPage(blockName, blockData, index === 0)
-              )
-              .join("")}
-          </body>
-        </html>
+        <html><head><meta charset="utf-8" />
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; color: #222; font-size: 12px; line-height: 1.5; }
+            .page { padding: 40px; }
+            .header { border-bottom: 3px solid #255586; padding-bottom: 20px; margin-bottom: 25px; }
+            .brand { font-size: 26px; font-weight: bold; color: #255586; margin-bottom: 5px; }
+            .subtitle { font-size: 13px; color: #444; margin-bottom: 6px; }
+            .generated-date { font-size: 11px; color: #666; }
+            .event-card { background-color: #f0f4f8; border-left: 4px solid #255586; padding: 12px 15px; margin-bottom: 20px; border-radius: 3px; }
+            .event-card p { margin: 4px 0; font-size: 12px; color: #222; }
+            .event-name { font-weight: bold; color: #255586; font-size: 13px; margin-bottom: 4px; }
+            .page-mini-header { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 10px; margin-bottom: 15px; border-bottom: 2px solid #255586; }
+            .mini-brand { font-size: 15px; font-weight: bold; color: #255586; }
+            .mini-meta { font-size: 11px; color: #555; }
+            .block-section { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+            .block-label { font-size: 15px; font-weight: bold; color: #255586; }
+            .student-count { font-size: 11px; color: #666; }
+            .header-line { display: flex; font-weight: bold; background-color: #255586; color: #ffffff; padding: 9px 8px; margin-bottom: 1px; font-size: 11px; }
+            .record-line { display: flex; padding: 7px 8px; border-bottom: 1px solid #e0e0e0; font-size: 11px; color: #222; }
+            .row-odd { background-color: #fafafa; }
+            .row-even { background-color: #ffffff; }
+            .no-records { text-align: center; padding: 20px; color: #666; font-style: italic; font-size: 12px; }
+            .col-id { width: 95px; padding-right: 6px; }
+            .col-name { width: 180px; padding-right: 6px; }
+            .col-time { width: 54px; text-align: center; }
+            .col-count { width: 54px; text-align: center; }
+            .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 11px; color: #666; text-align: center; line-height: 1.8; }
+          </style>
+        </head>
+        <body>
+          ${blockEntries
+            .map(([blockName, blockData], index) =>
+              generateBlockPage(blockName, blockData, index === 0),
+            )
+            .join("")}
+          <div class="page" style="padding-top: 0;">
+            <div class="footer">
+              <p>This is an official attendance report generated by the EVENTLOG system.</p>
+              <p>For inquiries, please contact your administrator.</p>
+            </div>
+          </div>
+        </body></html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html });
-      const filterName =
-        attendanceFilter === "all"
-          ? "General List"
-          : attendanceFilter === "present"
-          ? "Present List"
-          : "Absent List";
-      const pdfName = `${eventTitle} - ${filterName}.pdf`;
-      const pdfPath = `${FileSystem.documentDirectory}${pdfName}`;
-      await FileSystem.moveAsync({ from: uri, to: pdfPath });
-      await Sharing.shareAsync(pdfPath, {
-        UTI: ".pdf",
-        mimeType: "application/pdf",
+      const safeEvent = eventTitle.replace(/[^a-zA-Z0-9]/g, "");
+      const safeFilter = filterLabel.replace(/[^a-zA-Z0-9]/g, "");
+      const pdfName = `${safeEvent}_${safeFilter}.pdf`;
+
+      const { uri: tempUri } = await Print.printToFileAsync({ html });
+      const tempFile = new File(tempUri);
+      const documentsDir = new Directory(Paths.document);
+      const existingFile = new File(documentsDir, pdfName);
+      if (existingFile.exists) existingFile.delete();
+      tempFile.move(documentsDir);
+      tempFile.rename(pdfName);
+
+      const shareResult = await Share.share({
+        url: tempFile.uri,
+        title: pdfName,
       });
-      setModalConfig({
-        title: "Download Successful",
-        message: "Your attendance record has been downloaded successfully.",
-        type: "success",
-        cancelTitle: "OK",
-      });
-      setModalVisible(true);
+
+      if (shareResult.action === Share.sharedAction) {
+        setModalConfig({
+          title: "Report Saved",
+          message: "Your attendance report has been saved successfully.",
+          type: "success",
+          cancelTitle: "OK",
+        });
+        setModalVisible(true);
+      }
     } catch (error) {
       setModalConfig({
         title: "Download Failed",
-        message: "An error occurred while generating the PDF.",
+        message: `An error occurred while generating the PDF: ${error.message || "Unknown error"}`,
         type: "error",
         cancelTitle: "OK",
       });
@@ -512,75 +516,119 @@ const BlockList = ({
     setShowPrintModal(true);
   };
 
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>Loading blocks...</Text>
+        </View>
+      );
+    }
+    if (fetchError) {
+      return (
+        <View style={styles.emptyState}>
+          <Image source={icons.blocks} style={styles.emptyIcon} />
+          <Text style={styles.emptyTitle}>Failed to load blocks</Text>
+          <Text style={styles.emptySub}>Please try again</Text>
+        </View>
+      );
+    }
+    if (blocks.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Image source={icons.blocks} style={styles.emptyIcon} />
+          <Text style={styles.emptyTitle}>No blocks found</Text>
+          <Text style={styles.emptySub}>
+            {searchQuery
+              ? "Try a different search term"
+              : "No blocks assigned to this event"}
+          </Text>
+        </View>
+      );
+    }
+    return blocks.map((block, index) => (
+      <TouchableOpacity
+        key={index}
+        style={styles.card}
+        onPress={() => handleBlockPress(block)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.cardLeft} />
+        <View style={styles.cardBody}>
+          <Text style={styles.cardName} numberOfLines={1}>
+            {block.display_name || "Unnamed Block"}
+          </Text>
+          <Text style={styles.cardSub} numberOfLines={1}>
+            {[block.department_name, block.year_level_name]
+              .filter(Boolean)
+              .join("  ·  ") || "—"}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    ));
+  };
+
   return (
     <View style={globalStyles.secondaryContainer}>
-      <Text style={styles.eventTitle}>{eventTitle}</Text>
-      <View style={styles.container}>
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>{eventTitle || "Event Blocks"}</Text>
+        <Text style={styles.headerSubtitle}>Block Attendance</Text>
+        {allBlocks.length > 0 && (
+          <View style={styles.headerFooter}>
+            <Text style={styles.headerStat}>
+              {allBlocks.length} {allBlocks.length === 1 ? "Block" : "Blocks"}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={{ width: "100%" }}>
         <CustomSearch
           placeholder="Search blocks..."
           onSearch={(text) => setSearchQuery(text)}
         />
       </View>
-      <View style={styles.container}>
-        <View style={styles.filterContainer}>
-          <View style={{ width: "48%" }}>
-            <CustomDropdown
-              placeholder="Department"
-              data={departments}
-              labelField="label"
-              valueField="value"
-              value={selectedDepartment}
-              onSelect={(item) => setSelectedDepartment(item.value)}
-            />
-          </View>
-          <View style={{ width: "48%" }}>
-            <CustomDropdown
-              placeholder="Year Level"
-              data={yearLevels}
-              labelField="label"
-              valueField="value"
-              value={selectedYearLevel}
-              onSelect={(item) => setSelectedYearLevel(item.value)}
-            />
-          </View>
+
+      <View style={styles.filterRow}>
+        <View style={styles.filterItem}>
+          <CustomDropdown
+            placeholder="Department"
+            data={departments}
+            labelField="label"
+            valueField="value"
+            value={selectedDepartment}
+            onSelect={(item) => setSelectedDepartment(item.value)}
+          />
+        </View>
+        <View style={styles.filterItem}>
+          <CustomDropdown
+            placeholder="Year Level"
+            data={yearLevels}
+            labelField="label"
+            valueField="value"
+            value={selectedYearLevel}
+            onSelect={(item) => setSelectedYearLevel(item.value)}
+          />
         </View>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollviewContainer}>
-        {loading ? (
-          <Text style={styles.noDataText}>Loading blocks...</Text>
-        ) : fetchError ? (
-          <Text style={styles.noDataText}>Failed to load blocks.</Text>
-        ) : blocks.length === 0 && searchQuery !== "" ? (
-          <Text style={styles.noDataText}>No matching blocks found.</Text>
-        ) : blocks.length === 0 ? (
-          <Text style={styles.noDataText}>No blocks found.</Text>
-        ) : (
-          <View style={styles.gridContainer}>
-            {blocks.map((block, index) => (
-              <View
-                key={index}
-                style={
-                  blocks.length === 1
-                    ? styles.singleBlockContainer
-                    : styles.multiBlockContainer
-                }
-              >
-                <TouchableOpacity
-                  style={styles.blockContainer}
-                  onPress={() => handleBlockPress(block)}
-                >
-                  <Text style={styles.blockText}>
-                    {block.display_name || "Unnamed Block"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollview}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderContent()}
       </ScrollView>
-      <View style={styles.buttonContainer}>
-        <CustomButton title="Download" onPress={handleDownloadPress} />
-      </View>
+
+      <TouchableOpacity
+        style={styles.downloadButton}
+        onPress={handleDownloadPress}
+        activeOpacity={0.8}
+      >
+        <Image source={icons.printer} style={styles.downloadIcon} />
+        <Text style={styles.downloadText}>DOWNLOAD REPORT</Text>
+      </TouchableOpacity>
+
       <PrintFilterModal
         visible={showPrintModal}
         onClose={() => setShowPrintModal(false)}
@@ -601,7 +649,6 @@ const BlockList = ({
         cancelTitle={modalConfig.cancelTitle}
         onCancel={() => setModalVisible(false)}
       />
-      {showTabs && <TabsComponent />}
     </View>
   );
 };
@@ -609,63 +656,164 @@ const BlockList = ({
 export default BlockList;
 
 const styles = StyleSheet.create({
-  container: {
+  headerCard: {
     width: "100%",
-    paddingHorizontal: theme.spacing.medium,
-    alignItems: "center",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.small,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
   },
-  eventTitle: {
-    fontSize: theme.fontSizes.huge,
+  headerTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-    marginVertical: theme.spacing.medium,
-  },
-  filterContainer: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: theme.spacing.medium,
-  },
-  scrollviewContainer: {
-    paddingHorizontal: theme.spacing.medium,
-    flexGrow: 1,
-  },
-  blockText: {
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-    fontSize: theme.fontSizes.large,
-    textAlign: "center",
-  },
-  blockContainer: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    height: 50,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  singleBlockContainer: {
-    width: "100%",
-    marginVertical: theme.spacing.small,
-  },
-  multiBlockContainer: {
-    width: "48%",
-    marginVertical: theme.spacing.small,
-  },
-  noDataText: {
-    fontFamily: theme.fontFamily.SquadaOne,
-    fontSize: theme.fontSizes.large,
+    fontSize: theme.fontSizes.extraLarge,
     color: theme.colors.secondary,
-    textAlign: "center",
-    marginTop: theme.spacing.large,
   },
-  gridContainer: {
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
+  },
+  headerFooter: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    alignItems: "center",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
+    paddingTop: theme.spacing.small,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,241,229,0.15)",
   },
-  buttonContainer: {
+  headerStat: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.7,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
     width: "100%",
-    marginVertical: theme.spacing.medium,
+  },
+  filterItem: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+    marginTop: theme.spacing.small,
+  },
+  scrollview: {
+    flexGrow: 1,
+    paddingBottom: theme.spacing.medium,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.1)",
+    marginBottom: theme.spacing.small,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  cardLeft: {
+    width: 4,
+    alignSelf: "stretch",
+    backgroundColor: theme.colors.primary,
+    opacity: 0.7,
+  },
+  cardBody: {
+    flex: 1,
+    paddingVertical: theme.spacing.small,
     paddingHorizontal: theme.spacing.medium,
+    gap: 3,
+  },
+  cardName: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.primary,
+  },
+  cardSub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.5,
+    marginTop: 2,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 60,
+    gap: theme.spacing.small,
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    tintColor: theme.colors.primary,
+    opacity: 0.2,
+  },
+  emptyTitle: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.primary,
+    opacity: 0.4,
+  },
+  emptySub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.3,
+  },
+  downloadButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.medium,
+    height: 50,
+    width: "100%",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
+    marginBottom: 96,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 5 },
+    }),
+  },
+  downloadIcon: {
+    width: 20,
+    height: 20,
+    tintColor: theme.colors.secondary,
+  },
+  downloadText: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
   },
 });

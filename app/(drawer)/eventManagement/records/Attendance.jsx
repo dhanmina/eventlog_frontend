@@ -5,6 +5,8 @@ import {
   View,
   ScrollView,
   Image,
+  Platform,
+  Share,
   TouchableOpacity,
 } from "react-native";
 import theme from "../../../../constants/theme";
@@ -12,16 +14,15 @@ import globalStyles from "../../../../constants/globalStyles";
 import icons from "../../../../constants/icons";
 import { useLocalSearchParams } from "expo-router";
 import moment from "moment";
-import CustomButton from "../../../../components/CustomButton";
 import * as Print from "expo-print";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
+import { File, Directory, Paths } from "expo-file-system";
 import CustomModal from "../../../../components/CustomModal";
 import { fetchStudentAttendanceByEventAndBlock } from "../../../../services/api/records";
 import { getStudentAttSummary } from "../../../../services/api/records";
 
 const SessionLog = ({ label, data, sessionType = "am" }) => {
   const now = moment.now();
+
   const isAttendanceTimePassed = (time) => {
     try {
       if (!time) return false;
@@ -33,16 +34,22 @@ const SessionLog = ({ label, data, sessionType = "am" }) => {
       return false;
     }
   };
-  const renderAttendanceStatus = (time, attendance) => {
+
+  const renderAttendanceIcon = (time, attendance) => {
     try {
       if (isAttendanceTimePassed(time)) {
         const iconSource = attendance ? icons.present : icons.absent;
-        const iconStyle = attendance ? styles.presentIcon : styles.absentIcon;
-        return <Image source={iconSource} style={iconStyle} />;
+        const iconTint = attendance ? theme.colors.green : "#C62828";
+        return (
+          <Image
+            source={iconSource}
+            style={[styles.sessionIcon, { tintColor: iconTint }]}
+          />
+        );
       }
-      return null;
+      return <View style={styles.sessionIconPlaceholder} />;
     } catch (error) {
-      return null;
+      return <View style={styles.sessionIconPlaceholder} />;
     }
   };
 
@@ -54,36 +61,19 @@ const SessionLog = ({ label, data, sessionType = "am" }) => {
   const attendanceTimeIn = data?.attendance?.[timeInKey];
   const attendanceTimeOut = data?.attendance?.[timeOutKey];
 
-  if (!scheduleTimeIn && !scheduleTimeOut) {
-    return null;
-  }
+  if (!scheduleTimeIn && !scheduleTimeOut) return null;
 
   return (
-    <View style={styles.sessionContainer}>
-      <View style={styles.morningTextContainer}>
-        <Text style={styles.morningText}>{label}</Text>
-      </View>
-      <View style={styles.logContainer}>
-        <View style={[styles.timeContainer, { width: "50%" }]}>
-          <View
-            style={[
-              styles.timeLabelContainer,
-              { borderRightWidth: 0, borderLeftWidth: 0 },
-            ]}
-          >
-            <Text style={styles.timeLabel}>Time In</Text>
-          </View>
-          <View style={[styles.imageContainer, { borderLeftWidth: 0 }]}>
-            {renderAttendanceStatus(scheduleTimeIn, attendanceTimeIn)}
-          </View>
+    <View style={styles.sessionRow}>
+      <Text style={styles.sessionLabel}>{label}</Text>
+      <View style={styles.sessionChecks}>
+        <View style={styles.checkItem}>
+          <Text style={styles.checkLabel}>In</Text>
+          {renderAttendanceIcon(scheduleTimeIn, attendanceTimeIn)}
         </View>
-        <View style={[styles.timeContainer, { width: "50%" }]}>
-          <View style={[styles.timeLabelContainer, { borderRightWidth: 0 }]}>
-            <Text style={styles.timeLabel}>Time Out</Text>
-          </View>
-          <View style={[styles.imageContainer, { borderRightWidth: 0 }]}>
-            {renderAttendanceStatus(scheduleTimeOut, attendanceTimeOut)}
-          </View>
+        <View style={styles.checkItem}>
+          <Text style={styles.checkLabel}>Out</Text>
+          {renderAttendanceIcon(scheduleTimeOut, attendanceTimeOut)}
         </View>
       </View>
     </View>
@@ -216,77 +206,86 @@ const Attendance = () => {
         .join("");
 
       const htmlContent = `
-      <html>
-        <head>
-          <meta charset="utf-8" />
+        <html><head><meta charset="utf-8" />
           <style>
-            body { font-family: Arial, sans-serif; padding: 0px 40px 20px 40px; color: black; font-size: 11px; }
-            h2, h3, h4 { color: black; }
-            .header-line { color: black; font-weight: bold; margin-bottom: 10px; display: flex; }
-            .record-line { color: black; margin-bottom: 2px; display: flex; }
-            .col-date { width: 120px; text-align: left; }
-            .col-time { width: 60px; text-align: center; font-size: 11px; }
-            .col-count { width: 60px; text-align: center; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; color: #222; font-size: 12px; line-height: 1.5; }
+            .container { padding: 40px; }
+            .header { border-bottom: 3px solid #255586; padding-bottom: 20px; margin-bottom: 25px; }
+            .brand { font-size: 26px; font-weight: bold; color: #255586; margin-bottom: 5px; }
+            .subtitle { font-size: 13px; color: #444; margin-bottom: 6px; }
+            .generated-date { font-size: 11px; color: #666; }
+            .info-card { background-color: #f0f4f8; border-left: 4px solid #255586; padding: 12px 15px; margin-bottom: 20px; border-radius: 3px; }
+            .info-card p { margin: 4px 0; font-size: 12px; color: #222; }
+            .info-name { font-weight: bold; color: #255586; font-size: 13px; margin-bottom: 4px; }
+            .table-section { margin-top: 20px; }
+            .table-label { font-size: 13px; font-weight: bold; color: #255586; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid #e0e0e0; }
+            .header-line { display: flex; font-weight: bold; background-color: #255586; color: #ffffff; padding: 9px 8px; margin-bottom: 1px; font-size: 11px; }
+            .record-line { display: flex; padding: 7px 8px; border-bottom: 1px solid #e0e0e0; font-size: 11px; color: #222; background-color: #fafafa; }
+            .record-line:nth-child(even) { background-color: #ffffff; }
+            .col-date { width: 130px; text-align: left; padding-right: 10px; }
+            .col-time { width: 62px; text-align: center; }
+            .col-count { width: 62px; text-align: center; }
+            .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 11px; color: #666; text-align: center; line-height: 1.8; }
           </style>
         </head>
-        <body>
-          <div style="padding-top: 10px;">
-            <h2 style="color: black; text-align: left; margin-bottom: 3px;">${
-              event_name || "Unknown Event"
-            }</h2>
-            <h3 style="color: black; text-align: left; margin-bottom: 3px;">Individual Attendance Report</h3>
-            <h4 style="color: black; text-align: left; margin-bottom: 3px;">Generated: ${new Date().toLocaleDateString(
-              "en-US",
-              {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              }
-            )}</h4>
-            <h3 style="color: black; text-align: left; margin-bottom: 10px;">${
-              student_name || "N/A"
-            } (${student_id || "N/A"})</h3>
-            <div style="margin-bottom: 15px;">
-              <p style="margin: 5px 0; text-align: left;"><strong>Course/Block:</strong> ${
-                studentDetails?.courseBlock || "N/A"
-              }</p>
-            </div>
-            <div class="header-line">
-              ${tableHeaders}
-            </div>
+        <body><div class="container">
+          <div class="header">
+            <div class="brand">EVENTLOG</div>
+            <div class="subtitle">Individual Attendance Report</div>
+            <div class="generated-date">Generated on ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</div>
+          </div>
+          <div class="info-card">
+            <p class="info-name">${student_name || "N/A"}</p>
+            <p><strong>Student ID:</strong> ${student_id || "N/A"}</p>
+            <p><strong>Event:</strong> ${event_name || "Unknown Event"}</p>
+            <p><strong>Course / Block:</strong> ${studentDetails?.courseBlock || "N/A"}</p>
+          </div>
+          <div class="table-section">
+            <div class="table-label">Attendance Details</div>
+            <div class="header-line">${tableHeaders}</div>
             ${tableRows}
           </div>
-        </body>
-      </html>
-    `;
+          <div class="footer">
+            <p>This is an official attendance report generated by the EVENTLOG system.</p>
+            <p>For inquiries, please contact your administrator.</p>
+          </div>
+        </div></body></html>
+      `;
 
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      const pdfName = `${
-        student_name || "Student"
-      } - Individual Attendance Report.pdf`;
-      const pdfPath = `${FileSystem.documentDirectory}${pdfName}`;
-      await FileSystem.moveAsync({ from: uri, to: pdfPath });
-      await Sharing.shareAsync(pdfPath, {
-        mimeType: "application/pdf",
-        UTI: ".pdf",
+      const safeName = (student_name || "Student").replace(/[^a-zA-Z0-9]/g, "");
+      const safeEvent = (event_name || "Event").replace(/[^a-zA-Z0-9]/g, "");
+      const pdfName = `${safeName}_${safeEvent}.pdf`;
+
+      const { uri: tempUri } = await Print.printToFileAsync({ html: htmlContent });
+      const tempFile = new File(tempUri);
+      const documentsDir = new Directory(Paths.document);
+      const existingFile = new File(documentsDir, pdfName);
+      if (existingFile.exists) existingFile.delete();
+      tempFile.move(documentsDir);
+      tempFile.rename(pdfName);
+
+      const shareResult = await Share.share({
+        url: tempFile.uri,
+        title: pdfName,
       });
 
-      setModalConfig({
-        title: "Download Successful",
-        message: "Your attendance record has been downloaded successfully.",
-        type: "success",
-        cancelTitle: "OK",
-      });
+      if (shareResult.action === Share.sharedAction) {
+        setModalConfig({
+          title: "Report Saved",
+          message: "Your attendance report has been saved successfully.",
+          type: "success",
+          cancelTitle: "OK",
+        });
+        setModalVisible(true);
+      }
     } catch (error) {
       setModalConfig({
         title: "Download Failed",
-        message: `An error occurred while generating the PDF: ${
-          error.message || "Unknown error"
-        }`,
+        message: `An error occurred while generating the PDF: ${error.message || "Unknown error"}`,
         type: "error",
         cancelTitle: "OK",
       });
-    } finally {
       setModalVisible(true);
     }
   };
@@ -302,79 +301,90 @@ const Attendance = () => {
   if (!eventName || !studentDetails || attendanceDataList.length === 0) {
     return (
       <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.noEventsText}>No attendance data available.</Text>
+        <View style={styles.emptyState}>
+          <Image source={icons.calendarStar} style={styles.emptyIcon} />
+          <Text style={styles.emptyTitle}>No attendance data</Text>
+          <Text style={styles.emptySub}>No records available for this student</Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <View style={styles.attendanceWrapper}>
-        <Text style={styles.eventTitle}>{eventName}</Text>
-        <View style={styles.fullContainer}>
-          <ScrollView
-            contentContainerStyle={styles.scrollviewContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.infoContainer}>
-              <Text style={styles.info}>Name: {studentDetails.name}</Text>
-              <Text style={styles.info}>ID: {studentDetails.id}</Text>
-              <Text style={styles.info}>
-                Course/Block: {studentDetails.courseBlock}
-              </Text>
-            </View>
-            {attendanceDataList.map((attendanceData, index) => {
-              const sessionData = {
-                date: attendanceData.date,
-                schedule: attendanceData.schedule,
-                attendance: attendanceData.attendance,
-              };
-              return (
-                <View key={index} style={styles.attendanceContainer}>
-                  <View style={styles.dateContainer}>
-                    <Text style={styles.date}>
-                      {moment(attendanceData.date).format("MMMM D, YYYY")}
-                    </Text>
-                  </View>
-                  {attendanceData.schedule?.am_in &&
-                    attendanceData.schedule?.am_out && (
-                      <SessionLog
-                        label="Morning"
-                        data={sessionData}
-                        sessionType="am"
-                      />
-                    )}
-                  {attendanceData.schedule?.pm_in &&
-                    attendanceData.schedule?.pm_out && (
-                      <SessionLog
-                        label="Afternoon"
-                        data={sessionData}
-                        sessionType="pm"
-                      />
-                    )}
-                  {!(
-                    attendanceData.schedule?.am_in &&
-                    attendanceData.schedule?.am_out
-                  ) &&
-                    !(
-                      attendanceData.schedule?.pm_in &&
-                      attendanceData.schedule?.pm_out
-                    ) && (
-                      <View style={styles.noSessionContainer}>
-                        <Text style={styles.noSessionText}>
-                          No schedule available for this date
-                        </Text>
-                      </View>
-                    )}
-                </View>
-              );
-            })}
-          </ScrollView>
-          <View style={styles.buttonContainer}>
-            <CustomButton title="Download" onPress={handlePrint} />
-          </View>
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>{eventName}</Text>
+        <Text style={styles.headerSubtitle}>Attendance Report</Text>
+        <View style={styles.headerFooter}>
+          <Text style={styles.headerStat} numberOfLines={1}>
+            {studentDetails.name}
+          </Text>
+          <Text style={styles.headerStatDivider}>·</Text>
+          <Text style={styles.headerStat} numberOfLines={1}>
+            {studentDetails.courseBlock}
+          </Text>
         </View>
       </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollview}
+        showsVerticalScrollIndicator={false}
+      >
+        {attendanceDataList.map((attendanceData, index) => {
+          const sessionData = {
+            date: attendanceData.date,
+            schedule: attendanceData.schedule,
+            attendance: attendanceData.attendance,
+          };
+          const hasAM =
+            attendanceData.schedule?.am_in && attendanceData.schedule?.am_out;
+          const hasPM =
+            attendanceData.schedule?.pm_in && attendanceData.schedule?.pm_out;
+
+          return (
+            <View key={index} style={styles.dateCard}>
+              <View style={styles.dateHeader}>
+                <Image source={icons.calendar} style={styles.dateIcon} />
+                <Text style={styles.dateText}>
+                  {moment(attendanceData.date).format("MMMM D, YYYY")}
+                </Text>
+              </View>
+              <View style={styles.sessionsBody}>
+                {hasAM && (
+                  <SessionLog
+                    label="Morning"
+                    data={sessionData}
+                    sessionType="am"
+                  />
+                )}
+                {hasPM && (
+                  <SessionLog
+                    label="Afternoon"
+                    data={sessionData}
+                    sessionType="pm"
+                  />
+                )}
+                {!hasAM && !hasPM && (
+                  <Text style={styles.noScheduleText}>
+                    No schedule for this date
+                  </Text>
+                )}
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
+
+      <TouchableOpacity
+        style={styles.downloadButton}
+        onPress={handlePrint}
+        activeOpacity={0.8}
+      >
+        <Image source={icons.printer} style={styles.downloadIcon} />
+        <Text style={styles.downloadText}>DOWNLOAD REPORT</Text>
+      </TouchableOpacity>
+
       <CustomModal
         visible={modalVisible}
         title={modalConfig.title}
@@ -390,135 +400,209 @@ const Attendance = () => {
 export default Attendance;
 
 const styles = StyleSheet.create({
-  fullContainer: {
-    flex: 1,
-    justifyContent: "space-between",
+  headerCard: {
+    width: "100%",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.medium,
+    marginBottom: theme.spacing.small,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
   },
-  buttonContainer: {
-    paddingHorizontal: theme.spacing.medium,
-    paddingVertical: theme.spacing.small,
+  headerTitle: {
+    fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
   },
-  attendanceWrapper: {
+  headerSubtitle: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.55,
+    marginTop: 3,
+  },
+  headerFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
+    paddingTop: theme.spacing.small,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,241,229,0.15)",
+    flexWrap: "wrap",
+  },
+  headerStat: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.secondary,
+    opacity: 0.7,
+  },
+  headerStatDivider: {
+    color: theme.colors.secondary,
+    opacity: 0.3,
+  },
+  scrollView: {
     flex: 1,
     width: "100%",
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+    marginTop: theme.spacing.small,
   },
-  eventTitle: {
-    fontSize: theme.fontSizes.huge,
+  scrollview: {
+    flexGrow: 1,
+    paddingBottom: theme.spacing.medium,
+  },
+  dateCard: {
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: "rgba(37,85,134,0.1)",
+    marginBottom: theme.spacing.small,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  dateHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.small,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+  },
+  dateIcon: {
+    width: 14,
+    height: 14,
+    tintColor: theme.colors.secondary,
+    opacity: 0.7,
+  },
+  dateText: {
     fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.medium,
+    color: theme.colors.secondary,
+  },
+  sessionsBody: {
+    paddingVertical: theme.spacing.xsmall,
+  },
+  sessionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: theme.spacing.small,
+    paddingHorizontal: theme.spacing.medium,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(37,85,134,0.07)",
+  },
+  sessionLabel: {
+    fontFamily: theme.fontFamily.ArialBold,
+    fontSize: theme.fontSizes.small,
     color: theme.colors.primary,
+    flex: 1,
+  },
+  sessionChecks: {
+    flexDirection: "row",
+    gap: theme.spacing.medium,
+  },
+  checkItem: {
+    alignItems: "center",
+    gap: 4,
+    minWidth: 40,
+  },
+  checkLabel: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.5,
+  },
+  sessionIcon: {
+    width: 22,
+    height: 22,
+  },
+  sessionIconPlaceholder: {
+    width: 22,
+    height: 22,
+  },
+  noScheduleText: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.4,
     textAlign: "center",
     paddingVertical: theme.spacing.medium,
   },
-  scrollviewContainer: {
-    paddingHorizontal: theme.spacing.medium,
-    paddingBottom: theme.spacing.large,
-  },
-  infoContainer: {
-    paddingHorizontal: theme.spacing.medium,
-    marginBottom: theme.spacing.large,
-  },
-  info: {
-    fontSize: theme.fontSizes.large,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-    marginTop: theme.spacing.xsmall,
-  },
-  attendanceContainer: {
-    borderWidth: 3,
-    borderColor: theme.colors.primary,
-    marginBottom: theme.spacing.medium,
-  },
-  dateContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    borderBottomWidth: 3,
-    borderColor: theme.colors.primary,
-    height: 40,
-  },
-  date: {
-    fontSize: theme.fontSizes.extraLarge,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-    textAlign: "center",
-  },
-  sessionContainer: {
-    flex: 1,
-  },
-  morningText: {
-    fontSize: theme.fontSizes.extraLarge,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-  },
-  morningTextContainer: {
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logContainer: {
+  downloadButton: {
     flexDirection: "row",
-  },
-  timeContainer: {
-    width: "50%",
-    justifyContent: "center",
     alignItems: "center",
-  },
-  timeLabelContainer: {
-    borderWidth: 3,
-    width: "100%",
     justifyContent: "center",
-    alignItems: "center",
-    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.medium,
     height: 50,
+    width: "100%",
+    gap: theme.spacing.small,
+    marginTop: theme.spacing.small,
+    marginBottom: 96,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 5 },
+    }),
   },
-  timeLabel: {
-    fontSize: theme.fontSizes.large,
+  downloadIcon: {
+    width: 20,
+    height: 20,
+    tintColor: theme.colors.secondary,
+  },
+  downloadText: {
     fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.primary,
-  },
-  imageContainer: {
-    borderLeftWidth: 3,
-    borderBottomWidth: 2,
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    height: 50,
-    borderColor: theme.colors.primary,
-  },
-  absentIcon: {
-    width: 35,
-    height: 35,
-    tintColor: "red",
-  },
-  presentIcon: {
-    width: 35,
-    height: 35,
-    tintColor: theme.colors.green,
+    fontSize: theme.fontSizes.extraLarge,
+    color: theme.colors.secondary,
   },
   loadingText: {
-    fontSize: theme.fontSizes.large,
     fontFamily: theme.fontFamily.SquadaOne,
+    fontSize: theme.fontSizes.large,
     color: theme.colors.primary,
     textAlign: "center",
     marginTop: theme.spacing.large,
   },
-  noEventsText: {
-    fontSize: theme.fontSizes.medium,
-    fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.secondary,
-    textAlign: "center",
-    marginTop: theme.spacing.medium,
-  },
-  noSessionContainer: {
-    paddingVertical: theme.spacing.medium,
-    justifyContent: "center",
+  emptyState: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 60,
+    gap: theme.spacing.small,
   },
-  noSessionText: {
-    fontSize: theme.fontSizes.medium,
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    tintColor: theme.colors.primary,
+    opacity: 0.2,
+  },
+  emptyTitle: {
     fontFamily: theme.fontFamily.SquadaOne,
-    color: theme.colors.secondary,
-    textAlign: "center",
+    fontSize: theme.fontSizes.large,
+    color: theme.colors.primary,
+    opacity: 0.4,
+  },
+  emptySub: {
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.extraSmall,
+    color: theme.colors.primary,
+    opacity: 0.3,
   },
 });

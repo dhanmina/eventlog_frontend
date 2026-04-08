@@ -256,24 +256,24 @@ const Attendance = () => {
         <html><head><meta charset="utf-8" />
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; color: #333; font-size: 11px; line-height: 1.5; }
+            body { font-family: Arial, sans-serif; color: #222; font-size: 12px; line-height: 1.5; }
             .container { padding: 40px; }
             .header { border-bottom: 3px solid #255586; padding-bottom: 20px; margin-bottom: 25px; }
-            .title { font-size: 24px; font-weight: bold; color: #255586; margin-bottom: 5px; }
-            .subtitle { font-size: 12px; color: #666; margin-bottom: 10px; }
-            .generated-date { font-size: 10px; color: #999; margin-bottom: 15px; }
-            .student-info { background-color: #f5f5f5; border-left: 4px solid #255586; padding: 12px 15px; margin-bottom: 20px; border-radius: 3px; }
-            .student-info p { margin: 4px 0; font-size: 11px; }
-            .student-name { font-weight: bold; color: #255586; font-size: 12px; }
+            .title { font-size: 26px; font-weight: bold; color: #255586; margin-bottom: 5px; }
+            .subtitle { font-size: 13px; color: #444; margin-bottom: 10px; }
+            .generated-date { font-size: 11px; color: #666; margin-bottom: 15px; }
+            .student-info { background-color: #f0f4f8; border-left: 4px solid #255586; padding: 12px 15px; margin-bottom: 20px; border-radius: 3px; }
+            .student-info p { margin: 4px 0; font-size: 12px; color: #222; }
+            .student-name { font-weight: bold; color: #255586; font-size: 13px; }
             .table-section { margin-top: 20px; }
-            .table-label { font-size: 12px; font-weight: bold; color: #255586; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid #e0e0e0; }
-            .header-line { display: flex; font-weight: bold; background-color: #255586; color: white; padding: 8px; margin-bottom: 1px; font-size: 10px; }
-            .record-line { display: flex; padding: 6px 8px; border-bottom: 1px solid #e0e0e0; font-size: 10px; background-color: #fafafa; }
-            .record-line:nth-child(even) { background-color: #fff; }
-            .col-date { width: 120px; text-align: left; padding-right: 10px; }
+            .table-label { font-size: 13px; font-weight: bold; color: #255586; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid #e0e0e0; }
+            .header-line { display: flex; font-weight: bold; background-color: #255586; color: #ffffff; padding: 9px 8px; margin-bottom: 1px; font-size: 11px; }
+            .record-line { display: flex; padding: 7px 8px; border-bottom: 1px solid #e0e0e0; font-size: 11px; color: #222; background-color: #fafafa; }
+            .record-line:nth-child(even) { background-color: #ffffff; }
+            .col-date { width: 130px; text-align: left; padding-right: 10px; }
             .col-time { width: 60px; text-align: center; }
             .col-count { width: 60px; text-align: center; }
-            .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 9px; color: #999; text-align: center; }
+            .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 11px; color: #666; text-align: center; line-height: 1.8; }
           </style>
         </head>
         <body><div class="container">
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: theme.spacing.small,
     marginTop: theme.spacing.small,
-    marginBottom: theme.spacing.medium,
+    marginBottom: 96,
     ...Platform.select({
       ios: {
         shadowColor: theme.colors.primary,
