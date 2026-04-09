@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  Share,
 } from "react-native";
 import theme from "../../../../constants/theme";
 import globalStyles from "../../../../constants/globalStyles";
@@ -14,8 +15,7 @@ import { useLocalSearchParams } from "expo-router";
 import moment from "moment";
 import CustomButton from "../../../../components/CustomButton";
 import * as Print from "expo-print";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
+import { File, Directory, Paths } from "expo-file-system";
 import CustomModal from "../../../../components/CustomModal";
 import { fetchStudentAttendanceByEventAndBlock } from "../../../../services/api/attendance";
 import { getStudentAttSummary } from "../../../../services/api/attendance";
@@ -260,23 +260,30 @@ const Attendance = () => {
       </html>
     `;
 
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      const { uri: tempUri } = await Print.printToFileAsync({ html: htmlContent });
       const pdfName = `${
         student_name || "Student"
       } - Individual Attendance Report.pdf`;
-      const pdfPath = `${FileSystem.documentDirectory}${pdfName}`;
-      await FileSystem.moveAsync({ from: uri, to: pdfPath });
-      await Sharing.shareAsync(pdfPath, {
-        mimeType: "application/pdf",
-        UTI: ".pdf",
-      });
 
-      setModalConfig({
-        title: "Download Successful",
-        message: "Your attendance record has been downloaded successfully.",
-        type: "success",
-        cancelTitle: "OK",
-      });
+      const tempFile = new File(tempUri);
+      const documentsDir = new Directory(Paths.document);
+      const existingFile = new File(documentsDir, pdfName);
+      if (existingFile.exists) existingFile.delete();
+      tempFile.move(documentsDir);
+      tempFile.rename(pdfName);
+
+      const shareResult = await Share.share({ url: tempFile.uri, title: pdfName });
+
+      if (shareResult.action === Share.sharedAction) {
+        setModalConfig({
+          title: "Download Successful",
+          message: "Your attendance record has been downloaded successfully.",
+          type: "success",
+          cancelTitle: "OK",
+        });
+        setModalVisible(true);
+      }
+      return;
     } catch (error) {
       setModalConfig({
         title: "Download Failed",
@@ -286,7 +293,6 @@ const Attendance = () => {
         type: "error",
         cancelTitle: "OK",
       });
-    } finally {
       setModalVisible(true);
     }
   };

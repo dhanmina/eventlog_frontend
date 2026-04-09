@@ -5,6 +5,7 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
+  Share,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import {
@@ -18,8 +19,7 @@ import CustomDropdown from "../../../../components/CustomDropdown";
 import CustomSearch from "../../../../components/CustomSearch";
 import PrintFilterModal from "../../../../components/PrintFilterModal";
 import * as Print from "expo-print";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
+import { File, Directory, Paths } from "expo-file-system";
 import CustomModal from "../../../../components/CustomModal";
 import TabsComponent from "../../../../components/TabsComponent";
 
@@ -434,7 +434,7 @@ const BlockList = () => {
         </html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html });
+      const { uri: tempUri } = await Print.printToFileAsync({ html });
       const filterName =
         attendanceFilter === "all"
           ? "General List"
@@ -442,19 +442,25 @@ const BlockList = () => {
           ? "Present List"
           : "Absent List";
       const pdfName = `${eventTitle} - ${filterName}.pdf`;
-      const pdfPath = `${FileSystem.documentDirectory}${pdfName}`;
-      await FileSystem.moveAsync({ from: uri, to: pdfPath });
-      await Sharing.shareAsync(pdfPath, {
-        UTI: ".pdf",
-        mimeType: "application/pdf",
-      });
-      setModalConfig({
-        title: "Download Successful",
-        message: "Your attendance record has been downloaded successfully.",
-        type: "success",
-        cancelTitle: "OK",
-      });
-      setModalVisible(true);
+
+      const tempFile = new File(tempUri);
+      const documentsDir = new Directory(Paths.document);
+      const existingFile = new File(documentsDir, pdfName);
+      if (existingFile.exists) existingFile.delete();
+      tempFile.move(documentsDir);
+      tempFile.rename(pdfName);
+
+      const shareResult = await Share.share({ url: tempFile.uri, title: pdfName });
+
+      if (shareResult.action === Share.sharedAction) {
+        setModalConfig({
+          title: "Download Successful",
+          message: "Your attendance record has been downloaded successfully.",
+          type: "success",
+          cancelTitle: "OK",
+        });
+        setModalVisible(true);
+      }
     } catch (error) {
       setModalConfig({
         title: "Download Failed",
