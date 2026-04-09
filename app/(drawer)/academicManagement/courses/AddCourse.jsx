@@ -20,6 +20,7 @@ const AddCourse = () => {
   const [formData, setFormData] = useState({
     course_name: "",
     course_code: "",
+    short_name: "",
     department_id: null,
   });
 
@@ -77,6 +78,7 @@ const AddCourse = () => {
         course_name: formData.course_name,
         course_code: formData.course_code,
         department_id: formData.department_id,
+        ...(formData.short_name.trim() && { short_name: formData.short_name.trim() }),
       };
 
       await addCourse(submitData);
@@ -90,6 +92,7 @@ const AddCourse = () => {
       setFormData({
         course_name: "",
         course_code: "",
+        short_name: "",
         department_id: null,
       });
     } catch (error) {
@@ -145,6 +148,13 @@ const AddCourse = () => {
             placeholder="Enter course code"
             value={formData.course_code}
             onChangeText={(text) => handleChange("course_code", text)}
+          />
+
+          <FormField
+            title="Short Name (Optional)"
+            placeholder="e.g. BSINFOTECH"
+            value={formData.short_name}
+            onChangeText={(text) => handleChange("short_name", text)}
           />
 
           <CustomDropdown

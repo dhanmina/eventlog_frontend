@@ -8,7 +8,7 @@ export const getCurrentSchoolYear = async () => {
 
 export const uploadSchoolYearFile = async (file, type, extraFields = {}) => {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", { uri: file.uri, name: file.name, type: file.mimeType || "application/octet-stream" });
   Object.entries(extraFields).forEach(([key, value]) => formData.append(key, value));
   const res = await api.post("/school-years/students", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -19,7 +19,7 @@ export const uploadSchoolYearFile = async (file, type, extraFields = {}) => {
 
 export const changeSchoolYear = async (file, extraFields = {}) => {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", { uri: file.uri, name: file.name, type: file.mimeType || "application/octet-stream" });
   Object.entries(extraFields).forEach(([key, value]) => formData.append(key, value));
   const res = await api.post("/school-years/change-school-year", formData, {
     headers: { "Content-Type": "multipart/form-data" },

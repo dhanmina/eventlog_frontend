@@ -24,8 +24,9 @@ import { useLocalSearchParams } from "expo-router";
 const EditCourse = () => {
   const { id: course_id } = useLocalSearchParams();
   const [formData, setFormData] = useState({
-    name: "",
+    course_name: "",
     course_code: "",
+    short_name: "",
     department_id: null,
     status: "Active",
   });
@@ -64,8 +65,9 @@ const EditCourse = () => {
         setFormData({
           course_name: courseDetails.course_name || "",
           course_code: courseDetails.course_code || "",
+          short_name: courseDetails.short_name || "",
           department_id: courseDetails.department_id || null,
-          status: courseDetails.status || "active",
+          status: courseDetails.status || "Active",
         });
       } catch (error) {
         setModal({
@@ -99,10 +101,11 @@ const EditCourse = () => {
       }
 
       const submitData = {
-        name: formData.course_name,
+        course_name: formData.course_name,
         course_code: formData.course_code,
         department_id: formData.department_id,
         status: formData.status,
+        short_name: formData.short_name.trim() || null,
       };
 
       await editCourse(course_id, submitData);
@@ -165,6 +168,13 @@ const EditCourse = () => {
             placeholder="Enter course code"
             value={formData.course_code}
             onChangeText={(text) => handleChange("course_code", text)}
+          />
+
+          <FormField
+            title="Short Name (Optional)"
+            placeholder="e.g. BSINFOTECH"
+            value={formData.short_name}
+            onChangeText={(text) => handleChange("short_name", text)}
           />
 
           <CustomDropdown
