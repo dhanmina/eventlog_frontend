@@ -1,4 +1,6 @@
+import { Platform } from "react-native";
 import api from "./client";
+import { getDatabase } from "../../database/database";
 
 export const fetchAttendanceSummaryOfEvent = async (eventId) => {
   if (!eventId) throw new Error("Missing required parameter: eventId");
@@ -61,6 +63,39 @@ export const syncAttendance = async (data) => {
   return res.data;
 };
 
+export const performSync = async () => {
+  if (Platform.OS === "web") return;
+  try {
+    const db = await getDatabase();
+    if (!db) return;
+
+    const records = await db.getAllAsync("SELECT * FROM attendance");
+    if (!records || records.length === 0) return;
+
+    const attendanceData = records.map((r) => ({
+      event_date_id: r.event_date_id,
+      student_id_number: r.student_id_number,
+      am_in: r.am_in || null,
+      am_out: r.am_out || null,
+      pm_in: r.pm_in || null,
+      pm_out: r.pm_out || null,
+    }));
+
+    const res = await api.post("/attendance/sync", { attendanceData });
+    if (!res.data?.success) return;
+
+    const synced = res.data.data?.synced_records || [];
+    for (const record of synced) {
+      await db.runAsync(
+        "DELETE FROM attendance WHERE event_date_id = ? AND student_id_number = ?",
+        [record.event_date_id, record.student_id_number]
+      );
+    }
+  } catch (err) {
+    console.warn("[sync]", err.message);
+  }
+};
+
 export const fetchAllPastEvents = async (page = 1, limit = 10, search = "") => {
   const res = await api.get("/attendance/admin/events/past", { params: { page, limit, search } });
   if (!res.data.success) throw new Error(res.data.message || "Failed to fetch past events");
@@ -74,6 +109,11 @@ export const fetchAllOngoingEvents = async (page = 1, limit = 10, search = "") =
 };
 
 let syncInterval = null;
+
+export const startSync = () => {
+  performSync();
+  syncInterval = setInterval(performSync, 30000);
+};
 
 export const stopSync = () => {
   if (syncInterval) {

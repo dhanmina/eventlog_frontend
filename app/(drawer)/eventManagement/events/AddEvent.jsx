@@ -56,80 +56,83 @@ const AddEvent = () => {
   });
   const [isDurationPickerVisible, setIsDurationPickerVisible] = useState(false);
 
+  const initializeData = async () => {
+    try {
+      const storedUserData = await getStoredUser();
+      if (!storedUserData || !storedUserData.id_number) {
+        throw new Error("Invalid or missing user ID.");
+      }
+      handleChange("created_by", storedUserData.id_number);
+    } catch (error) {
+      setModal({
+        visible: true,
+        title: "Error",
+        message: "Failed to load user data. Please try again.",
+        type: "error",
+      });
+    }
+  };
+
+  const fetchEventNamesData = async () => {
+    setIsLoading(true);
+    try {
+      const eventNamesData = await fetchEventNames();
+      const activeEventNames = eventNamesData.filter(
+        (name) => name.status === "Active"
+      );
+      setEventNames(activeEventNames);
+    } catch (error) {
+      setModal({
+        visible: true,
+        title: "Error",
+        message: "Failed to load event names. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchDepartmentData = async () => {
+    setLoadingDepartments(true);
+    setErrorDepartments(null);
+    try {
+      const response = await fetchDepartments();
+      if (!response || !Array.isArray(response.departments)) {
+        throw new Error(
+          "Invalid data format from API: Expected 'departments' array."
+        );
+      }
+      const departmentsData = response.departments;
+      const activeDepartmentsData = departmentsData.filter(
+        (dept) => dept.status === "Active"
+      );
+      const formattedDepartments = activeDepartmentsData.map((dept) => ({
+        label: dept.department_name,
+        value: dept.department_id,
+      }));
+      if (
+        formattedDepartments.some(
+          (dept) => !dept.label || dept.value === undefined
+        )
+      ) {
+        throw new Error("Invalid department data.");
+      }
+      setDepartmentOptions(formattedDepartments);
+    } catch (err) {
+      setErrorDepartments(err);
+      setModal({
+        visible: true,
+        title: "Error",
+        message: "Failed to load departments. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
+
   useEffect(() => {
-    const initializeData = async () => {
-      try {
-        const storedUserData = await getStoredUser();
-        if (!storedUserData || !storedUserData.id_number) {
-          throw new Error("Invalid or missing user ID.");
-        }
-        handleChange("created_by", storedUserData.id_number);
-      } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load user data. Please try again.",
-          type: "error",
-        });
-      }
-    };
-    const fetchEventNamesData = async () => {
-      setIsLoading(true);
-      try {
-        const eventNamesData = await fetchEventNames();
-        const activeEventNames = eventNamesData.filter(
-          (name) => name.status === "Active"
-        );
-        setEventNames(activeEventNames);
-      } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load event names. Please try again.",
-          type: "error",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    const fetchDepartmentData = async () => {
-      setLoadingDepartments(true);
-      setErrorDepartments(null);
-      try {
-        const response = await fetchDepartments();
-        if (!response || !Array.isArray(response.departments)) {
-          throw new Error(
-            "Invalid data format from API: Expected 'departments' array."
-          );
-        }
-        const departmentsData = response.departments;
-        const activeDepartmentsData = departmentsData.filter(
-          (dept) => dept.status === "Active"
-        );
-        const formattedDepartments = activeDepartmentsData.map((dept) => ({
-          label: dept.department_name,
-          value: dept.department_id,
-        }));
-        if (
-          formattedDepartments.some(
-            (dept) => !dept.label || dept.value === undefined
-          )
-        ) {
-          throw new Error("Invalid department data.");
-        }
-        setDepartmentOptions(formattedDepartments);
-      } catch (err) {
-        setErrorDepartments(err);
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load departments. Please try again.",
-          type: "error",
-        });
-      } finally {
-        setLoadingDepartments(false);
-      }
-    };
     initializeData();
     fetchEventNamesData();
     fetchDepartmentData();
@@ -323,46 +326,31 @@ const AddEvent = () => {
         admin_id_number: formData.created_by,
       };
 
-      const response = await addEvent(requestData);
+      await addEvent(requestData);
 
-      if (response?.success) {
-        setModal({
-          visible: true,
-          title: "Success",
-          message: "Event added successfully!",
-          type: "success",
-          onPress: () => router.back(),
-        });
-        setTimeout(() => {
-          router.back();
-        }, 1500);
-        setFormData({
-          event_name_id: "",
-          department_ids: [],
-          block_ids: [],
-          venue: "",
-          description: "",
-          am_in: null,
-          am_out: null,
-          pm_in: null,
-          pm_out: null,
-          event_date: null,
-          duration: 0,
-          created_by: formData.created_by,
-        });
-      } else {
-        let errorMessage =
-          "Failed to add the event. Please double-check your information and try again.";
-        if (response?.message) {
-          errorMessage = response.message;
-        }
-        setModal({
-          visible: true,
-          title: "Error",
-          message: errorMessage,
-          type: "error",
-        });
-      }
+      setModal({
+        visible: true,
+        title: "Success",
+        message: "Event added successfully!",
+        type: "success",
+      });
+      setTimeout(() => {
+        router.back();
+      }, 1500);
+      setFormData({
+        event_name_id: "",
+        department_ids: [],
+        block_ids: [],
+        venue: "",
+        description: "",
+        am_in: null,
+        am_out: null,
+        pm_in: null,
+        pm_out: null,
+        event_date: null,
+        duration: 0,
+        created_by: formData.created_by,
+      });
     } catch (error) {
       let errorMessage =
         "Failed to add the event. Please double-check your information and try again.";

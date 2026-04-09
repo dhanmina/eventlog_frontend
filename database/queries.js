@@ -343,23 +343,13 @@ export const logAttendance = async (attendanceData) => {
     const dbInstance = await initDB();
     if (!dbInstance) return;
 
-    await dbInstance.runAsync(`
-      CREATE TABLE IF NOT EXISTS attendance (
-        event_date_id INTEGER PRIMARY KEY,
-        student_id_number INTEGER NOT NULL,
-        am_in BOOLEAN DEFAULT FALSE,
-        am_out BOOLEAN DEFAULT FALSE,
-        pm_in BOOLEAN DEFAULT FALSE,
-        pm_out BOOLEAN DEFAULT FALSE
-      )
-    `);
-
     const existingRecord = await dbInstance.getFirstAsync(
       "SELECT * FROM attendance WHERE event_date_id = ? AND student_id_number = ?",
       [attendanceData.event_date_id, attendanceData.student_id_number]
     );
 
     const typeColumn = attendanceData.type.toLowerCase();
+    const currentTime = new Date().toTimeString().slice(0, 8);
 
     if (existingRecord) {
       if (existingRecord[typeColumn])
@@ -367,13 +357,13 @@ export const logAttendance = async (attendanceData) => {
           `Attendance for ${attendanceData.type} has already been logged.`
         );
       await dbInstance.runAsync(
-        `UPDATE attendance SET ${typeColumn} = TRUE WHERE event_date_id = ? AND student_id_number = ?`,
-        [attendanceData.event_date_id, attendanceData.student_id_number]
+        `UPDATE attendance SET ${typeColumn} = ? WHERE event_date_id = ? AND student_id_number = ?`,
+        [currentTime, attendanceData.event_date_id, attendanceData.student_id_number]
       );
     } else {
       await dbInstance.runAsync(
-        `INSERT INTO attendance (event_date_id, student_id_number, ${typeColumn}) VALUES (?, ?, TRUE)`,
-        [attendanceData.event_date_id, attendanceData.student_id_number]
+        `INSERT INTO attendance (event_date_id, student_id_number, ${typeColumn}) VALUES (?, ?, ?)`,
+        [attendanceData.event_date_id, attendanceData.student_id_number, currentTime]
       );
     }
   }

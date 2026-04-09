@@ -14,7 +14,7 @@ import {
   logAttendance,
   isAlreadyLogged,
 } from "../../../../database/queries";
-import { syncAttendance } from "../../../../services/api";
+import { performSync } from "../../../../services/api";
 
 const Scan = () => {
   const [permission, requestPermission] = useCameraPermissions();
@@ -55,7 +55,7 @@ const Scan = () => {
   useEffect(() => {
     const performAutoSync = async () => {
       try {
-        await syncAttendance();
+        await performSync();
       } catch {}
     };
     performAutoSync();
@@ -180,7 +180,7 @@ const Scan = () => {
     try {
       await logAttendance(pendingAttendanceData);
       setSuccessModalVisible(true);
-      await syncAttendance();
+      await performSync();
     } catch (error) {
       const msg = error.message?.includes("already been logged")
         ? error.message

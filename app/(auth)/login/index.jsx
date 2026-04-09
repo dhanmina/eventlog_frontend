@@ -20,7 +20,7 @@ import Header from "../../../components/Header";
 import FormField from "../../../components/FormField";
 import CustomButton from "../../../components/CustomButton";
 import { useAuth } from "../../../context/AuthContext";
-import { login } from "../../../services/api";
+import { login, startSync } from "../../../services/api";
 
 import ArialFont from "../../../assets/fonts/Arial.ttf";
 import ArialBoldFont from "../../../assets/fonts/ArialBold.ttf";
@@ -181,6 +181,7 @@ const Login = () => {
         await AsyncStorage.removeItem("rememberedChecked");
       }
 
+      if (Platform.OS !== "web") startSync();
       router.replace(Platform.OS === "web" ? "/web" : "/(drawer)/(tabs)/home");
     } catch (error) {
       setModalTitle("Login Error");

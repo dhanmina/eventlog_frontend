@@ -241,6 +241,8 @@ const styles = StyleSheet.create({
   scrollview: {
     marginTop: 20,
     paddingBottom: 20,
+    paddingHorizontal: theme.spacing.medium,
+    alignItems: "center",
   },
   noEventText: {
     textAlign: "center",
