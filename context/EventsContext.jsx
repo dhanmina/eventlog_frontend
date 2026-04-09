@@ -21,7 +21,8 @@ export const EventsProvider = ({ children }) => {
   const [lastEventUpdate, setLastEventUpdate] = useState(0);
 
   const notifyEventUpdate = useCallback(() => {
-    if (updateNotificationTimeoutRef.current) clearTimeout(updateNotificationTimeoutRef.current);
+    if (updateNotificationTimeoutRef.current)
+      clearTimeout(updateNotificationTimeoutRef.current);
     updateNotificationTimeoutRef.current = setTimeout(() => {
       setLastEventUpdate(Date.now());
     }, 2000);
@@ -55,11 +56,17 @@ export const EventsProvider = ({ children }) => {
     try {
       setLoading(true);
       const storedEvents = await getStoredEvents();
-      let approvedEvents = (storedEvents || []).filter((event) => event.status === "Approved");
+      let approvedEvents = (storedEvents || []).filter(
+        (event) => event.status === "Approved",
+      );
 
       if ([1, 2, 3, 4].includes(user.role_id) && user.block_id) {
         approvedEvents = approvedEvents.filter((event) =>
-          isEventRelevantToUser(event.eventBlocks || event.block_ids, user.block_id, user.role_id)
+          isEventRelevantToUser(
+            event.eventBlocks || event.block_ids,
+            user.block_id,
+            user.role_id,
+          ),
         );
       }
 
@@ -79,21 +86,31 @@ export const EventsProvider = ({ children }) => {
 
     try {
       const { fetchUpcomingEvents } = await import("../services/api");
-      const { storeEvent, cleanupOutdatedEvents } = await import("../database/queries");
+      const { storeEvent, cleanupOutdatedEvents } =
+        await import("../database/queries");
 
-      const blockIdToFetch = [1, 2, 3, 4].includes(user.role_id) && user.block_id ? user.block_id : null;
+      const blockIdToFetch =
+        [1, 2, 3, 4].includes(user.role_id) && user.block_id
+          ? user.block_id
+          : null;
       const response = await fetchUpcomingEvents(blockIdToFetch);
 
-      if (!response?.success) throw new Error("Failed to fetch events from API.");
+      if (!response?.success)
+        throw new Error("Failed to fetch events from API.");
 
       const allEvents = response.events || [];
-      if (allEvents.length === 0) return;
+      if (allEvents.length === 0) {
+        await cleanupOutdatedEvents([], true);
+        await refreshEventsFromDatabase();
+        return;
+      }
 
       const allApiEventIds = allEvents.map((e) => e.event_id);
       await cleanupOutdatedEvents(allApiEventIds);
 
-      const storePromises = allEvents.map((event) => storeEvent(event, allApiEventIds));
-      await Promise.allSettled(storePromises);
+      for (const event of allEvents) {
+        await storeEvent(event, allApiEventIds);
+      }
 
       await refreshEventsFromDatabase();
     } catch {
@@ -110,36 +127,36 @@ export const EventsProvider = ({ children }) => {
     refreshEventsFromDatabase();
     socketService.connect();
 
-    if ([1, 2, 3, 4].includes(user.role_id) && user.block_id) {
+    if (user.role_id === 3 || user.role_id === 4) {
+      socketService.joinRoom("all-events");
+    } else if ((user.role_id === 1 || user.role_id === 2) && user.block_id) {
       socketService.joinRoom(`block-${user.block_id}`);
     }
 
-    const handleDatabaseUpdated = () => {
-      refreshEventsFromDatabase();
+    const triggerRefresh = () => {
+      setLastEventUpdate(Date.now());
     };
 
-    const handleNewApprovedEvent = (data) => {
-      if (isEventRelevantToUser(data?.block_ids, user.block_id, user.role_id)) {
-        setLastEventUpdate(Date.now());
-      }
+    const handleEventDeleted = (data) => {
+      setEvents((prev) => prev.filter((e) => e.event_id !== data.event_id));
+      triggerRefresh();
     };
 
-    const handleEventStatusChanged = (data) => {
-      if (data.newStatus === "Approved") {
-        if (isEventRelevantToUser(data.block_ids, user.block_id, user.role_id)) {
-          setLastEventUpdate(Date.now());
-        }
-      } else {
-        setEvents((prev) => prev.filter((event) => event.event_id !== data.eventId));
-      }
-    };
+    const eventTypes = [
+      "newApprovedEvent",
+      "upcoming-events-updated",
+      "events-list-updated",
+      "event-updated",
+      "event-deleted",
+    ];
 
-    const eventTypes = ["database-updated", "newApprovedEvent", "event-status-changed"];
     eventTypes.forEach((type) => socketService.socket?.off(type));
 
-    socketService.socket?.on("database-updated", handleDatabaseUpdated);
-    socketService.socket?.on("newApprovedEvent", handleNewApprovedEvent);
-    socketService.socket?.on("event-status-changed", handleEventStatusChanged);
+    socketService.socket?.on("newApprovedEvent", triggerRefresh);
+    socketService.socket?.on("upcoming-events-updated", triggerRefresh);
+    socketService.socket?.on("events-list-updated", triggerRefresh);
+    socketService.socket?.on("event-updated", triggerRefresh);
+    socketService.socket?.on("event-deleted", handleEventDeleted);
 
     return () => {
       eventTypes.forEach((type) => socketService.socket?.off(type));

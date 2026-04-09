@@ -13,25 +13,25 @@ export const fetchEventById = async (id) => {
 };
 
 export const addEvent = async (data) => {
-  const res = await api.post("/events", data);
+  const res = await api.post("/events/admin", data);
   if (!res.data.success) throw new Error("Failed to add event");
   return res.data;
 };
 
 export const updateEvent = async (id, data) => {
-  const res = await api.put(`/events/${id}`, data);
+  const res = await api.put(`/events/admin/${id}`, data);
   if (!res.data.success) throw new Error(res.data.message || "Update failed");
   return res.data;
 };
 
 export const deleteEvent = async (id) => {
-  const res = await api.delete(`/events/${id}`);
+  const res = await api.delete(`/events/admin/${id}`);
   if (!res.data.success) throw new Error("Failed to delete event");
   return true;
 };
 
-export const approveEvent = async (id) => {
-  const res = await api.put(`/events/${id}/approve`);
+export const approveEvent = async (id, adminIdNumber) => {
+  const res = await api.patch(`/events/admin/${id}/status`, { admin_id_number: adminIdNumber });
   if (!res.data.success) throw new Error("Failed to approve event");
   return res.data;
 };
@@ -43,7 +43,7 @@ export const fetchApprovedOngoing = async () => {
 };
 
 export const fetchUpcomingEvents = async (blockId) => {
-  const res = await api.get("/events", { params: { status: "upcoming", block_id: blockId } });
+  const res = await api.get("/events/upcoming", { params: blockId ? { block_id: blockId } : {} });
   if (!res.data.success) throw new Error("Failed to fetch upcoming events");
   return res.data;
 };

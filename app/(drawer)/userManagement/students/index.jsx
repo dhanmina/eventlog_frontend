@@ -32,7 +32,7 @@ export default function StudentsScreen() {
 
   const loadStudents = async (query = "", page = 1) => {
     try {
-      const response = await fetchUsers(query, page);
+      const response = await fetchUsers({ search: query, page });
       if (response && response.success && Array.isArray(response.data)) {
         setStudents(response.data);
         setTotalPages(

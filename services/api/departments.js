@@ -24,8 +24,8 @@ export const editDepartment = async (id, data) => {
   return res.data.department;
 };
 
-export const deleteDepartment = async (id) => {
-  const res = await api.delete(`/departments/${id}`);
-  if (!res.data.success) throw new Error("Failed to delete department");
-  return true;
+export const disableDepartment = async (id) => {
+  const res = await api.patch(`/departments/${id}/status`);
+  if (!res.data.success) throw new Error("Failed to update department status");
+  return res.data;
 };

@@ -181,16 +181,10 @@ const Login = () => {
         await AsyncStorage.removeItem("rememberedChecked");
       }
 
-      router.replace(Platform.OS === "web" ? "/web" : "/(tabs)/home");
+      router.replace(Platform.OS === "web" ? "/web" : "/(drawer)/(tabs)/home");
     } catch (error) {
       setModalTitle("Login Error");
       setModalMessage(error.message || "An error occurred. Please try again.");
-      setModalType("error");
-      setModalVisible(true);
-    }
-      setModalMessage(
-        error.response?.data?.message || "An error occurred during login."
-      );
       setModalType("error");
       setModalVisible(true);
     }

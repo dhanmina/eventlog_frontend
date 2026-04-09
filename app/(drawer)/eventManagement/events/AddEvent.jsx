@@ -77,17 +77,10 @@ const AddEvent = () => {
       setIsLoading(true);
       try {
         const eventNamesData = await fetchEventNames();
-        if (!Array.isArray(eventNamesData)) {
-          throw new Error("Invalid data format from API.");
-        }
-        const activeEventNamesData = eventNamesData.filter(
+        const activeEventNames = eventNamesData.filter(
           (name) => name.status === "Active"
         );
-        const formattedEventNames = activeEventNamesData.map((name) => ({
-          label: name.label || name.name,
-          value: name.value || name.id,
-        }));
-        setEventNames(formattedEventNames);
+        setEventNames(activeEventNames);
       } catch (error) {
         setModal({
           visible: true,
@@ -455,13 +448,19 @@ const AddEvent = () => {
         showsVerticalScrollIndicator={false}
       >
         <View>
-          <CustomDropdown
-            title="Select Event Name"
-            data={eventNames}
-            placeholder="Select an event name"
-            value={formData.event_name_id}
-            onSelect={(item) => handleChange("event_name_id", item.value)}
-          />
+          {eventNames.length === 0 ? (
+            <Text style={styles.emptyText}>
+              No active event names found. Please add event names first.
+            </Text>
+          ) : (
+            <CustomDropdown
+              title="Select Event Name"
+              data={eventNames}
+              placeholder="Select an event name"
+              value={formData.event_name_id}
+              onSelect={(item) => handleChange("event_name_id", item.value)}
+            />
+          )}
           <CustomDropdown
             title="Select Departments"
             data={departmentOptions}
@@ -657,6 +656,13 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: theme.fontSizes.medium,
     fontFamily: theme.fontFamily.Arial,
+  },
+  emptyText: {
+    color: theme.colors.primary,
+    fontFamily: theme.fontFamily.Arial,
+    fontSize: theme.fontSizes.small,
+    textAlign: "center",
+    paddingVertical: theme.spacing.medium,
   },
 });
 

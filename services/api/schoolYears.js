@@ -6,18 +6,24 @@ export const getCurrentSchoolYear = async () => {
   return res.data;
 };
 
-export const uploadSchoolYearFile = async (fileUri) => {
+export const uploadSchoolYearFile = async (file, type, extraFields = {}) => {
   const formData = new FormData();
-  formData.append("file", { uri: fileUri, name: "student_list.csv", type: "text/csv" });
-  const res = await api.post("/school-years", formData, { headers: { "Content-Type": "multipart/form-data" } });
-  if (res.status !== 200) throw new Error(res.data.error || "Failed to upload file");
+  formData.append("file", file);
+  Object.entries(extraFields).forEach(([key, value]) => formData.append(key, value));
+  const res = await api.post("/school-years/students", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  if (!res.data.success) throw new Error(res.data.error || res.data.message || "Failed to upload file");
   return res.data;
 };
 
-export const changeSchoolYear = async (fileUri) => {
+export const changeSchoolYear = async (file, extraFields = {}) => {
   const formData = new FormData();
-  formData.append("file", { uri: fileUri, name: "student_list.csv", type: "text/csv" });
-  const res = await api.post("/school-years/change", formData, { headers: { "Content-Type": "multipart/form-data" } });
-  if (res.status !== 200) throw new Error(res.data.error || "Failed to change school year");
+  formData.append("file", file);
+  Object.entries(extraFields).forEach(([key, value]) => formData.append(key, value));
+  const res = await api.post("/school-years/change-school-year", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  if (!res.data.success) throw new Error(res.data.error || res.data.message || "Failed to change school year");
   return res.data;
 };

@@ -24,8 +24,8 @@ export const editAdmin = async (id, data) => {
   return res.data;
 };
 
-export const deleteAdmin = async (id) => {
-  const res = await api.delete(`/admins/${id}`);
-  if (!res.data.success) throw new Error(res.data.message || "Failed to delete admin");
+export const disableAdmin = async (idNumber) => {
+  const res = await api.patch(`/admins/${idNumber}/status`);
+  if (!res.data.success) throw new Error(res.data.message || "Failed to update admin status");
   return res.data;
 };

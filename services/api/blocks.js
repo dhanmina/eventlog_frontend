@@ -33,8 +33,8 @@ export const editBlock = async (id, data) => {
   return res.data.data;
 };
 
-export const deleteBlock = async (id) => {
-  const res = await api.delete(`/blocks/${id}`);
-  if (!res.data.success) throw new Error("Failed to delete block");
-  return true;
+export const disableBlock = async (id) => {
+  const res = await api.patch(`/blocks/${id}/status`);
+  if (!res.data.success) throw new Error("Failed to update block status");
+  return res.data;
 };

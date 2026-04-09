@@ -8,9 +8,8 @@ import {
 import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { API_URL } from "../../../config/config";
 import { useRouter } from "expo-router";
-import { fetchDepartments, addUser } from "../../../services/api";
+import { fetchPublicDepartments, register } from "../../../services/api";
 
 import theme from "../../../constants/theme";
 import globalStyles from "../../../constants/globalStyles";
@@ -49,10 +48,10 @@ const SignUp = () => {
   const fetchDepartmentsData = async () => {
     setLoading(true);
     try {
-      const res = await fetchDepartments();
-      if (res.data?.departments) {
+      const departments = await fetchPublicDepartments();
+      if (Array.isArray(departments)) {
         setDepartments(
-          res.data.departments.map((dept) => ({
+          departments.map((dept) => ({
             label: dept.department_name,
             value: dept.department_id,
           }))
@@ -117,10 +116,10 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      await addUser({
+      await register({
         id_number: formData.id_number,
         first_name: formData.first_name,
-        middle_name: formData.middle_name,
+        middle_name: formData.middle_name || null,
         last_name: formData.last_name,
         suffix: formData.suffix || null,
         email: formData.email,

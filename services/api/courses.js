@@ -14,7 +14,7 @@ export const fetchCourseById = async (id) => {
 
 export const fetchCoursesByDepartmentId = async (departmentId) => {
   if (!departmentId || isNaN(departmentId)) throw new Error("Invalid department ID");
-  const res = await api.get("/courses", { params: { department_id: departmentId } });
+  const res = await api.get(`/courses/departments/${departmentId}`);
   if (!res.data.success) throw new Error(res.data.message || "Failed to fetch courses");
   return res.data.courses;
 };
@@ -31,8 +31,8 @@ export const editCourse = async (id, data) => {
   return res.data;
 };
 
-export const deleteCourse = async (id) => {
-  const res = await api.delete(`/courses/${id}`);
-  if (!res.data.success) throw new Error(res.data.message || "Failed to delete course");
+export const disableCourse = async (id) => {
+  const res = await api.patch(`/courses/${id}/status`);
+  if (!res.data.success) throw new Error(res.data.message || "Failed to update course status");
   return res.data;
 };

@@ -254,4 +254,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingHorizontal: theme.spacing.medium,
   },
+  welcomeWrapper: {
+    paddingHorizontal: theme.spacing.medium,
+  },
 });

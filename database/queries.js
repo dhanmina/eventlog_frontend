@@ -1,7 +1,6 @@
 import { Platform } from "react-native";
 import initDB from "./database";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-let isTransactionInProgress = false;
 
 export const storeUser = async (user) => {
   if (Platform.OS !== "web") {
@@ -112,7 +111,7 @@ export const storeEvent = async (event, allApiEventIds = []) => {
       return { success: false, error: "Invalid event object provided" };
     }
 
-    if (event.status !== "Approved") return { success: true, skipped: true };
+    if (event.status !== "Approved" && event.status !== "Archived") return { success: true, skipped: true };
 
     const db = await initDB();
     if (!db) return { success: false, error: "Failed to initialize database" };
@@ -136,18 +135,18 @@ export const storeEvent = async (event, allApiEventIds = []) => {
     await ensureUserExists(event.created_by_id, event.created_by);
     await ensureUserExists(event.approved_by_id, event.approved_by);
 
-    let startedTransaction = false;
-    if (!isTransactionInProgress) {
-      isTransactionInProgress = true;
-      await db.execAsync("BEGIN TRANSACTION");
-      startedTransaction = true;
-    }
-
+    await db.execAsync("BEGIN TRANSACTION");
     try {
       const existingEvent = await db.getFirstAsync(
         "SELECT id FROM events WHERE id = ?",
         [event.event_id]
       );
+
+      let blockIds = event.block_ids;
+      if (typeof blockIds === "string") {
+        try { blockIds = JSON.parse(blockIds); } catch { blockIds = []; }
+      }
+      if (!Array.isArray(blockIds)) blockIds = [];
 
       const eventParams = [
         event.event_name || null,
@@ -164,7 +163,7 @@ export const storeEvent = async (event, allApiEventIds = []) => {
         event.approved_by || null,
         event.approved_by_id || null,
         event.duration || null,
-        JSON.stringify(event.block_ids || []),
+        JSON.stringify(blockIds),
       ];
 
       if (existingEvent) {
@@ -212,17 +211,10 @@ export const storeEvent = async (event, allApiEventIds = []) => {
         }
       }
 
-      if (startedTransaction) {
-        await db.execAsync("COMMIT");
-        isTransactionInProgress = false;
-      }
-
+      await db.execAsync("COMMIT");
       return { success: true };
     } catch (err) {
-      if (startedTransaction) {
-        await db.execAsync("ROLLBACK");
-        isTransactionInProgress = false;
-      }
+      await db.execAsync("ROLLBACK");
       throw err;
     }
   } catch (error) {
@@ -235,7 +227,7 @@ export const storeEvent = async (event, allApiEventIds = []) => {
   }
 };
 
-export const cleanupOutdatedEvents = async (allApiEventIds = []) => {
+export const cleanupOutdatedEvents = async (allApiEventIds = [], force = false) => {
   if (Platform.OS === "web")
     return { success: false, error: "Web platform not supported" };
 
@@ -244,6 +236,7 @@ export const cleanupOutdatedEvents = async (allApiEventIds = []) => {
     if (!db) return { success: false, error: "Failed to initialize database" };
 
     if (!allApiEventIds || allApiEventIds.length === 0) {
+      if (!force) return { success: true, skipped: true };
       await db.runAsync("DELETE FROM event_dates");
       await db.runAsync("DELETE FROM events");
       return { success: true, cleared: true };

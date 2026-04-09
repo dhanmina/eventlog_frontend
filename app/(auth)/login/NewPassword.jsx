@@ -45,21 +45,10 @@ const NewPassword = () => {
       setModalMessage("Password successfully reset. Please log in.");
       setModalVisible(true);
       setTimeout(() => router.push("/login"), 2000);
-      } else {
-        setModalType("error");
-        setModalTitle("Error");
-        setModalMessage(
-          response.data?.message ||
-            "Failed to reset password. Please try again."
-        );
-        setModalVisible(true);
-      }
     } catch (error) {
       setModalType("error");
       setModalTitle("Error");
-      setModalMessage(
-        error.response?.data?.message || "An error occurred. Please try again."
-      );
+      setModalMessage(error.message || "An error occurred. Please try again.");
       setModalVisible(true);
     }
   };

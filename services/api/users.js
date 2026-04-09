@@ -24,14 +24,8 @@ export const updateUser = async (id, data) => {
   return res.data;
 };
 
-export const deleteUser = async (id) => {
-  const res = await api.delete(`/users/${id}`);
-  if (!res.data.success) throw new Error(res.data.message || "Failed to delete user");
-  return res.data;
-};
-
-export const changeUserPassword = async (email, newPassword) => {
-  const res = await api.post("/users/change-password", { email, newPassword });
-  if (!res.data.success) throw new Error(res.data.message || "Failed to change password");
+export const disableUser = async (id) => {
+  const res = await api.patch(`/users/${id}/status`);
+  if (!res.data.success) throw new Error(res.data.message || "Failed to update user status");
   return res.data;
 };
