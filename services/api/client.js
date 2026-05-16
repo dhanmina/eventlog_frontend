@@ -25,4 +25,19 @@ api.interceptors.response.use(
 
 export const apiClient = api;
 
+export const requireSuccess = (
+  response,
+  fallbackMessage,
+  { preferServerMessage = false, messageFields = ["message"] } = {}
+) => {
+  const data = response.data;
+
+  if (!data.success) {
+    const serverMessage = messageFields.map((field) => data[field]).find(Boolean);
+    throw new Error(preferServerMessage ? serverMessage || fallbackMessage : fallbackMessage);
+  }
+
+  return data;
+};
+
 export default api;

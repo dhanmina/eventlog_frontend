@@ -1,31 +1,26 @@
-import api from "./client";
+import api, { requireSuccess } from "./client";
 
 export const fetchUsers = async (params = {}) => {
   const res = await api.get("/users", { params: { page: 1, limit: 10, ...params } });
-  if (!res.data.success) throw new Error("Failed to fetch users");
-  return res.data;
+  return requireSuccess(res, "Failed to fetch users");
 };
 
 export const fetchUserById = async (id) => {
   const res = await api.get(`/users/${id}`);
-  if (!res.data.success) throw new Error("Failed to fetch user");
-  return res.data.user;
+  return requireSuccess(res, "Failed to fetch user").user;
 };
 
 export const addUser = async (data) => {
   const res = await api.post("/users", data);
-  if (!res.data.success) throw new Error(res.data.message || "Failed to add user");
-  return res.data;
+  return requireSuccess(res, "Failed to add user", { preferServerMessage: true });
 };
 
 export const updateUser = async (id, data) => {
   const res = await api.put(`/users/${id}`, data);
-  if (!res.data.success) throw new Error(res.data.message || "Failed to update user");
-  return res.data;
+  return requireSuccess(res, "Failed to update user", { preferServerMessage: true });
 };
 
 export const disableUser = async (id) => {
   const res = await api.patch(`/users/${id}/status`);
-  if (!res.data.success) throw new Error(res.data.message || "Failed to update user status");
-  return res.data;
+  return requireSuccess(res, "Failed to update user status", { preferServerMessage: true });
 };

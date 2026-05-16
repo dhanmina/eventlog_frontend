@@ -1,37 +1,31 @@
-import api from "./client";
+import api, { requireSuccess } from "./client";
 
 export const login = async (id_number, password) => {
   const res = await api.post("/auth/login", { id_number, password });
-  if (!res.data.success) throw new Error(res.data.message || "Login failed");
-  return res.data;
+  return requireSuccess(res, "Login failed", { preferServerMessage: true });
 };
 
 export const register = async (data) => {
   const res = await api.post("/auth/signup", data);
-  if (!res.data.success) throw new Error(res.data.message || "Registration failed");
-  return res.data;
+  return requireSuccess(res, "Registration failed", { preferServerMessage: true });
 };
 
 export const resetPassword = async (email) => {
   const res = await api.post("/auth/reset-password", { email });
-  if (!res.data.success) throw new Error(res.data.message || "Reset password failed");
-  return res.data;
+  return requireSuccess(res, "Reset password failed", { preferServerMessage: true });
 };
 
 export const confirmResetPassword = async (email, code, newPassword) => {
   const res = await api.post("/auth/reset-password/confirm", { email, code, new_password: newPassword });
-  if (!res.data.success) throw new Error(res.data.message || "Confirm reset failed");
-  return res.data;
+  return requireSuccess(res, "Confirm reset failed", { preferServerMessage: true });
 };
 
 export const fetchPublicDepartments = async () => {
   const res = await api.get("/auth/departments");
-  if (!res.data.success) throw new Error("Failed to fetch departments");
-  return res.data.departments;
+  return requireSuccess(res, "Failed to fetch departments").departments;
 };
 
 export const changeUserPassword = async (email, password) => {
   const res = await api.patch("/auth/reset-password/change", { email, newPassword: password });
-  if (!res.data.success) throw new Error(res.data.message || "Failed to change password");
-  return res.data;
+  return requireSuccess(res, "Failed to change password", { preferServerMessage: true });
 };
