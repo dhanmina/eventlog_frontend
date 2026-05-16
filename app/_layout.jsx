@@ -5,17 +5,35 @@ import { EventsProvider } from "../context/EventsContext";
 import { RecordsProvider } from "../context/RecordsContext";
 import CustomModal from "../components/CustomModal";
 
+const DEFAULT_MODAL_CONFIG = {
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const AppProviders = ({ children }) => (
+  <AuthProvider>
+    <EventsProvider>
+      <RecordsProvider>{children}</RecordsProvider>
+    </EventsProvider>
+  </AuthProvider>
+);
+
 function RootLayoutWithModal() {
   const { modalVisible, modalConfig, closeModal } = useAuth();
+  const resolvedModalConfig = {
+    ...DEFAULT_MODAL_CONFIG,
+    ...modalConfig,
+  };
 
   return (
     <SafeAreaProvider>
       <Slot />
       <CustomModal
         visible={modalVisible}
-        title={modalConfig?.title || ""}
-        message={modalConfig?.message || ""}
-        type={modalConfig?.type || "success"}
+        title={resolvedModalConfig.title}
+        message={resolvedModalConfig.message}
+        type={resolvedModalConfig.type}
         onClose={closeModal}
         cancelTitle="OK"
       />
@@ -25,13 +43,9 @@ function RootLayoutWithModal() {
 
 const RootLayout = () => {
   return (
-    <AuthProvider>
-      <EventsProvider>
-        <RecordsProvider>
-          <RootLayoutWithModal />
-        </RecordsProvider>
-      </EventsProvider>
-    </AuthProvider>
+    <AppProviders>
+      <RootLayoutWithModal />
+    </AppProviders>
   );
 };
 

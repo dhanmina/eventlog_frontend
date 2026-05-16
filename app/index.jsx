@@ -18,15 +18,54 @@ import ArialBoldFont from "../assets/fonts/ArialBold.ttf";
 import ArialItalicFont from "../assets/fonts/ArialItalic.ttf";
 import SquadaOneFont from "../assets/fonts/SquadaOne.ttf";
 
+const FONT_SOURCES = {
+  Arial: require("../assets/fonts/Arial.ttf"),
+  ArialBold: require("../assets/fonts/ArialBold.ttf"),
+  ArialItalic: require("../assets/fonts/ArialItalic.ttf"),
+  SquadaOne: require("../assets/fonts/SquadaOne.ttf"),
+};
+
+const WEB_FONT_FACES = [
+  {
+    family: "Arial",
+    source: ArialFont,
+    declarations: "",
+  },
+  {
+    family: "ArialBold",
+    source: ArialBoldFont,
+    declarations: "font-weight: bold;",
+  },
+  {
+    family: "ArialItalic",
+    source: ArialItalicFont,
+    declarations: "font-style: italic;",
+  },
+  {
+    family: "SquadaOne",
+    source: SquadaOneFont,
+    declarations: "",
+  },
+];
+
+const createWebFontCss = () =>
+  WEB_FONT_FACES.map(
+    ({ family, source, declarations }) => `
+        @font-face {
+          font-family: '${family}';
+          src: url('${source}') format('truetype');
+          font-display: swap;
+          ${declarations}
+        }
+      `
+  ).join("");
+
+const webFontLoaders = WEB_FONT_FACES.map(({ family }) => `16px ${family}`);
+
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
-  const [fontsLoaded, fontError] = useFonts({
-    Arial: require("../assets/fonts/Arial.ttf"),
-    ArialBold: require("../assets/fonts/ArialBold.ttf"),
-    ArialItalic: require("../assets/fonts/ArialItalic.ttf"),
-    SquadaOne: require("../assets/fonts/SquadaOne.ttf"),
-  });
+  const [fontsLoaded, fontError] = useFonts(FONT_SOURCES);
 
   const [fontsReady, setFontsReady] = useState(false);
   const [appReady, setAppReady] = useState(false);
@@ -37,30 +76,7 @@ export default function App() {
       console.log("App: Registering fonts for web...");
 
       const style = document.createElement("style");
-      style.textContent = `
-        @font-face {
-          font-family: 'Arial';
-          src: url('${ArialFont}') format('truetype');
-          font-display: swap;
-        }
-        @font-face {
-          font-family: 'ArialBold';
-          src: url('${ArialBoldFont}') format('truetype');
-          font-display: swap;
-          font-weight: bold;
-        }
-        @font-face {
-          font-family: 'ArialItalic';
-          src: url('${ArialItalicFont}') format('truetype');
-          font-display: swap;
-          font-style: italic;
-        }
-        @font-face {
-          font-family: 'SquadaOne';
-          src: url('${SquadaOneFont}') format('truetype');
-          font-display: swap;
-        }
-      `;
+      style.textContent = createWebFontCss();
 
       const existingStyle = document.getElementById("app-custom-fonts");
       if (!existingStyle) {
@@ -70,12 +86,7 @@ export default function App() {
       }
 
       if (document.fonts) {
-        Promise.all([
-          document.fonts.load("16px Arial"),
-          document.fonts.load("16px ArialBold"),
-          document.fonts.load("16px ArialItalic"),
-          document.fonts.load("16px SquadaOne"),
-        ])
+        Promise.all(webFontLoaders.map((font) => document.fonts.load(font)))
           .then(() => {
             console.log("App: All fonts loaded successfully");
             setFontsReady(true);
@@ -128,21 +139,20 @@ export default function App() {
   }, [fontsReady]);
 
   const handleLoginPress = async () => {
-    const netInfoState = await NetInfo.fetch();
-    if (!netInfoState.isConnected) {
-      setIsOfflineModalVisible(true);
-      return;
-    }
-    router.push("/login");
+    await navigateWhenOnline("/login");
   };
 
   const handleRegisterPress = async () => {
+    await navigateWhenOnline("/signup");
+  };
+
+  const navigateWhenOnline = async (route) => {
     const netInfoState = await NetInfo.fetch();
     if (!netInfoState.isConnected) {
       setIsOfflineModalVisible(true);
       return;
     }
-    router.push("/signup");
+    router.push(route);
   };
 
   const closeOfflineModal = () => {
