@@ -21,6 +21,59 @@ import images from "../../../../constants/images";
 import CustomSearch from "../../../../components/CustomSearch";
 import { fetchEvents } from "../../../../services/api";
 
+const getEventList = (response) => response.data || response.events || [];
+
+const formatDates = (dates) => {
+  if (!dates || dates.length === 0) return "No date";
+
+  const parsedDates = dates.map((date) => new Date(date));
+  parsedDates.sort((a, b) => a - b);
+
+  const formattedDates = [];
+  let currentYear = "";
+  let currentMonth = "";
+  let daysInMonth = [];
+
+  parsedDates.forEach((date, index) => {
+    const month = new Intl.DateTimeFormat("en-US", { month: "long" }).format(
+      date
+    );
+    const day = date.getDate();
+    const year = date.getFullYear();
+
+    if (year !== currentYear) {
+      if (daysInMonth.length > 0) {
+        formattedDates.push(
+          `${currentMonth} ${daysInMonth.join(", ")} ${currentYear}`
+        );
+        daysInMonth = [];
+      }
+      currentYear = year;
+      currentMonth = month;
+    }
+
+    if (month !== currentMonth) {
+      if (daysInMonth.length > 0) {
+        formattedDates.push(
+          `${currentMonth} ${daysInMonth.join(", ")} ${currentYear}`
+        );
+      }
+      currentMonth = month;
+      daysInMonth = [];
+    }
+
+    daysInMonth.push(day);
+
+    if (index === parsedDates.length - 1) {
+      formattedDates.push(
+        `${currentMonth} ${daysInMonth.join(", ")} ${currentYear}`
+      );
+    }
+  });
+
+  return formattedDates.join(", ");
+};
+
 const EventsList = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +85,7 @@ const EventsList = () => {
       try {
         const res = await fetchEvents({ search: searchQuery });
         if (res.success) {
-          setEvents(res.data || res.events || []);
+          setEvents(getEventList(res));
         }
       } catch (error) {
         console.error("Error fetching events:", error);
@@ -43,57 +96,6 @@ const EventsList = () => {
 
     fetchEventsData();
   }, [searchQuery]);
-
-  const formatDates = (dates) => {
-    if (!dates || dates.length === 0) return "No date";
-
-    const parsedDates = dates.map((date) => new Date(date));
-    parsedDates.sort((a, b) => a - b);
-
-    const formattedDates = [];
-    let currentYear = "";
-    let currentMonth = "";
-    let daysInMonth = [];
-
-    parsedDates.forEach((date, index) => {
-      const month = new Intl.DateTimeFormat("en-US", { month: "long" }).format(
-        date
-      );
-      const day = date.getDate();
-      const year = date.getFullYear();
-
-      if (year !== currentYear) {
-        if (daysInMonth.length > 0) {
-          formattedDates.push(
-            `${currentMonth} ${daysInMonth.join(", ")} ${currentYear}`
-          );
-          daysInMonth = [];
-        }
-        currentYear = year;
-        currentMonth = month;
-      }
-
-      if (month !== currentMonth) {
-        if (daysInMonth.length > 0) {
-          formattedDates.push(
-            `${currentMonth} ${daysInMonth.join(", ")} ${currentYear}`
-          );
-        }
-        currentMonth = month;
-        daysInMonth = [];
-      }
-
-      daysInMonth.push(day);
-
-      if (index === parsedDates.length - 1) {
-        formattedDates.push(
-          `${currentMonth} ${daysInMonth.join(", ")} ${currentYear}`
-        );
-      }
-    });
-
-    return formattedDates.join(", ");
-  };
 
   const handleEventPress = (eventId) => {
     router.replace(`/account/EditEvent?id=${eventId}`);
@@ -106,7 +108,7 @@ const EventsList = () => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <SafeAreaView style={globalStyles.secondaryContainer}>
-        <View style={{ width: "100%", alignItems: "center" }}>
+        <View style={styles.headerWrapper}>
           <View style={styles.headerContainer}>
             <Text style={styles.textHeader}>EVENTLOG</Text>
             <Text style={styles.title}>LIST OF EVENTS</Text>
@@ -116,12 +118,8 @@ const EventsList = () => {
         </View>
 
         <ScrollView
-          style={{ flex: 1, width: "100%" }}
-          contentContainerStyle={{
-            padding: theme.spacing.large,
-            alignItems: "center",
-            width: "100%",
-          }}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
         >
           {loading ? (
             <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -176,6 +174,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingLeft: theme.spacing.large,
     paddingRight: theme.spacing.large,
+    width: "100%",
+  },
+  headerWrapper: {
+    width: "100%",
+    alignItems: "center",
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+  },
+  scrollContent: {
+    padding: theme.spacing.large,
+    alignItems: "center",
     width: "100%",
   },
   eventContainer: {

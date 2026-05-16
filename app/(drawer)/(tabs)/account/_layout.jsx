@@ -4,6 +4,17 @@ import { useEffect, useState } from "react";
 import theme from "../../../../constants/theme";
 import { getRoleID } from "../../../../database/queries";
 
+const sharedHeaderOptions = {
+  headerStyle: { backgroundColor: theme.colors.primary },
+  headerTintColor: theme.colors.secondary,
+};
+
+const accountStackScreens = [
+  { name: "AddEvent", headerTitle: "Add Event" },
+  { name: "EditEvent", headerTitle: "Edit Event" },
+  { name: "EventsList", headerTitle: "Editable Events" },
+];
+
 const AccountLayout = () => {
   const [roleId, setRoleId] = useState(null);
 
@@ -21,36 +32,21 @@ const AccountLayout = () => {
       <Stack.Screen
         name="index"
         options={{
+          ...sharedHeaderOptions,
           headerShown: roleId !== 4,
-          headerStyle: { backgroundColor: theme.colors.primary },
-          headerTintColor: theme.colors.secondary,
           title: "Account",
         }}
       />
-      <Stack.Screen
-        name="AddEvent"
-        options={{
-          headerStyle: { backgroundColor: theme.colors.primary },
-          headerTintColor: theme.colors.secondary,
-          headerTitle: "Add Event",
-        }}
-      />
-      <Stack.Screen
-        name="EditEvent"
-        options={{
-          headerStyle: { backgroundColor: theme.colors.primary },
-          headerTintColor: theme.colors.secondary,
-          headerTitle: "Edit Event",
-        }}
-      />
-      <Stack.Screen
-        name="EventsList"
-        options={{
-          headerStyle: { backgroundColor: theme.colors.primary },
-          headerTintColor: theme.colors.secondary,
-          headerTitle: "Editable Events",
-        }}
-      />
+      {accountStackScreens.map(({ name, headerTitle }) => (
+        <Stack.Screen
+          key={name}
+          name={name}
+          options={{
+            ...sharedHeaderOptions,
+            headerTitle,
+          }}
+        />
+      ))}
     </Stack>
   );
 };

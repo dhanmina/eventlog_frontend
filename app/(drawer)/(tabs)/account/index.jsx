@@ -10,8 +10,28 @@ import images from "../../../../constants/images";
 import useUserAccount from "../../../../hooks/useUserAccount";
 import { router } from "expo-router";
 
+const DetailRow = ({ label, value, isLast = false }) => (
+  <View style={[styles.detailsContainer, !isLast && styles.detailsContainerNoBorder]}>
+    <Text style={styles.detailsTitle}>{label}: </Text>
+    <Text style={styles.details}>{value || "N/A"}</Text>
+  </View>
+);
+
+const getFullName = (user) =>
+  `${user?.first_name || "N/A"} ${user?.middle_name || ""} ${
+    user?.last_name || "N/A"
+  } ${user?.suffix || ""}`;
+
 const Account = () => {
   const { user, handleLogout } = useUserAccount();
+  const canManageEvents = user?.role_id === 3 || user?.role_id === 4;
+  const profileRows = [
+    { label: "Name", value: getFullName(user) },
+    { label: "ID Number", value: user?.id_number },
+    user?.block_name !== null && { label: "Block", value: user?.block_name },
+    user?.department_code && { label: "Department", value: user?.department_name },
+    { label: "Email", value: user?.email, isLast: true },
+  ].filter(Boolean);
 
   return (
     <SafeAreaView
@@ -20,52 +40,28 @@ const Account = () => {
         { paddingLeft: 0, paddingRight: 0, paddingBottom: 0 },
       ]}
     >
-      <View style={{ width: "100%", marginTop: theme.spacing.xlarge }}>
+      <View style={styles.headerWrapper}>
         <Header type="secondary" />
       </View>
       <Text style={styles.title}>ACCOUNT</Text>
       <ScrollView
-        style={{ width: "80%" }}
-        contentContainerStyle={{
-          paddingBottom: theme.spacing.xlarge,
-        }}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.detailsWrapper}>
-          <View style={[styles.detailsContainer, { borderBottomWidth: 0 }]}>
-            <Text style={styles.detailsTitle}>Name: </Text>
-            <Text style={styles.details}>
-              {user?.first_name || "N/A"} {user?.middle_name || ""}{" "}
-              {user?.last_name || "N/A"} {user?.suffix || ""}
-            </Text>
-          </View>
-          <View style={[styles.detailsContainer, { borderBottomWidth: 0 }]}>
-            <Text style={styles.detailsTitle}>ID Number: </Text>
-            <Text style={styles.details}>{user?.id_number || "N/A"}</Text>
-          </View>
-          {user?.block_name !== null && (
-            <View style={[styles.detailsContainer, { borderBottomWidth: 0 }]}>
-              <Text style={styles.detailsTitle}>Block: </Text>
-              <Text style={styles.details}>{user?.block_name || "N/A"}</Text>
-            </View>
-          )}
-
-          {user?.department_code && (
-            <View style={[styles.detailsContainer, { borderBottomWidth: 0 }]}>
-              <Text style={styles.detailsTitle}>Department: </Text>
-              <Text style={styles.details}>
-                {user?.department_name || "N/A"}
-              </Text>
-            </View>
-          )}
-          <View style={styles.detailsContainer}>
-            <Text style={styles.detailsTitle}>Email: </Text>
-            <Text style={styles.details}>{user?.email || "N/A"}</Text>
-          </View>
+          {profileRows.map((row) => (
+            <DetailRow
+              key={row.label}
+              label={row.label}
+              value={row.value}
+              isLast={row.isLast}
+            />
+          ))}
         </View>
 
         <View style={styles.contactUsContainer}>
-          {user?.role_id === 3 || user?.role_id === 4 ? (
+          {canManageEvents ? (
             <View style={styles.buttonContainer}>
               <CustomButton
                 type="primary"
@@ -81,7 +77,7 @@ const Account = () => {
               />
             </View>
           ) : (
-            <View style={{ height: theme.spacing.medium }} />
+            <View style={styles.eventActionsSpacer} />
           )}
 
           <Text style={styles.contactUs}>Contact Us</Text>
@@ -131,6 +127,16 @@ const styles = StyleSheet.create({
     fontFamily: theme.fontFamily.SquadaOne,
     color: theme.colors.primary,
   },
+  headerWrapper: {
+    width: "100%",
+    marginTop: theme.spacing.xlarge,
+  },
+  scrollView: {
+    width: "80%",
+  },
+  scrollContent: {
+    paddingBottom: theme.spacing.xlarge,
+  },
   detailsContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -138,6 +144,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     padding: theme.spacing.medium,
     borderColor: theme.colors.primary,
+  },
+  detailsContainerNoBorder: {
+    borderBottomWidth: 0,
   },
   details: {
     fontSize: theme.fontSizes.medium,
@@ -164,6 +173,9 @@ const styles = StyleSheet.create({
     padding: theme.spacing.medium,
     marginBottom: theme.spacing.medium,
     alignItems: "center",
+  },
+  eventActionsSpacer: {
+    height: theme.spacing.medium,
   },
   school: {
     fontSize: theme.fontSizes.small,

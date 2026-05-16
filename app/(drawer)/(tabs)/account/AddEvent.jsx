@@ -26,21 +26,66 @@ import {
 import { getStoredUser } from "../../../../database/queries";
 import { router } from "expo-router";
 
+const INITIAL_FORM_DATA = {
+  event_name_id: "",
+  department_ids: [],
+  block_ids: [],
+  venue: "",
+  description: "",
+  am_in: null,
+  am_out: null,
+  pm_in: null,
+  pm_out: null,
+  event_date: null,
+  duration: 0,
+  created_by: "",
+};
+
+const INITIAL_MODAL_STATE = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const formatEventNameOptions = (eventNames) =>
+  eventNames
+    .filter((name) => name.status === "Active")
+    .map((name) => ({
+      label: name.label || name.name,
+      value: name.value || name.id,
+    }));
+
+const formatDepartmentOptions = (departments) =>
+  departments
+    .filter((dept) => dept.status === "Active")
+    .map((dept) => ({
+      label: dept.department_name,
+      value: dept.department_id,
+    }));
+
+const formatBlockOptions = (blocks) =>
+  blocks
+    .filter((block) => block.status === "Active")
+    .map((block) => ({
+      label: `${block.course_code || ""}  ${block.block_name}`,
+      value: block.block_id,
+    }));
+
+const getSelectedValues = (selectedItems) =>
+  Array.isArray(selectedItems)
+    ? selectedItems.map((item) =>
+        typeof item === "object" && item !== null ? item.value : item
+      )
+    : [];
+
+const convertToMinutes = (timeString) => {
+  const [hours, minutes] = timeString.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
 const AddEvent = () => {
-  const [formData, setFormData] = useState({
-    event_name_id: "",
-    department_ids: [],
-    block_ids: [],
-    venue: "",
-    description: "",
-    am_in: null,
-    am_out: null,
-    pm_in: null,
-    pm_out: null,
-    event_date: null,
-    duration: 0,
-    created_by: "",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [eventNames, setEventNames] = useState([]);
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [blockOptions, setBlockOptions] = useState([]);
@@ -48,95 +93,74 @@ const AddEvent = () => {
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [errorDepartments, setErrorDepartments] = useState(null);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL_STATE);
   const [isDurationPickerVisible, setIsDurationPickerVisible] = useState(false);
 
+  const showModal = (title, message, type = "error", extraConfig = {}) => {
+    setModal({
+      visible: true,
+      title,
+      message,
+      type,
+      ...extraConfig,
+    });
+  };
+
+  const initializeData = async () => {
+    try {
+      const storedUserData = await getStoredUser();
+      if (!storedUserData || !storedUserData.id_number) {
+        throw new Error("Invalid or missing user ID.");
+      }
+      handleChange("created_by", storedUserData.id_number);
+    } catch (error) {
+      showModal("Error", "Failed to load user data. Please try again.");
+    }
+  };
+
+  const fetchEventNamesData = async () => {
+    setIsLoading(true);
+    try {
+      const eventNamesData = await fetchEventNames();
+      if (!Array.isArray(eventNamesData)) {
+        throw new Error("Invalid data format from API.");
+      }
+      setEventNames(formatEventNameOptions(eventNamesData));
+    } catch (error) {
+      showModal("Error", "Failed to load event names. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchDepartmentData = async () => {
+    setLoadingDepartments(true);
+    setErrorDepartments(null);
+    try {
+      const response = await fetchDepartments();
+      if (!response || !Array.isArray(response.departments)) {
+        throw new Error(
+          "Invalid data format from API: Expected 'departments' array."
+        );
+      }
+      const formattedDepartments = formatDepartmentOptions(response.departments);
+      if (
+        formattedDepartments.some(
+          (dept) => !dept.label || dept.value === undefined
+        )
+      ) {
+        throw new Error("Invalid department data.");
+      }
+      setDepartmentOptions(formattedDepartments);
+    } catch (err) {
+      setErrorDepartments(err);
+      showModal("Error", "Failed to load departments. Please try again.");
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
+
   useEffect(() => {
-    const initializeData = async () => {
-      try {
-        const storedUserData = await getStoredUser();
-        if (!storedUserData || !storedUserData.id_number) {
-          throw new Error("Invalid or missing user ID.");
-        }
-        handleChange("created_by", storedUserData.id_number);
-      } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load user data. Please try again.",
-          type: "error",
-        });
-      }
-    };
-    const fetchEventNamesData = async () => {
-      setIsLoading(true);
-      try {
-        const eventNamesData = await fetchEventNames();
-        if (!Array.isArray(eventNamesData)) {
-          throw new Error("Invalid data format from API.");
-        }
-        const activeEventNamesData = eventNamesData.filter(
-          (name) => name.status === "Active"
-        );
-        const formattedEventNames = activeEventNamesData.map((name) => ({
-          label: name.label || name.name,
-          value: name.value || name.id,
-        }));
-        setEventNames(formattedEventNames);
-      } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load event names. Please try again.",
-          type: "error",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    const fetchDepartmentData = async () => {
-      setLoadingDepartments(true);
-      setErrorDepartments(null);
-      try {
-        const response = await fetchDepartments();
-        if (!response || !Array.isArray(response.departments)) {
-          throw new Error(
-            "Invalid data format from API: Expected 'departments' array."
-          );
-        }
-        const departmentsData = response.departments;
-        const activeDepartmentsData = departmentsData.filter(
-          (dept) => dept.status === "Active"
-        );
-        const formattedDepartments = activeDepartmentsData.map((dept) => ({
-          label: dept.department_name,
-          value: dept.department_id,
-        }));
-        if (
-          formattedDepartments.some(
-            (dept) => !dept.label || dept.value === undefined
-          )
-        ) {
-          throw new Error("Invalid department data.");
-        }
-        setDepartmentOptions(formattedDepartments);
-      } catch (err) {
-        setErrorDepartments(err);
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load departments. Please try again.",
-          type: "error",
-        });
-      } finally {
-        setLoadingDepartments(false);
-      }
-    };
     initializeData();
     fetchEventNamesData();
     fetchDepartmentData();
@@ -155,23 +179,9 @@ const AddEvent = () => {
         if (!Array.isArray(blocksResponse)) {
           throw new Error("Invalid API response: Expected an array of blocks.");
         }
-        const activeBlocks = blocksResponse.filter(
-          (block) => block.status === "Active"
-        );
-
-        const formattedBlocks = activeBlocks.map((block) => ({
-          label: `${block.course_code || ""}  ${block.block_name}`,
-          value: block.block_id,
-        }));
-
-        setBlockOptions(formattedBlocks);
+        setBlockOptions(formatBlockOptions(blocksResponse));
       } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load blocks. Please try again.",
-          type: "error",
-        });
+        showModal("Error", "Failed to load blocks. Please try again.");
       } finally {
         setLoadingBlocks(false);
       }
@@ -186,57 +196,27 @@ const AddEvent = () => {
   const handleSubmit = async () => {
     try {
       if (!formData.event_name_id) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select an event name.",
-          type: "error",
-        });
+        showModal("Validation Error", "Please select an event name.");
         return;
       }
       if (formData.department_ids.length === 0) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select at least one department.",
-          type: "error",
-        });
+        showModal("Validation Error", "Please select at least one department.");
         return;
       }
       if (formData.block_ids.length === 0) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select at least one block.",
-          type: "error",
-        });
+        showModal("Validation Error", "Please select at least one block.");
         return;
       }
       if (!formData.venue) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please enter a venue.",
-          type: "error",
-        });
+        showModal("Validation Error", "Please enter a venue.");
         return;
       }
       if (!formData.description.trim()) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please fill in the event description.",
-          type: "error",
-        });
+        showModal("Validation Error", "Please fill in the event description.");
         return;
       }
       if (!formData.event_date) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select a valid event date.",
-          type: "error",
-        });
+        showModal("Validation Error", "Please select a valid event date.");
         return;
       }
 
@@ -245,12 +225,7 @@ const AddEvent = () => {
         : [];
 
       if (formattedDates.length === 0) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select a valid event date.",
-          type: "error",
-        });
+        showModal("Validation Error", "Please select a valid event date.");
         return;
       }
 
@@ -262,31 +237,19 @@ const AddEvent = () => {
           formData.pm_out
         )
       ) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Please select at least one of the AM or PM times.",
-          type: "error",
-        });
+        showModal(
+          "Validation Error",
+          "Please select at least one of the AM or PM times."
+        );
         return;
       }
-
-      const convertToMinutes = (timeString) => {
-        const [hours, minutes] = timeString.split(":").map(Number);
-        return hours * 60 + minutes;
-      };
 
       if (formData.am_in && formData.am_out) {
         const amInMinutes = convertToMinutes(formData.am_in);
         const amOutMinutes = convertToMinutes(formData.am_out);
         const amTimeDifference = amOutMinutes - amInMinutes;
         if (amTimeDifference < 60) {
-          setModal({
-            visible: true,
-            title: "Validation Error",
-            message: "AM times must be at least one hour apart.",
-            type: "error",
-          });
+          showModal("Validation Error", "AM times must be at least one hour apart.");
           return;
         }
       }
@@ -296,23 +259,13 @@ const AddEvent = () => {
         const pmOutMinutes = convertToMinutes(formData.pm_out);
         const pmTimeDifference = pmOutMinutes - pmInMinutes;
         if (pmTimeDifference < 60) {
-          setModal({
-            visible: true,
-            title: "Validation Error",
-            message: "PM times must be at least one hour apart.",
-            type: "error",
-          });
+          showModal("Validation Error", "PM times must be at least one hour apart.");
           return;
         }
       }
 
       if (formData.duration < 30) {
-        setModal({
-          visible: true,
-          title: "Validation Error",
-          message: "Event duration must be at least 30 minutes.",
-          type: "error",
-        });
+        showModal("Validation Error", "Event duration must be at least 30 minutes.");
         return;
       }
 
@@ -333,28 +286,14 @@ const AddEvent = () => {
       const response = await addEvent(requestData);
 
       if (response?.success) {
-        setModal({
-          visible: true,
-          title: "Success",
-          message: "Event added successfully!",
-          type: "success",
+        showModal("Success", "Event added successfully!", "success", {
           onPress: () => router.back(),
         });
         setTimeout(() => {
           router.back();
         }, 1500);
         setFormData({
-          event_name_id: "",
-          department_ids: [],
-          block_ids: [],
-          venue: "",
-          description: "",
-          am_in: null,
-          am_out: null,
-          pm_in: null,
-          pm_out: null,
-          event_date: null,
-          duration: 0,
+          ...INITIAL_FORM_DATA,
           created_by: formData.created_by,
         });
       } else {
@@ -363,12 +302,7 @@ const AddEvent = () => {
         if (response?.message) {
           errorMessage = response.message;
         }
-        setModal({
-          visible: true,
-          title: "Error",
-          message: errorMessage,
-          type: "error",
-        });
+        showModal("Error", errorMessage);
       }
     } catch (error) {
       let errorMessage =
@@ -379,12 +313,7 @@ const AddEvent = () => {
         errorMessage =
           "There was a problem connecting to the server. Please check your internet connection and try again.";
       }
-      setModal({
-        visible: true,
-        title: "Error",
-        message: errorMessage,
-        type: "error",
-      });
+      showModal("Error", errorMessage);
     }
   };
 
@@ -468,14 +397,7 @@ const AddEvent = () => {
             placeholder="Select departments"
             value={formData.department_ids}
             onSelect={(selectedItems) => {
-              const selectedValues = Array.isArray(selectedItems)
-                ? selectedItems.map((item) =>
-                    typeof item === "object" && item !== null
-                      ? item.value
-                      : item
-                  )
-                : [];
-              handleChange("department_ids", selectedValues);
+              handleChange("department_ids", getSelectedValues(selectedItems));
             }}
             multiSelect
           />
@@ -488,14 +410,7 @@ const AddEvent = () => {
               placeholder="Select blocks"
               value={formData.block_ids}
               onSelect={(selectedItems) => {
-                const selectedValues = Array.isArray(selectedItems)
-                  ? selectedItems.map((item) =>
-                      typeof item === "object" && item !== null
-                        ? item.value
-                        : item
-                    )
-                  : [];
-                handleChange("block_ids", selectedValues);
+                handleChange("block_ids", getSelectedValues(selectedItems));
               }}
               multiSelect
             />
