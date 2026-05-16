@@ -20,24 +20,46 @@ import CustomDropdown from "../../../components/CustomDropdown";
 import CustomButton from "../../../components/CustomButton";
 import CustomModal from "../../../components/CustomModal";
 
+const INITIAL_FORM_DATA = {
+  id_number: "",
+  first_name: "",
+  middle_name: "",
+  last_name: "",
+  suffix: "",
+  email: "",
+  password: "",
+  confirm_password: "",
+  department_id: null,
+};
+
+const INITIAL_MODAL_STATE = {
+  visible: false,
+  message: "",
+  type: "error",
+};
+
+const mapDepartmentsToOptions = (departments) =>
+  departments.map((dept) => ({
+    label: dept.department_name,
+    value: dept.department_id,
+  }));
+
+const buildRegistrationPayload = (formData) => ({
+  id_number: formData.id_number,
+  first_name: formData.first_name,
+  middle_name: formData.middle_name || null,
+  last_name: formData.last_name,
+  suffix: formData.suffix || null,
+  email: formData.email,
+  password: formData.password,
+  department_id: formData.department_id,
+});
+
 const SignUp = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    id_number: "",
-    first_name: "",
-    middle_name: "",
-    last_name: "",
-    suffix: "",
-    email: "",
-    password: "",
-    confirm_password: "",
-    department_id: null,
-  });
-
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState("error");
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [modal, setModal] = useState(INITIAL_MODAL_STATE);
 
   const router = useRouter();
 
@@ -50,12 +72,7 @@ const SignUp = () => {
     try {
       const departments = await fetchPublicDepartments();
       if (Array.isArray(departments)) {
-        setDepartments(
-          departments.map((dept) => ({
-            label: dept.department_name,
-            value: dept.department_id,
-          }))
-        );
+        setDepartments(mapDepartmentsToOptions(departments));
       } else {
         showModal("Invalid API response.", "warning");
       }
@@ -67,9 +84,18 @@ const SignUp = () => {
   };
 
   const showModal = (message, type) => {
-    setModalMessage(message);
-    setModalType(type);
-    setModalVisible(true);
+    setModal({
+      visible: true,
+      message,
+      type,
+    });
+  };
+
+  const closeModal = () => {
+    setModal((currentModal) => ({
+      ...currentModal,
+      visible: false,
+    }));
   };
 
   const handleInputChange = (field, value) => {
@@ -77,17 +103,7 @@ const SignUp = () => {
   };
 
   const resetForm = () => {
-    setFormData({
-      id_number: "",
-      first_name: "",
-      middle_name: "",
-      last_name: "",
-      suffix: "",
-      email: "",
-      password: "",
-      confirm_password: "",
-      department_id: null,
-    });
+    setFormData(INITIAL_FORM_DATA);
   };
 
   const handleRegister = async () => {
@@ -116,16 +132,7 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      await register({
-        id_number: formData.id_number,
-        first_name: formData.first_name,
-        middle_name: formData.middle_name || null,
-        last_name: formData.last_name,
-        suffix: formData.suffix || null,
-        email: formData.email,
-        password: formData.password,
-        department_id: formData.department_id,
-      });
+      await register(buildRegistrationPayload(formData));
 
       showModal("Registration successful!", "success");
 
@@ -272,11 +279,11 @@ const SignUp = () => {
       </ScrollView>
 
       <CustomModal
-        visible={modalVisible}
-        message={modalMessage}
-        type={modalType}
+        visible={modal.visible}
+        message={modal.message}
+        type={modal.type}
         cancelTitle="CLOSE"
-        onClose={() => setModalVisible(false)}
+        onClose={closeModal}
       />
 
       <StatusBar style="light" />
