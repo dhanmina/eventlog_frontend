@@ -13,6 +13,55 @@ import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import images from "../../../../constants/images";
 
+const FETCH_THROTTLE_MS = 3000;
+
+const encryptQRValue = (value) => {
+  if (!value) return null;
+  return CryptoES.AES.encrypt(value, QR_SECRET_KEY).toString();
+};
+
+const getEventDateId = (event) => {
+  if (
+    !event ||
+    !Array.isArray(event.event_dates) ||
+    !Array.isArray(event.event_date_ids)
+  )
+    return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = 0; i < event.event_dates.length; i++) {
+    const eventDate = new Date(event.event_dates[i]);
+    eventDate.setHours(0, 0, 0, 0);
+    if (eventDate.getTime() === today.getTime())
+      return event.event_date_ids[i];
+  }
+
+  return event.event_date_ids[0];
+};
+
+const generateQRValue = (selectedEvent, user) => {
+  if (!selectedEvent || !user) return "INVALID";
+  const eventDateId = getEventDateId(selectedEvent);
+  const rawValue = `eventlog-${eventDateId}-${user?.id_number}`;
+  return encryptQRValue(rawValue) || "INVALID";
+};
+
+const getEventOptions = (events) =>
+  events.map((event) => ({
+    label: event.event_name,
+    value: event.event_id,
+  }));
+
+const getDropdownKey = (events) =>
+  `dropdown-${events.length}-${events.map((event) => event.event_id).join("-")}`;
+
+const getUserFullName = (user) =>
+  `${user.first_name} ${user.middle_name ? `${user.middle_name} ` : ""}${
+    user.last_name
+  }${user.suffix ? ` ${user.suffix}` : ""}`;
+
 const Generate = () => {
   const { user: authUser } = useAuth();
   const { events, fetchAndStoreEvents, lastEventUpdate } = useEvents();
@@ -44,7 +93,7 @@ const Generate = () => {
   const smartFetch = useCallback(
     (reason) => {
       const now = Date.now();
-      if (now - lastFetchRef.current < 3000) return;
+      if (now - lastFetchRef.current < FETCH_THROTTLE_MS) return;
       lastFetchRef.current = now;
       fetchAndStoreEvents();
     },
@@ -63,45 +112,12 @@ const Generate = () => {
 
   const handleEventSelect = (event) => setSelectedEvent(event);
 
-  const encryptQRValue = (value) => {
-    if (!value) return null;
-    return CryptoES.AES.encrypt(value, QR_SECRET_KEY).toString();
-  };
-
-  const getEventDateId = (event) => {
-    if (
-      !event ||
-      !Array.isArray(event.event_dates) ||
-      !Array.isArray(event.event_date_ids)
-    )
-      return null;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < event.event_dates.length; i++) {
-      const eventDate = new Date(event.event_dates[i]);
-      eventDate.setHours(0, 0, 0, 0);
-      if (eventDate.getTime() === today.getTime())
-        return event.event_date_ids[i];
-    }
-
-    return event.event_date_ids[0];
-  };
-
-  const generateQRValue = () => {
-    if (!selectedEvent || !user) return "INVALID";
-    const eventDateId = getEventDateId(selectedEvent);
-    const rawValue = `eventlog-${eventDateId}-${user?.id_number}`;
-    return encryptQRValue(rawValue) || "INVALID";
-  };
-
   return (
     <View style={globalStyles.secondaryContainer}>
       <View style={styles.qrCodeContainer}>
         {selectedEvent && user && (
           <QRCode
-            value={generateQRValue()}
+            value={generateQRValue(selectedEvent, user)}
             backgroundColor={theme.colors.secondary}
             size={200}
           />
@@ -123,9 +139,7 @@ const Generate = () => {
 
       <View style={styles.dropdownContainer}>
         <CustomDropdown
-          key={`dropdown-${events.length}-${events
-            .map((e) => e.event_id)
-            .join("-")}`}
+          key={getDropdownKey(events)}
           display="sharp"
           fontFamily={theme.fontFamily.SquadaOne}
           placeholder="SELECT EVENT"
@@ -134,10 +148,7 @@ const Generate = () => {
           selectedEventColor={theme.colors.primary}
           selectedEventFont={theme.fontFamily.SquadaOne}
           selectedEventFontSize={theme.fontSizes.large}
-          data={events.map((event) => ({
-            label: event.event_name,
-            value: event.event_id,
-          }))}
+          data={getEventOptions(events)}
           value={selectedEvent?.event_id || null}
           onSelect={(selectedItem) => {
             if (!selectedItem || selectedItem.value === selectedEvent?.event_id)
@@ -152,11 +163,7 @@ const Generate = () => {
 
       {user && (
         <View style={styles.userDetailsContainer}>
-          <Text style={styles.userDetails}>
-            {`${user.first_name} ${
-              user.middle_name ? user.middle_name + " " : ""
-            }${user.last_name}${user.suffix ? ` ${user.suffix}` : ""}`}
-          </Text>
+          <Text style={styles.userDetails}>{getUserFullName(user)}</Text>
           <Text style={styles.userDetails}>ID: {user.id_number}</Text>
           <Text style={styles.userDetails}>Course: {user.course_code}</Text>
           <Text style={styles.userDetails}>Block: {user.block_name}</Text>

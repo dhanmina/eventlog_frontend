@@ -16,6 +16,76 @@ import {
 } from "../../../../database/queries";
 import { performSync } from "../../../../services/api";
 
+const SCAN_RESET_DELAY_MS = 1000;
+const TIME_FORMAT = "HH:mm:ss";
+
+const ATTENDANCE_DESCRIPTIONS = {
+  AM_IN: "Morning Time In",
+  AM_OUT: "Morning Time Out",
+  PM_IN: "Afternoon Time In",
+  PM_OUT: "Afternoon Time Out",
+};
+
+const isBase64 = (str) => {
+  try {
+    return btoa(atob(str)) === str;
+  } catch {
+    return false;
+  }
+};
+
+const decryptQRData = (data) => {
+  try {
+    const bytes = CryptoJS.AES.decrypt(data, QR_SECRET_KEY);
+    return bytes.toString(CryptoJS.enc.Utf8);
+  } catch {
+    throw new Error("Failed to decrypt QR code");
+  }
+};
+
+const parseQRPayload = (decryptedText) => {
+  if (!decryptedText.startsWith("eventlog")) throw new Error("Invalid QR format");
+  const [_, eventDateIdStr, studentIdStr] = decryptedText.split("-");
+  const eventDateId = parseInt(eventDateIdStr, 10);
+  const studentId = studentIdStr;
+
+  if (isNaN(eventDateId) || !studentId) throw new Error("Invalid QR code data.");
+
+  return { eventDateId, studentId };
+};
+
+const getEventForDate = (events, eventDateId) =>
+  events.find((event) => {
+    const ids = event.event_date_ids || event.date_ids;
+    return ids?.includes(eventDateId);
+  });
+
+const getAttendanceWindowEnd = (time, duration) =>
+  time ? moment(time, TIME_FORMAT).add(duration, "minutes").format(TIME_FORMAT) : null;
+
+const getAttendanceTypeForCurrentTime = (event, currentTime) => {
+  const { am_in, am_out, pm_in, pm_out, duration } = event;
+  const timeChecks = [
+    { type: "AM_IN", start: am_in, end: getAttendanceWindowEnd(am_in, duration) },
+    { type: "AM_OUT", start: am_out, end: getAttendanceWindowEnd(am_out, duration) },
+    { type: "PM_IN", start: pm_in, end: getAttendanceWindowEnd(pm_in, duration) },
+    { type: "PM_OUT", start: pm_out, end: getAttendanceWindowEnd(pm_out, duration) },
+  ];
+
+  for (const check of timeChecks) {
+    if (check.start && check.end) {
+      const now = moment(currentTime, TIME_FORMAT);
+      const start = moment(check.start, TIME_FORMAT);
+      const end = moment(check.end, TIME_FORMAT);
+      const match = now.isBetween(start, end, null, "[]");
+
+      if (match) return check.type;
+    }
+  }
+
+  return null;
+};
+
 const Scan = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const [successModalVisible, setSuccessModalVisible] = useState(false);
@@ -68,20 +138,8 @@ const Scan = () => {
     try {
       if (!isBase64(data)) throw new Error("Invalid QR Code format");
 
-      let decryptedText;
-      try {
-        const bytes = CryptoJS.AES.decrypt(data, QR_SECRET_KEY);
-        decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-      } catch {
-        throw new Error("Failed to decrypt QR code");
-      }
-
-      if (!decryptedText.startsWith("eventlog")) throw new Error("Invalid QR format");
-      const [_, eventDateIdStr, studentIdStr] = decryptedText.split("-");
-      const eventDateId = parseInt(eventDateIdStr, 10);
-      const studentId = studentIdStr;
-
-      if (isNaN(eventDateId) || !studentId) throw new Error("Invalid QR code data.");
+      const decryptedText = decryptQRData(data);
+      const { eventDateId, studentId } = parseQRPayload(decryptedText);
 
       let events;
       try {
@@ -90,58 +148,18 @@ const Scan = () => {
         throw new Error("Failed to retrieve event data");
       }
 
-      const event = events.find((e) => {
-        const ids = e.event_date_ids || e.date_ids;
-        return ids?.includes(eventDateId);
-      });
+      const event = getEventForDate(events, eventDateId);
       if (!event) throw new Error("QR not valid for current events.");
 
-      const { am_in, am_out, pm_in, pm_out, duration, event_name } = event;
-      const calcWindow = (t) => t ? moment(t, "HH:mm:ss").add(duration, "minutes").format("HH:mm:ss") : null;
-      const amInEnd = calcWindow(am_in);
-      const amOutEnd = calcWindow(am_out);
-      const pmInEnd = calcWindow(pm_in);
-      const pmOutEnd = calcWindow(pm_out);
-      const currentTime = moment().format("HH:mm:ss");
+      const currentTime = moment().format(TIME_FORMAT);
+      const attendanceType = getAttendanceTypeForCurrentTime(event, currentTime);
 
-      let isValidTime = false;
-      let attendanceType = null;
-
-      const timeChecks = [
-        { type: "AM_IN", start: am_in, end: amInEnd },
-        { type: "AM_OUT", start: am_out, end: amOutEnd },
-        { type: "PM_IN", start: pm_in, end: pmInEnd },
-        { type: "PM_OUT", start: pm_out, end: pmOutEnd },
-      ];
-
-      for (const check of timeChecks) {
-        if (check.start && check.end) {
-          const now = moment(currentTime, "HH:mm:ss");
-          const start = moment(check.start, "HH:mm:ss");
-          const end = moment(check.end, "HH:mm:ss");
-          const match = now.isBetween(start, end, null, "[]");
-
-          if (match) {
-            isValidTime = true;
-            attendanceType = check.type;
-            break;
-          }
-        }
-      }
-
-      if (isValidTime) {
+      if (attendanceType) {
         const data = {
           event_date_id: eventDateId,
           student_id_number: studentId,
           type: attendanceType,
-          event_name,
-        };
-
-        const descriptions = {
-          AM_IN: "Morning Time In",
-          AM_OUT: "Morning Time Out",
-          PM_IN: "Afternoon Time In",
-          PM_OUT: "Afternoon Time Out",
+          event_name: event.event_name,
         };
 
         let alreadyLogged = false;
@@ -156,7 +174,7 @@ const Scan = () => {
         }
 
         if (alreadyLogged) {
-          const msg = `${descriptions[data.type]} already logged.`;
+          const msg = `${ATTENDANCE_DESCRIPTIONS[data.type]} already logged.`;
           setErrorMessage(msg);
           setErrorModalVisible(true);
           return;
@@ -165,7 +183,7 @@ const Scan = () => {
         setPendingAttendanceData(data);
         setConfirmationModalVisible(true);
       } else {
-        const formatted = moment(currentTime, "HH:mm:ss").format("h:mm A");
+        const formatted = moment(currentTime, TIME_FORMAT).format("h:mm A");
         const msg = `Current time (${formatted}) is outside valid hours.`;
         setErrorMessage(msg);
         setErrorModalVisible(true);
@@ -196,20 +214,12 @@ const Scan = () => {
   const cancelAttendance = () => {
     setConfirmationModalVisible(false);
     setPendingAttendanceData(null);
-    setTimeout(() => setIsScanning(true), 1000);
-  };
-
-  const isBase64 = (str) => {
-    try {
-      return btoa(atob(str)) === str;
-    } catch {
-      return false;
-    }
+    setTimeout(() => setIsScanning(true), SCAN_RESET_DELAY_MS);
   };
 
   const handleModalClose = (setter) => {
     setter(false);
-    setTimeout(() => setIsScanning(true), 1000);
+    setTimeout(() => setIsScanning(true), SCAN_RESET_DELAY_MS);
   };
 
   const reloadCamera = () => {
@@ -291,26 +301,6 @@ const Scan = () => {
 export default Scan;
 
 const styles = StyleSheet.create({
-  messageContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  message: {
-    color: theme.colors.primary,
-    fontSize: theme.fontSizes.large,
-    textAlign: "center",
-    marginBottom: theme.spacing.medium,
-    fontFamily: theme.fontFamily.Arial,
-  },
-  subNote: {
-    color: theme.colors.primary,
-    fontSize: theme.fontSizes.small,
-    textAlign: "center",
-    marginTop: theme.spacing.small,
-    fontFamily: theme.fontFamily.Arial,
-  },
   camera: {
     width: "100%",
     height: "100%",

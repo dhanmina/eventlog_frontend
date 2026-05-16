@@ -3,6 +3,17 @@ import React, { useEffect, useState } from "react";
 import { getRoleID } from "../../../../database/queries";
 import theme from "../../../../constants/theme";
 
+const baseHeaderOptions = {
+  headerStyle: { backgroundColor: theme.colors.primary },
+  headerTintColor: theme.colors.secondary,
+};
+
+const qrScreens = [
+  { name: "index", title: "QR Code" },
+  { name: "Generate", headerTitle: "Generate QR Code" },
+  { name: "Scan", headerTitle: "Scan QR Code" },
+];
+
 const QRLayout = () => {
   const [roleId, setRoleId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,33 +41,18 @@ const QRLayout = () => {
 
   return (
     <Stack>
-      <Stack.Screen
-        name="index"
-        options={{
-          headerShown: showHeader,
-          headerStyle: { backgroundColor: theme.colors.primary },
-          headerTintColor: theme.colors.secondary,
-          title: "QR Code",
-        }}
-      />
-      <Stack.Screen
-        name="Generate"
-        options={{
-          headerTitle: "Generate QR Code",
-          headerShown: showHeader,
-          headerStyle: { backgroundColor: theme.colors.primary },
-          headerTintColor: theme.colors.secondary,
-        }}
-      />
-      <Stack.Screen
-        name="Scan"
-        options={{
-          headerTitle: "Scan QR Code",
-          headerShown: showHeader,
-          headerStyle: { backgroundColor: theme.colors.primary },
-          headerTintColor: theme.colors.secondary,
-        }}
-      />
+      {qrScreens.map(({ name, title, headerTitle }) => (
+        <Stack.Screen
+          key={name}
+          name={name}
+          options={{
+            ...baseHeaderOptions,
+            headerShown: showHeader,
+            title,
+            headerTitle,
+          }}
+        />
+      ))}
     </Stack>
   );
 };

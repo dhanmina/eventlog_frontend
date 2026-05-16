@@ -10,6 +10,17 @@ import theme from "../../../../constants/theme";
 
 import CustomButton from "../../../../components/CustomButton";
 
+const QR_ROUTES = {
+  generate: "/qr/Generate",
+  scan: "/qr/Scan",
+};
+
+const getRedirectRoute = (roleId) => {
+  if (roleId === 1) return QR_ROUTES.generate;
+  if (roleId === 3 || roleId === 4) return QR_ROUTES.scan;
+  return null;
+};
+
 const QRCode = () => {
   const [roleId, setRoleId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,12 +43,17 @@ const QRCode = () => {
   }, []);
 
   useEffect(() => {
-    if (roleId === 1) {
-      router.replace("/qr/Generate");
-    } else if (roleId === 3 || roleId === 4) {
-      router.replace("/qr/Scan");
-    }
+    const redirectRoute = getRedirectRoute(roleId);
+    if (redirectRoute) router.replace(redirectRoute);
   }, [roleId]);
+
+  const goToGenerate = () => {
+    router.push(QR_ROUTES.generate);
+  };
+
+  const goToScan = () => {
+    router.push(QR_ROUTES.scan);
+  };
 
   if (loading) {
     return (
@@ -55,17 +71,13 @@ const QRCode = () => {
         <View style={styles.buttonWrapper}>
           <View>
             <CustomButton
-              onPress={() => {
-                router.push("/qr/Generate");
-              }}
+              onPress={goToGenerate}
               title="Generate"
             />
           </View>
           <View style={styles.scanContainer}>
             <CustomButton
-              onPress={() => {
-                router.push("/qr/Scan");
-              }}
+              onPress={goToScan}
               title="Scan"
               type="secondary"
             />
