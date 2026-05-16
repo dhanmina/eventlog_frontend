@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Dimensions, Image } from "react-native";
+import { StyleSheet, Text, View, Image } from "react-native";
 import React, { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,6 +7,23 @@ import { getRoleID } from "../../../../database/queries";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import images from "../../../../constants/images";
+
+const contactRows = [
+  { icon: images.email, text: "cit_eventlogsupport@gmail.com", style: "contactRow" },
+  { icon: images.facebook, text: "CITofficial.UCV", style: "contactRow" },
+  {
+    icon: images.location,
+    text: "CIT Office - VHNPB Building 4th Floor",
+    style: "lastContactRow",
+  },
+];
+
+const ContactRow = ({ icon, text, style }) => (
+  <View style={styles[style]}>
+    <Image source={icon} style={styles.icon} />
+    <Text style={styles.infoText}>{text}</Text>
+  </View>
+);
 
 const Welcome = () => {
   const [roleID, setRoleID] = useState(null);
@@ -53,20 +70,9 @@ const Welcome = () => {
           </Text>
 
           <View style={styles.contactsContainer}>
-            <View style={styles.emailContainer}>
-              <Image source={images.email} style={styles.icon} />
-              <Text style={styles.infoText}>cit_eventlogsupport@gmail.com</Text>
-            </View>
-            <View style={styles.facebookContainer}>
-              <Image source={images.facebook} style={styles.icon} />
-              <Text style={styles.infoText}>CITofficial.UCV</Text>
-            </View>
-            <View style={styles.locationContainer}>
-              <Image source={images.location} style={styles.icon} />
-              <Text style={styles.infoText}>
-                CIT Office - VHNPB Building 4th Floor
-              </Text>
-            </View>
+            {contactRows.map((contact) => (
+              <ContactRow key={contact.text} {...contact} />
+            ))}
           </View>
         </View>
       </View>
@@ -78,11 +84,6 @@ const Welcome = () => {
 export default Welcome;
 
 const styles = StyleSheet.create({
-  container: {
-    paddingLeft: theme.spacing.medium,
-    paddingRight: theme.spacing.medium,
-    paddingBottom: theme.spacing.medium,
-  },
   welcomeContainer: {
     backgroundColor: theme.colors.primary,
     height: 50,
@@ -118,17 +119,12 @@ const styles = StyleSheet.create({
     height: 24,
     tintColor: theme.colors.primary,
   },
-  emailContainer: {
+  contactRow: {
     flexDirection: "row",
     alignItems: "center",
     marginVertical: theme.spacing.xsmall,
   },
-  facebookContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: theme.spacing.xsmall,
-  },
-  locationContainer: {
+  lastContactRow: {
     flexDirection: "row",
     alignItems: "center",
   },

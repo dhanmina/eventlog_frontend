@@ -3,6 +3,11 @@ import { Stack } from "expo-router";
 import theme from "../../../../constants/theme";
 import { getStoredUser } from "../../../../database/queries";
 
+const sharedHeaderOptions = {
+  headerStyle: { backgroundColor: theme.colors.primary },
+  headerTintColor: theme.colors.secondary,
+};
+
 const HomeLayout = () => {
   const [roleId, setRoleId] = useState(null);
 
@@ -19,18 +24,16 @@ const HomeLayout = () => {
       <Stack.Screen
         name="index"
         options={{
+          ...sharedHeaderOptions,
           headerShown: roleId !== 4,
-          headerStyle: { backgroundColor: theme.colors.primary },
-          headerTintColor: theme.colors.secondary,
           title: "Home",
         }}
       />
       <Stack.Screen
         name="Welcome"
         options={{
+          ...sharedHeaderOptions,
           title: "Welcome",
-          headerStyle: { backgroundColor: theme.colors.primary },
-          headerTintColor: theme.colors.secondary,
         }}
       />
     </Stack>

@@ -16,18 +16,91 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../../context/AuthContext";
 import { useEvents } from "../../../../context/EventsContext";
 
+const FETCH_THROTTLE_MS = 5000;
+const EVENT_VIEWER_ROLE_IDS = [1, 2, 3, 4];
+
+const canViewEvents = (userRoleId) => EVENT_VIEWER_ROLE_IDS.includes(userRoleId);
+
+const formatTime = (timeString) => {
+  if (!timeString || typeof timeString !== "string" || !timeString.trim())
+    return "N/A";
+  try {
+    const trimmedTime = timeString.trim();
+    if (/\b(AM|PM)\b/i.test(trimmedTime)) return trimmedTime.toUpperCase();
+    const timeParts = trimmedTime.split(":");
+    if (timeParts.length < 2) return "N/A";
+    const hours = parseInt(timeParts[0], 10);
+    const minutes = parseInt(timeParts[1], 10);
+    if (
+      isNaN(hours) ||
+      isNaN(minutes) ||
+      hours < 0 ||
+      hours > 23 ||
+      minutes < 0 ||
+      minutes > 59
+    )
+      return "N/A";
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const formattedHours = hours % 12 || 12;
+    const formattedMinutes = minutes.toString().padStart(2, "0");
+    return `${formattedHours}:${formattedMinutes} ${ampm}`;
+  } catch {
+    return "N/A";
+  }
+};
+
+const formatEventDates = (dates) => {
+  try {
+    const datesArray = Array.isArray(dates)
+      ? dates
+      : dates?.split(",")
+      ? dates.split(",")
+      : [];
+    if (datesArray.length === 0) return "N/A";
+    const parsedDates = datesArray
+      .map((dateStr) => new Date(dateStr))
+      .filter((d) => !isNaN(d));
+    if (parsedDates.length === 0) return "N/A";
+
+    const grouped = parsedDates.reduce((acc, date) => {
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(date.getDate());
+      acc[key].month = date.toLocaleString("en-US", { month: "long" });
+      acc[key].year = date.getFullYear();
+      return acc;
+    }, {});
+
+    const result = Object.values(grouped)
+      .map((group) => {
+        const days = group.sort((a, b) => a - b).join(", ");
+        return `${group.month} ${days}, ${group.year}`;
+      })
+      .join(" & ");
+
+    return result;
+  } catch {
+    return "N/A";
+  }
+};
+
+const formatEventTimes = (event) => ({
+  amIn: formatTime(event.am_in),
+  amOut: formatTime(event.am_out),
+  pmIn: formatTime(event.pm_in),
+  pmOut: formatTime(event.pm_out),
+});
+
 const Home = () => {
   const { user } = useAuth();
   const { events, loading, fetchAndStoreEvents, lastEventUpdate } = useEvents();
 
   const lastFetchRef = useRef(0);
 
-  const canViewEvents = (userRoleId) => [1, 2, 3, 4].includes(userRoleId);
-
   const smartFetch = useCallback(
     async (reason) => {
       const now = Date.now();
-      if (now - lastFetchRef.current < 5000) {
+      if (now - lastFetchRef.current < FETCH_THROTTLE_MS) {
         return;
       }
       lastFetchRef.current = now;
@@ -52,76 +125,6 @@ const Home = () => {
       smartFetch("EventsContext notification");
     }
   }, [lastEventUpdate, smartFetch]);
-
-  const formatTime = (timeString) => {
-    if (!timeString || typeof timeString !== "string" || !timeString.trim())
-      return "N/A";
-    try {
-      const trimmedTime = timeString.trim();
-      if (/\b(AM|PM)\b/i.test(trimmedTime)) return trimmedTime.toUpperCase();
-      const timeParts = trimmedTime.split(":");
-      if (timeParts.length < 2) return "N/A";
-      const hours = parseInt(timeParts[0], 10);
-      const minutes = parseInt(timeParts[1], 10);
-      if (
-        isNaN(hours) ||
-        isNaN(minutes) ||
-        hours < 0 ||
-        hours > 23 ||
-        minutes < 0 ||
-        minutes > 59
-      )
-        return "N/A";
-      const ampm = hours >= 12 ? "PM" : "AM";
-      const formattedHours = hours % 12 || 12;
-      const formattedMinutes = minutes.toString().padStart(2, "0");
-      return `${formattedHours}:${formattedMinutes} ${ampm}`;
-    } catch {
-      return "N/A";
-    }
-  };
-
-  const formatEventDates = (dates) => {
-    try {
-      const datesArray = Array.isArray(dates)
-        ? dates
-        : dates?.split(",")
-        ? dates.split(",")
-        : [];
-      if (datesArray.length === 0) return "N/A";
-      const parsedDates = datesArray
-        .map((dateStr) => new Date(dateStr))
-        .filter((d) => !isNaN(d));
-      if (parsedDates.length === 0) return "N/A";
-
-      const grouped = parsedDates.reduce((acc, date) => {
-        const key = `${date.getFullYear()}-${date.getMonth()}`;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(date.getDate());
-        acc[key].month = date.toLocaleString("en-US", { month: "long" });
-        acc[key].year = date.getFullYear();
-        return acc;
-      }, {});
-
-      const result = Object.values(grouped)
-        .map((group) => {
-          const days = group.sort((a, b) => a - b).join(", ");
-          return `${group.month} ${days}, ${group.year}`;
-        })
-        .join(" & ");
-
-      return result;
-    } catch {
-      return "N/A";
-    }
-  };
-
-  const formatEventTimes = (event) => ({
-    amIn: formatTime(event.am_in),
-    amOut: formatTime(event.am_out),
-    pmIn: formatTime(event.pm_in),
-    pmOut: formatTime(event.pm_out),
-  });
 
   const renderContent = () => {
     if (loading && events.length === 0)
@@ -182,7 +185,7 @@ const Home = () => {
         </TouchableOpacity>
 
         <ScrollView
-          style={{ marginBottom: 20 }}
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollview}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -243,6 +246,9 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: theme.spacing.medium,
     alignItems: "center",
+  },
+  scrollView: {
+    marginBottom: 20,
   },
   noEventText: {
     textAlign: "center",
