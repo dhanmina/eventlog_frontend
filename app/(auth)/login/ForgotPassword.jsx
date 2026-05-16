@@ -17,22 +17,40 @@ const validateEmail = (email) => {
   return regex.test(email);
 };
 
+const INITIAL_MODAL_STATE = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "",
+};
+
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalTitle, setModalTitle] = useState("");
-  const [modalType, setModalType] = useState("");
+  const [modal, setModal] = useState(INITIAL_MODAL_STATE);
   const router = useRouter();
+
+  const showErrorModal = (title, message) => {
+    setModal({
+      visible: true,
+      title,
+      message,
+      type: "error",
+    });
+  };
+
+  const closeModal = () => {
+    setModal((currentModal) => ({
+      ...currentModal,
+      visible: false,
+    }));
+  };
 
   const handleResetPassword = async () => {
     if (!validateEmail(email)) {
-      setModalType("error");
-      setModalTitle("Invalid Email");
-      setModalMessage(
+      showErrorModal(
+        "Invalid Email",
         "The email address provided is not valid. Please check and try again."
       );
-      setModalVisible(true);
       return;
     }
 
@@ -40,12 +58,10 @@ const ForgotPassword = () => {
       await resetPassword(email);
       router.push(`/login/VerifyCode?email=${encodeURIComponent(email)}`);
     } catch (error) {
-      setModalType("error");
-      setModalTitle("Error");
-      setModalMessage(
+      showErrorModal(
+        "Error",
         error.message || "No account found with this email. Please check your email or register."
       );
-      setModalVisible(true);
     }
   };
 
@@ -74,11 +90,11 @@ const ForgotPassword = () => {
       </View>
 
       <CustomModal
-        visible={modalVisible}
-        title={modalTitle}
-        message={modalMessage}
-        type={modalType}
-        onClose={() => setModalVisible(false)}
+        visible={modal.visible}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        onClose={closeModal}
       />
 
       <StatusBar style="auto" />

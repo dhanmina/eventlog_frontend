@@ -27,6 +27,38 @@ import ArialBoldFont from "../../../assets/fonts/ArialBold.ttf";
 import ArialItalicFont from "../../../assets/fonts/ArialItalic.ttf";
 import SquadaOneFont from "../../../assets/fonts/SquadaOne.ttf";
 
+const INITIAL_MODAL_STATE = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "",
+};
+
+const formatFullName = (user) =>
+  `${user.first_name} ${user.middle_name ?? ""} ${user.last_name}`
+    .replace(/\s+/g, " ")
+    .trim();
+
+const storeSession = async (user, token, fullName) => {
+  await AsyncStorage.setItem("userToken", token);
+  await AsyncStorage.setItem("id_number", user.id_number);
+  await AsyncStorage.setItem("email", user.email);
+  await AsyncStorage.setItem("role_id", String(user.role_id));
+  await AsyncStorage.setItem("full_name", fullName);
+};
+
+const storeRememberedCredentials = async (id, password) => {
+  await AsyncStorage.setItem("rememberedId", id);
+  await AsyncStorage.setItem("rememberedPassword", password);
+  await AsyncStorage.setItem("rememberedChecked", "true");
+};
+
+const clearRememberedCredentials = async () => {
+  await AsyncStorage.removeItem("rememberedId");
+  await AsyncStorage.removeItem("rememberedPassword");
+  await AsyncStorage.removeItem("rememberedChecked");
+};
+
 const Login = () => {
   const { login: authLogin } = useAuth();
 
@@ -40,11 +72,24 @@ const Login = () => {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [isChecked, setChecked] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState("");
-  const [modalTitle, setModalTitle] = useState("");
+  const [modal, setModal] = useState(INITIAL_MODAL_STATE);
   const [fontsReady, setFontsReady] = useState(false);
+
+  const showErrorModal = (title, message) => {
+    setModal({
+      visible: true,
+      title,
+      message,
+      type: "error",
+    });
+  };
+
+  const closeModal = () => {
+    setModal((currentModal) => ({
+      ...currentModal,
+      visible: false,
+    }));
+  };
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -125,10 +170,7 @@ const Login = () => {
 
   const handleLogin = async () => {
     if (!id || !password) {
-      setModalTitle("Login Error");
-      setModalMessage("Please enter your credentials.");
-      setModalType("error");
-      setModalVisible(true);
+      showErrorModal("Login Error", "Please enter your credentials.");
       return;
     }
 
@@ -138,32 +180,17 @@ const Login = () => {
       const roleId = parseInt(response.user.role_id);
 
       if (Platform.OS === "web" && roleId !== 3 && roleId !== 4) {
-        setModalTitle("Access Denied");
-        setModalMessage("Invalid account.");
-        setModalType("error");
-        setModalVisible(true);
+        showErrorModal("Access Denied", "Invalid account.");
         return;
       }
 
       const userData = {
         ...response.user,
-        full_name: `${response.user.first_name} ${
-          response.user.middle_name ?? ""
-        } ${response.user.last_name}`
-          .replace(/\s+/g, " ")
-          .trim(),
+        full_name: formatFullName(response.user),
       };
 
       await authLogin(userData, response.token);
-
-      await AsyncStorage.setItem("userToken", response.token);
-      await AsyncStorage.setItem("id_number", response.user.id_number);
-      await AsyncStorage.setItem("email", response.user.email);
-      await AsyncStorage.setItem(
-        "role_id",
-        String(response.user.role_id)
-      );
-      await AsyncStorage.setItem("full_name", userData.full_name);
+      await storeSession(response.user, response.token, userData.full_name);
 
       try {
         await storeUser(response.user);
@@ -172,22 +199,15 @@ const Login = () => {
       }
 
       if (isChecked) {
-        await AsyncStorage.setItem("rememberedId", id);
-        await AsyncStorage.setItem("rememberedPassword", password);
-        await AsyncStorage.setItem("rememberedChecked", "true");
+        await storeRememberedCredentials(id, password);
       } else {
-        await AsyncStorage.removeItem("rememberedId");
-        await AsyncStorage.removeItem("rememberedPassword");
-        await AsyncStorage.removeItem("rememberedChecked");
+        await clearRememberedCredentials();
       }
 
       if (Platform.OS !== "web") startSync();
       router.replace(Platform.OS === "web" ? "/web" : "/(drawer)/(tabs)/home");
     } catch (error) {
-      setModalTitle("Login Error");
-      setModalMessage(error.message || "An error occurred. Please try again.");
-      setModalType("error");
-      setModalVisible(true);
+      showErrorModal("Login Error", error.message || "An error occurred. Please try again.");
     }
   };
 
@@ -280,11 +300,11 @@ const Login = () => {
       <StatusBar style="auto" />
       <CustomModal
         cancelTitle="CLOSE"
-        visible={modalVisible}
-        title={modalTitle}
-        message={modalMessage}
-        type={modalType}
-        onClose={() => setModalVisible(false)}
+        visible={modal.visible}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        onClose={closeModal}
       />
     </SafeAreaView>
   );

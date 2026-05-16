@@ -12,16 +12,36 @@ import globalStyles from "../../../constants/globalStyles";
 import theme from "../../../constants/theme";
 import { resetPassword, confirmResetPassword } from "../../../services/api";
 
+const INITIAL_MODAL_STATE = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "",
+};
+
 const VerifyCode = () => {
   const { email } = useLocalSearchParams();
   const [code, setCode] = useState(["", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
   const [isCodeValid, setIsCodeValid] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalTitle, setModalTitle] = useState("");
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState("");
+  const [modal, setModal] = useState(INITIAL_MODAL_STATE);
   const router = useRouter();
+
+  const showModal = (type, title, message) => {
+    setModal({
+      visible: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const closeModal = () => {
+    setModal((currentModal) => ({
+      ...currentModal,
+      visible: false,
+    }));
+  };
 
   useEffect(() => {
     if (timer > 0) {
@@ -34,15 +54,9 @@ const VerifyCode = () => {
     try {
       setTimer(60);
       await resetPassword(email);
-      setModalType("success");
-      setModalTitle("Success");
-      setModalMessage("A new code has been sent to your email.");
-      setModalVisible(true);
+      showModal("success", "Success", "A new code has been sent to your email.");
     } catch (error) {
-      setModalType("error");
-      setModalTitle("Error");
-      setModalMessage(error.message || "Failed to resend the code. Please try again later.");
-      setModalVisible(true);
+      showModal("error", "Error", error.message || "Failed to resend the code. Please try again later.");
     }
   };
 
@@ -55,10 +69,7 @@ const VerifyCode = () => {
       );
     } catch (error) {
       setIsCodeValid(false);
-      setModalType("error");
-      setModalTitle("Error");
-      setModalMessage(error.message || "Please check the code and try again.");
-      setModalVisible(true);
+      showModal("error", "Error", error.message || "Please check the code and try again.");
     }
   };
 
@@ -96,11 +107,11 @@ const VerifyCode = () => {
       </View>
 
       <CustomModal
-        visible={modalVisible}
-        title={modalTitle}
-        message={modalMessage}
-        type={modalType}
-        onClose={() => setModalVisible(false)}
+        visible={modal.visible}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 

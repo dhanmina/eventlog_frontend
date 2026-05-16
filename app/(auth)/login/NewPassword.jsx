@@ -12,44 +12,52 @@ import globalStyles from "../../../constants/globalStyles";
 import theme from "../../../constants/theme";
 import { changeUserPassword } from "../../../services/api";
 
+const INITIAL_MODAL_STATE = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "",
+};
+
 const NewPassword = () => {
   const { email } = useLocalSearchParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalTitle, setModalTitle] = useState("");
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState("");
+  const [modal, setModal] = useState(INITIAL_MODAL_STATE);
+
+  const showModal = (type, title, message) => {
+    setModal({
+      visible: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const closeModal = () => {
+    setModal((currentModal) => ({
+      ...currentModal,
+      visible: false,
+    }));
+  };
 
   const handleResetPassword = async () => {
     if (password !== confirmPassword) {
-      setModalType("error");
-      setModalTitle("Password Mismatch");
-      setModalMessage("Passwords do not match. Please try again.");
-      setModalVisible(true);
+      showModal("error", "Password Mismatch", "Passwords do not match. Please try again.");
       return;
     }
     if (password.length < 8) {
-      setModalType("error");
-      setModalTitle("Invalid Password");
-      setModalMessage("Password should be at least 8 characters long.");
-      setModalVisible(true);
+      showModal("error", "Invalid Password", "Password should be at least 8 characters long.");
       return;
     }
 
     try {
       await changeUserPassword(email, password);
 
-      setModalType("success");
-      setModalTitle("Success");
-      setModalMessage("Password successfully reset. Please log in.");
-      setModalVisible(true);
+      showModal("success", "Success", "Password successfully reset. Please log in.");
       setTimeout(() => router.push("/login"), 2000);
     } catch (error) {
-      setModalType("error");
-      setModalTitle("Error");
-      setModalMessage(error.message || "An error occurred. Please try again.");
-      setModalVisible(true);
+      showModal("error", "Error", error.message || "An error occurred. Please try again.");
     }
   };
 
@@ -86,12 +94,12 @@ const NewPassword = () => {
       </View>
 
       <CustomModal
-        visible={modalVisible}
-        title={modalTitle}
-        message={modalMessage}
-        type={modalType}
+        visible={modal.visible}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
         cancelTitle="CLOSE"
-        onClose={() => setModalVisible(false)}
+        onClose={closeModal}
       />
 
       <StatusBar style="auto" />
