@@ -21,12 +21,31 @@ import images from "../../../../constants/images";
 import CustomSearch from "../../../../components/CustomSearch";
 import { fetchEvents } from "../../../../services/api";
 
-const getEventList = (response) => response.data || response.events || [];
+const getEventTitle = (event) => event.name || event.event_name || "";
+
+const getEventDates = (event) => event.dates || event.event_dates || [];
+
+const normalizeEvent = (event) => ({
+  ...event,
+  id: event.id || event.event_id,
+  name: getEventTitle(event),
+  dates: getEventDates(event),
+});
+
+const getEventList = (response) =>
+  (response.data || response.events || []).map(normalizeEvent);
 
 const formatDates = (dates) => {
   if (!dates || dates.length === 0) return "No date";
 
-  const parsedDates = dates.map((date) => new Date(date));
+  const dateList = Array.isArray(dates)
+    ? dates
+    : String(dates)
+        .split(",")
+        .map((date) => date.trim())
+        .filter(Boolean);
+
+  const parsedDates = dateList.map((date) => new Date(date));
   parsedDates.sort((a, b) => a - b);
 
   const formattedDates = [];

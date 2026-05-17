@@ -51,6 +51,9 @@ const INITIAL_MODAL_STATE = {
   type: "success",
 };
 
+const MIN_TIME_RANGE_MINUTES = 60;
+const MIN_DURATION_MINUTES = 30;
+
 const formatEventNameOptions = (eventNames) =>
   eventNames
     .filter((name) => name.status === "Active")
@@ -85,10 +88,68 @@ const getSelectedValues = (selectedItems) =>
       )
     : [];
 
+const parseNumberList = (value) =>
+  value ? value.split(",").map(Number) : [];
+
+const parseStringList = (value) => (value ? value.split(",") : []);
+
+const formatExistingBlocks = (eventData) => {
+  const blockIds = parseNumberList(eventData.block_ids);
+  const blockNames = parseStringList(eventData.block_names_list);
+
+  return blockIds.map((id, index) => ({
+    label: blockNames[index] || `Unnamed Block (${id})`,
+    value: id,
+  }));
+};
+
+const buildEventFormData = (eventId, eventData) => ({
+  event_id: eventId,
+  event_name_id: eventData.event_name_id || "",
+  department_ids: parseNumberList(eventData.department_ids),
+  block_ids: parseNumberList(eventData.block_ids),
+  venue: eventData.venue || "",
+  description: eventData.description || "",
+  am_in: eventData.am_in || null,
+  am_out: eventData.am_out || null,
+  pm_in: eventData.pm_in || null,
+  pm_out: eventData.pm_out || null,
+  event_date: parseStringList(eventData.event_dates),
+  duration: eventData.duration || 0,
+  created_by: eventData.created_by_admin_id || "",
+});
+
 const convertToMinutes = (timeString) => {
   const [hours, minutes] = timeString.split(":").map(Number);
   return hours * 60 + minutes;
 };
+
+const getTimeDifference = (startTime, endTime) =>
+  convertToMinutes(endTime) - convertToMinutes(startTime);
+
+const hasSelectedTime = (formData) =>
+  formData.am_in || formData.am_out || formData.pm_in || formData.pm_out;
+
+const getFormattedDates = (eventDate) =>
+  Array.isArray(eventDate) ? eventDate.flat().filter(Boolean) : [];
+
+const buildUpdatePayload = (formData, formattedDates) => ({
+  event_id: formData.event_id,
+  event_name_id: formData.event_name_id,
+  venue: formData.venue,
+  dates: formattedDates,
+  description: formData.description,
+  block_ids: formData.block_ids,
+  am_in: formData.am_in,
+  am_out: formData.am_out,
+  pm_in: formData.pm_in,
+  pm_out: formData.pm_out,
+  duration: formData.duration,
+  admin_id_number: formData.created_by,
+});
+
+const getDurationLabel = (duration) =>
+  duration > 0 ? `${Math.floor(duration / 60)} hrs ${duration % 60} mins` : "";
 
 const EditEvent = () => {
   const { id: eventId } = useLocalSearchParams();
@@ -134,42 +195,11 @@ const EditEvent = () => {
         throw new Error("Event not found.");
       }
 
-      const blockIds = eventData.block_ids
-        ? eventData.block_ids.split(",").map(Number)
-        : [];
-      const blockNames = eventData.block_names_list
-        ? eventData.block_names_list.split(",")
-        : [];
-      const formattedBlocks = blockIds.map((id, index) => ({
-        label: blockNames[index] || `Unnamed Block (${id})`,
-        value: id,
-      }));
+      const nextFormData = buildEventFormData(eventId, eventData);
 
-      const departmentIds = eventData.department_ids
-        ? eventData.department_ids.split(",").map(Number)
-        : [];
-
-      const formattedEventDates = eventData.event_dates
-        ? eventData.event_dates.split(",")
-        : [];
-
-      setFormData({
-        event_id: eventId,
-        event_name_id: eventData.event_name_id || "",
-        department_ids: departmentIds,
-        block_ids: blockIds,
-        venue: eventData.venue || "",
-        description: eventData.description || "",
-        am_in: eventData.am_in || null,
-        am_out: eventData.am_out || null,
-        pm_in: eventData.pm_in || null,
-        pm_out: eventData.pm_out || null,
-        event_date: formattedEventDates,
-        duration: eventData.duration || 0,
-        created_by: eventData.created_by_admin_id || "",
-      });
-      setBlockOptions(formattedBlocks);
-      setSelectedDepartmentIds(departmentIds);
+      setFormData(nextFormData);
+      setBlockOptions(formatExistingBlocks(eventData));
+      setSelectedDepartmentIds(nextFormData.department_ids);
     } catch (error) {
       showModal("Error", "Failed to load event details. Please try again.");
     } finally {
@@ -279,22 +309,13 @@ const EditEvent = () => {
         showModal("Validation Error", "Please select a valid event date.");
         return;
       }
-      const formattedDates = Array.isArray(formData.event_date)
-        ? formData.event_date.flat().filter(Boolean)
-        : [];
+      const formattedDates = getFormattedDates(formData.event_date);
       if (formattedDates.length === 0) {
         console.warn("Validation failed: Valid event date is required.");
         showModal("Validation Error", "Please select a valid event date.");
         return;
       }
-      if (
-        !(
-          formData.am_in ||
-          formData.am_out ||
-          formData.pm_in ||
-          formData.pm_out
-        )
-      ) {
+      if (!hasSelectedTime(formData)) {
         console.warn("Validation failed: At least one AM/PM time is required.");
         showModal(
           "Validation Error",
@@ -304,10 +325,10 @@ const EditEvent = () => {
       }
 
       if (formData.am_in && formData.am_out) {
-        const amInMinutes = convertToMinutes(formData.am_in);
-        const amOutMinutes = convertToMinutes(formData.am_out);
-        const amTimeDifference = amOutMinutes - amInMinutes;
-        if (amTimeDifference < 60) {
+        if (
+          getTimeDifference(formData.am_in, formData.am_out) <
+          MIN_TIME_RANGE_MINUTES
+        ) {
           console.warn(
             "Validation failed: AM times must be at least one hour apart."
           );
@@ -317,10 +338,10 @@ const EditEvent = () => {
       }
 
       if (formData.pm_in && formData.pm_out) {
-        const pmInMinutes = convertToMinutes(formData.pm_in);
-        const pmOutMinutes = convertToMinutes(formData.pm_out);
-        const pmTimeDifference = pmOutMinutes - pmInMinutes;
-        if (pmTimeDifference < 60) {
+        if (
+          getTimeDifference(formData.pm_in, formData.pm_out) <
+          MIN_TIME_RANGE_MINUTES
+        ) {
           console.warn(
             "Validation failed: PM times must be at least one hour apart."
           );
@@ -329,7 +350,7 @@ const EditEvent = () => {
         }
       }
 
-      if (formData.duration < 30) {
+      if (formData.duration < MIN_DURATION_MINUTES) {
         console.warn(
           "Validation failed: Event duration must be at least 30 minutes."
         );
@@ -337,21 +358,7 @@ const EditEvent = () => {
         return;
       }
 
-      const requestData = {
-        event_id: formData.event_id,
-        event_name_id: formData.event_name_id,
-        venue: formData.venue,
-        dates: formattedDates,
-        description: formData.description,
-        block_ids: formData.block_ids,
-        am_in: formData.am_in,
-        am_out: formData.am_out,
-        pm_in: formData.pm_in,
-        pm_out: formData.pm_out,
-        duration: formData.duration,
-        admin_id_number: formData.created_by,
-      };
-
+      const requestData = buildUpdatePayload(formData, formattedDates);
       const response = await updateEvent(eventId, requestData);
       if (response?.success) {
         showModal("Success", "Event updated successfully!", "success", {
@@ -415,7 +422,7 @@ const EditEvent = () => {
   if (errorDepartments) {
     return (
       <View style={globalStyles.secondaryContainer}>
-        <Text style={{ color: "red", textAlign: "center" }}>
+        <Text style={styles.errorText}>
           Failed to load departments. Please try again.
         </Text>
         <CustomButton
@@ -565,12 +572,7 @@ const EditEvent = () => {
               onPress={openDurationPicker}
             >
               <Text style={styles.durationButtonText}>
-                Set Duration:{" "}
-                {formData.duration > 0
-                  ? `${Math.floor(formData.duration / 60)} hrs ${
-                      formData.duration % 60
-                    } mins`
-                  : ""}
+                Set Duration: {getDurationLabel(formData.duration)}
               </Text>
             </TouchableOpacity>
             {isDurationPickerVisible && (
@@ -654,6 +656,10 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: theme.fontSizes.medium,
     fontFamily: theme.fontFamily.Arial,
+  },
+  errorText: {
+    color: "red",
+    textAlign: "center",
   },
 });
 
