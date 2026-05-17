@@ -8,43 +8,28 @@ import TabsComponent from "../../../components/TabsComponent";
 import globalStyles from "../../../constants/globalStyles";
 import theme from "../../../constants/theme";
 
-const AcademicManagement = () => {
+const EVENT_MANAGEMENT_LINKS = [
+  { title: "Events", route: "/eventManagement/events" },
+  { title: "Event Names", route: "/eventManagement/eventnames" },
+  { title: "Records", route: "/eventManagement/records" },
+];
+
+const EventManagement = () => {
   return (
     <View style={globalStyles.secondaryContainerSA}>
       <Text style={styles.title}>Event Management</Text>
 
-      <TouchableOpacity
-        style={styles.screenWrapper}
-        onPress={() => {
-          router.push("/eventManagement/events");
-        }}
-      >
-        <View style={styles.screenContainer}>
-          <Text style={styles.screenTitle}>Events</Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.screenWrapper}
-        onPress={() => {
-          router.push("/eventManagement/eventnames");
-        }}
-      >
-        <View style={styles.screenContainer}>
-          <Text style={styles.screenTitle}>Event Names</Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.screenWrapper}
-        onPress={() => {
-          router.push("/eventManagement/records");
-        }}
-      >
-        <View style={styles.screenContainer}>
-          <Text style={styles.screenTitle}>Records</Text>
-        </View>
-      </TouchableOpacity>
+      {EVENT_MANAGEMENT_LINKS.map((link) => (
+        <TouchableOpacity
+          key={link.route}
+          style={styles.screenWrapper}
+          onPress={() => router.push(link.route)}
+        >
+          <View style={styles.screenContainer}>
+            <Text style={styles.screenTitle}>{link.title}</Text>
+          </View>
+        </TouchableOpacity>
+      ))}
 
       <TabsComponent />
 
@@ -53,7 +38,7 @@ const AcademicManagement = () => {
   );
 };
 
-export default AcademicManagement;
+export default EventManagement;
 
 const styles = StyleSheet.create({
   title: {
