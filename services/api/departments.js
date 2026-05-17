@@ -1,8 +1,13 @@
-import api, { requireSuccess } from "./client";
+import api, { getArrayField, requireSuccess } from "./client";
+
+const withDepartmentList = (responseData) => ({
+  ...responseData,
+  departments: getArrayField(responseData, ["departments", "data"]),
+});
 
 export const fetchDepartments = async () => {
   const res = await api.get("/departments");
-  return requireSuccess(res, "Failed to fetch departments");
+  return withDepartmentList(requireSuccess(res, "Failed to fetch departments"));
 };
 
 export const fetchDepartmentById = async (id) => {
@@ -20,7 +25,7 @@ export const editDepartment = async (id, data) => {
   return requireSuccess(res, "Failed to update department").department;
 };
 
-export const disableDepartment = async (id) => {
-  const res = await api.patch(`/departments/${id}/status`);
+export const disableDepartment = async (id, status = "Disabled") => {
+  const res = await api.patch(`/departments/${id}/status`, { status });
   return requireSuccess(res, "Failed to update department status");
 };

@@ -40,4 +40,15 @@ export const requireSuccess = (
   return data;
 };
 
+export const getArrayField = (data, fieldNames) => {
+  const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+  const value = names.map((field) => data?.[field]).find(Array.isArray);
+  return value || [];
+};
+
+export const withArrayField = (data, fieldName, fallbackFieldNames = []) => ({
+  ...data,
+  [fieldName]: getArrayField(data, [fieldName, ...fallbackFieldNames]),
+});
+
 export default api;

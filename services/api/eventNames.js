@@ -1,8 +1,11 @@
-import api, { requireSuccess } from "./client";
+import api, { getArrayField, requireSuccess } from "./client";
 
 export const fetchEventNames = async () => {
   const res = await api.get("/event-names", { params: { limit: 100 } });
-  const data = requireSuccess(res, "Failed to fetch event names").data || [];
+  const data = getArrayField(requireSuccess(res, "Failed to fetch event names"), [
+    "data",
+    "eventNames",
+  ]);
   return data.map((e) => ({
     label: e.name,
     value: e.id,

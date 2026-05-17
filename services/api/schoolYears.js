@@ -1,5 +1,10 @@
 import api, { requireSuccess } from "./client";
 
+const withSchoolYearData = (responseData) => ({
+  ...responseData,
+  data: responseData.data || null,
+});
+
 const createSchoolYearFormData = (file, extraFields = {}) => {
   const formData = new FormData();
   formData.append("file", {
@@ -13,7 +18,7 @@ const createSchoolYearFormData = (file, extraFields = {}) => {
 
 export const getCurrentSchoolYear = async () => {
   const res = await api.get("/school-years/current");
-  return requireSuccess(res, "Failed to get current school year");
+  return withSchoolYearData(requireSuccess(res, "Failed to get current school year"));
 };
 
 export const uploadSchoolYearFile = async (file, type, extraFields = {}) => {

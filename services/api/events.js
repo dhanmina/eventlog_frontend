@@ -1,8 +1,16 @@
-import api, { requireSuccess } from "./client";
+import api, { requireSuccess, withArrayField } from "./client";
+
+const withEventList = (responseData) =>
+  withArrayField(responseData, "events", ["data"]);
 
 export const fetchEvents = async (params = {}) => {
   const res = await api.get("/events", { params });
-  return requireSuccess(res, "Failed to fetch events");
+  return withEventList(requireSuccess(res, "Failed to fetch events"));
+};
+
+export const fetchEditableEvents = async (params = {}) => {
+  const res = await api.get("/events/editable", { params });
+  return withEventList(requireSuccess(res, "Failed to fetch editable events"));
 };
 
 export const fetchEventById = async (id) => {
@@ -33,10 +41,10 @@ export const approveEvent = async (id, adminIdNumber) => {
 
 export const fetchApprovedOngoing = async () => {
   const res = await api.get("/events", { params: { status: "ongoing" } });
-  return requireSuccess(res, "Failed to fetch ongoing events");
+  return withEventList(requireSuccess(res, "Failed to fetch ongoing events"));
 };
 
 export const fetchUpcomingEvents = async (blockId) => {
   const res = await api.get("/events/upcoming", { params: blockId ? { block_id: blockId } : {} });
-  return requireSuccess(res, "Failed to fetch upcoming events");
+  return withEventList(requireSuccess(res, "Failed to fetch upcoming events"));
 };

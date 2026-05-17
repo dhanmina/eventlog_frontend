@@ -1,4 +1,4 @@
-import api, { requireSuccess } from "./client";
+import api, { getArrayField, requireSuccess } from "./client";
 
 export const login = async (id_number, password) => {
   const res = await api.post("/auth/login", { id_number, password });
@@ -22,7 +22,10 @@ export const confirmResetPassword = async (email, code, newPassword) => {
 
 export const fetchPublicDepartments = async () => {
   const res = await api.get("/auth/departments");
-  return requireSuccess(res, "Failed to fetch departments").departments;
+  return getArrayField(requireSuccess(res, "Failed to fetch departments"), [
+    "departments",
+    "data",
+  ]);
 };
 
 export const changeUserPassword = async (email, password) => {

@@ -1,8 +1,11 @@
-import api, { requireSuccess } from "./client";
+import api, { getArrayField, requireSuccess } from "./client";
 
 export const fetchAdmins = async () => {
   const res = await api.get("/admins");
-  return requireSuccess(res, "Failed to fetch admins").admins;
+  return getArrayField(requireSuccess(res, "Failed to fetch admins"), [
+    "admins",
+    "data",
+  ]);
 };
 
 export const fetchAdminById = async (id) => {
@@ -20,7 +23,7 @@ export const editAdmin = async (id, data) => {
   return requireSuccess(res, "Failed to update admin", { preferServerMessage: true });
 };
 
-export const disableAdmin = async (idNumber) => {
-  const res = await api.patch(`/admins/${idNumber}/status`);
+export const disableAdmin = async (idNumber, status = "Disabled") => {
+  const res = await api.patch(`/admins/${idNumber}/status`, { status });
   return requireSuccess(res, "Failed to update admin status", { preferServerMessage: true });
 };
