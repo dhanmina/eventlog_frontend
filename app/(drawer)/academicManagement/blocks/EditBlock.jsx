@@ -69,8 +69,8 @@ const formatCourseOptions = (courses) =>
 
 const formatYearLevelOptions = (yearLevels) =>
   toArray(yearLevels).map((yearLevel) => ({
-    label: yearLevel.year_level_name,
-    value: yearLevel.year_level_id,
+    label: yearLevel.year_level_name ?? yearLevel.name,
+    value: yearLevel.year_level_id ?? yearLevel.id,
   }));
 
 const buildFormData = (blockDetails) => ({
