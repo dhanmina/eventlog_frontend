@@ -23,6 +23,31 @@ import { File, Directory, Paths } from "expo-file-system";
 import CustomModal from "../../../../components/CustomModal";
 import TabsComponent from "../../../../components/TabsComponent";
 
+const INITIAL_MODAL_CONFIG = {
+  title: "",
+  message: "",
+  type: "success",
+  cancelTitle: "OK",
+};
+
+const RECORD_ROUTES = {
+  studentsList: "eventManagement/records/StudentsList",
+};
+
+const mapBlockForDisplay = (block) => ({
+  ...block,
+  display_name: block.course_code
+    ? `${block.course_code} ${block.block_name}`
+    : block.block_name,
+});
+
+const AVAILABLE_TIME_PERIODS_DEFAULT = {
+  hasAmIn: false,
+  hasAmOut: false,
+  hasPmIn: false,
+  hasPmOut: false,
+};
+
 const BlockList = () => {
   const { eventId } = useLocalSearchParams();
   const [eventTitle, setEventTitle] = useState("");
@@ -36,12 +61,7 @@ const BlockList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalConfig, setModalConfig] = useState({
-    title: "",
-    message: "",
-    type: "success",
-    cancelTitle: "OK",
-  });
+  const [modalConfig, setModalConfig] = useState(INITIAL_MODAL_CONFIG);
 
   useEffect(() => {
     if (!eventId) return;
@@ -55,12 +75,7 @@ const BlockList = () => {
           blocksData.data?.event_title || "Event Title Not Found";
         setEventTitle(eventTitle);
         const mappedBlocks =
-          blocksData.data?.blocks?.map((block) => ({
-            ...block,
-            display_name: block.course_code
-              ? `${block.course_code} ${block.block_name}`
-              : block.block_name,
-          })) || [];
+          blocksData.data?.blocks?.map(mapBlockForDisplay) || [];
         setAllBlocks(mappedBlocks);
         setBlocks(mappedBlocks);
         const uniqueDepartments = [
@@ -107,12 +122,7 @@ const BlockList = () => {
         );
         let mappedBlocks = [];
         if (blocksData?.data?.blocks?.length > 0) {
-          mappedBlocks = blocksData.data.blocks.map((block) => ({
-            ...block,
-            display_name: block.course_code
-              ? `${block.course_code} ${block.block_name}`
-              : block.block_name,
-          }));
+          mappedBlocks = blocksData.data.blocks.map(mapBlockForDisplay);
         }
         setAllBlocks(mappedBlocks);
         setBlocks(mappedBlocks);
@@ -201,12 +211,7 @@ const BlockList = () => {
             return {
               data: {
                 attendance_summary: [],
-                available_time_periods: {
-                  hasAmIn: false,
-                  hasAmOut: false,
-                  hasPmIn: false,
-                  hasPmOut: false,
-                },
+                available_time_periods: AVAILABLE_TIME_PERIODS_DEFAULT,
                 first_event_date: null,
                 last_event_date: null,
               },
@@ -254,22 +259,13 @@ const BlockList = () => {
       }
 
       const studentsByBlock = {};
-      let globalAvailableTimePeriods = {
-        hasAmIn: false,
-        hasAmOut: false,
-        hasPmIn: false,
-        hasPmOut: false,
-      };
+      let globalAvailableTimePeriods = { ...AVAILABLE_TIME_PERIODS_DEFAULT };
 
       filteredBlocks.forEach((block, index) => {
         const summaryData = attendanceSummaries[index]?.data || {};
         const summary = summaryData.attendance_summary || [];
-        const availableTimePeriods = summaryData.available_time_periods || {
-          hasAmIn: false,
-          hasAmOut: false,
-          hasPmIn: false,
-          hasPmOut: false,
-        };
+        const availableTimePeriods =
+          summaryData.available_time_periods || AVAILABLE_TIME_PERIODS_DEFAULT;
 
         globalAvailableTimePeriods.hasAmIn =
           globalAvailableTimePeriods.hasAmIn || availableTimePeriods.hasAmIn;
@@ -474,7 +470,7 @@ const BlockList = () => {
 
   const handleBlockPress = (block) => {
     router.push({
-      pathname: "eventManagement/records/StudentsList",
+      pathname: RECORD_ROUTES.studentsList,
       params: { eventId: eventId, blockId: block.block_id },
     });
   };
@@ -504,7 +500,7 @@ const BlockList = () => {
       </View>
       <View style={styles.container}>
         <View style={styles.filterContainer}>
-          <View style={{ width: "48%" }}>
+          <View style={styles.filterDropdown}>
             <CustomDropdown
               placeholder="Department"
               data={departments}
@@ -514,7 +510,7 @@ const BlockList = () => {
               onSelect={(item) => setSelectedDepartment(item.value)}
             />
           </View>
-          <View style={{ width: "48%" }}>
+          <View style={styles.filterDropdown}>
             <CustomDropdown
               placeholder="Year Level"
               data={yearLevels}
@@ -604,6 +600,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: theme.spacing.medium,
+  },
+  filterDropdown: {
+    width: "48%",
   },
   scrollviewContainer: {
     paddingHorizontal: theme.spacing.medium,

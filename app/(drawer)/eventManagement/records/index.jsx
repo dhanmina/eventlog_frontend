@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from "react-native";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { getRoleID } from "../../../../database/queries";
 import {
   fetchAllPastEvents,
@@ -19,6 +19,12 @@ import theme from "../../../../constants/theme";
 import { router } from "expo-router";
 
 import TabsComponent from "../../../../components/TabsComponent";
+
+const RECORD_ROUTES = {
+  blockList: (eventId) => `eventManagement/records/BlockList?eventId=${eventId}`,
+};
+
+const NO_DATES_LABEL = "No dates available";
 
 const Records = () => {
   const [roleId, setRoleId] = useState(null);
@@ -33,7 +39,7 @@ const Records = () => {
 
   const formatEventDates = useCallback((eventDates) => {
     if (!Array.isArray(eventDates) || eventDates.length === 0) {
-      return "No dates available";
+      return NO_DATES_LABEL;
     }
 
     const sortedDates = eventDates
@@ -41,7 +47,7 @@ const Records = () => {
       .sort((a, b) => moment(a).valueOf() - moment(b).valueOf());
 
     if (sortedDates.length === 0) {
-      return "No dates available";
+      return NO_DATES_LABEL;
     }
 
     if (sortedDates.length === 1) {
@@ -96,18 +102,20 @@ const Records = () => {
       .join(", ");
   }, []);
 
-  const processEvents = useCallback((events) => {
-    return events.map((event) => ({
-      event_id: event.event_id,
-      event_name: event.event_name,
-      event_dates:
-        typeof event.event_dates === "string"
-          ? event.event_dates.split(",").map((date) => date.trim())
-          : Array.isArray(event.event_dates)
-          ? event.event_dates
-          : [event.event_dates].filter(Boolean),
-    }));
-  }, []);
+  const processEvents = useCallback(
+    (events) =>
+      events.map((event) => ({
+        event_id: event.event_id,
+        event_name: event.event_name,
+        event_dates:
+          typeof event.event_dates === "string"
+            ? event.event_dates.split(",").map((date) => date.trim())
+            : Array.isArray(event.event_dates)
+            ? event.event_dates
+            : [event.event_dates].filter(Boolean),
+      })),
+    []
+  );
 
   const fetchData = useCallback(async () => {
     try {
@@ -219,6 +227,11 @@ const Records = () => {
     }
   };
 
+  const hasEvents = useMemo(
+    () => filteredOngoingEvents.length > 0 || filteredPastEvents.length > 0,
+    [filteredOngoingEvents, filteredPastEvents]
+  );
+
   if (loading) {
     return (
       <View style={globalStyles.secondaryContainer}>
@@ -226,9 +239,6 @@ const Records = () => {
       </View>
     );
   }
-
-  const hasEvents =
-    filteredOngoingEvents.length > 0 || filteredPastEvents.length > 0;
 
   return (
     <View style={globalStyles.secondaryContainer}>
@@ -239,7 +249,7 @@ const Records = () => {
         />
       </View>
       <ScrollView
-        style={{ flex: 1, width: "100%", marginBottom: 20 }}
+        style={styles.scrollviewContainer}
         contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -254,9 +264,7 @@ const Records = () => {
                 key={`ongoing-${event.event_id}-${index}`}
                 style={styles.eventContainer}
                 onPress={() =>
-                  router.push(
-                    `eventManagement/records/BlockList?eventId=${event.event_id}`
-                  )
+                  router.push(RECORD_ROUTES.blockList(event.event_id))
                 }
               >
                 <Text style={styles.eventTitle}>{event.event_name}</Text>
@@ -275,9 +283,7 @@ const Records = () => {
                 key={`past-${event.event_id}-${index}`}
                 style={styles.eventContainer}
                 onPress={() =>
-                  router.push(
-                    `eventManagement/records/BlockList?eventId=${event.event_id}`
-                  )
+                  router.push(RECORD_ROUTES.blockList(event.event_id))
                 }
               >
                 <Text style={styles.eventTitle}>{event.event_name}</Text>
@@ -324,6 +330,11 @@ const styles = StyleSheet.create({
   scrollview: {
     alignItems: "center",
     flexGrow: 1,
+  },
+  scrollviewContainer: {
+    flex: 1,
+    width: "100%",
+    marginBottom: 20,
   },
   eventTitle: {
     color: theme.colors.primary,

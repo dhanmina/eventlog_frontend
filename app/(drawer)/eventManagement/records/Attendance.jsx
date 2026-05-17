@@ -17,8 +17,17 @@ import CustomButton from "../../../../components/CustomButton";
 import * as Print from "expo-print";
 import { File, Directory, Paths } from "expo-file-system";
 import CustomModal from "../../../../components/CustomModal";
-import { fetchStudentAttendanceByEventAndBlock } from "../../../../services/api/attendance";
-import { getStudentAttSummary } from "../../../../services/api/attendance";
+import {
+  fetchStudentAttendanceByEventAndBlock,
+  getStudentAttSummary,
+} from "../../../../services/api/attendance";
+
+const INITIAL_MODAL_CONFIG = {
+  title: "",
+  message: "",
+  type: "success",
+  cancelTitle: "OK",
+};
 
 const SessionLog = ({ label, data, sessionType = "am" }) => {
   const now = moment.now();
@@ -64,7 +73,7 @@ const SessionLog = ({ label, data, sessionType = "am" }) => {
         <Text style={styles.morningText}>{label}</Text>
       </View>
       <View style={styles.logContainer}>
-        <View style={[styles.timeContainer, { width: "50%" }]}>
+        <View style={styles.timeContainer}>
           <View
             style={[
               styles.timeLabelContainer,
@@ -77,7 +86,7 @@ const SessionLog = ({ label, data, sessionType = "am" }) => {
             {renderAttendanceStatus(scheduleTimeIn, attendanceTimeIn)}
           </View>
         </View>
-        <View style={[styles.timeContainer, { width: "50%" }]}>
+        <View style={styles.timeContainer}>
           <View style={[styles.timeLabelContainer, { borderRightWidth: 0 }]}>
             <Text style={styles.timeLabel}>Time Out</Text>
           </View>
@@ -97,12 +106,7 @@ const Attendance = () => {
   const [studentDetails, setStudentDetails] = useState(null);
   const { eventId, blockId, studentId } = useLocalSearchParams();
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalConfig, setModalConfig] = useState({
-    title: "",
-    message: "",
-    type: "success",
-    cancelTitle: "OK",
-  });
+  const [modalConfig, setModalConfig] = useState(INITIAL_MODAL_CONFIG);
 
   useEffect(() => {
     const fetchData = async () => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -16,6 +16,10 @@ import images from "../../../../constants/images";
 
 import CustomSearch from "../../../../components/CustomSearch";
 import TabsComponent from "../../../../components/TabsComponent";
+
+const RECORD_ROUTES = {
+  attendance: "eventManagement/records/Attendance",
+};
 
 const StudentsList = () => {
   const [students, setStudents] = useState([]);
@@ -55,25 +59,28 @@ const StudentsList = () => {
     }
   }, [eventId, blockId]);
 
-  const handleSearch = (text) => {
-    if (!text.trim()) {
-      setFilteredStudents(students);
-      return;
-    }
+  const handleSearch = useCallback(
+    (text) => {
+      if (!text.trim()) {
+        setFilteredStudents(students);
+        return;
+      }
 
-    const searchTermLower = text.toLowerCase();
-    const filtered = students.filter(
-      (student) =>
-        student.name.toLowerCase().includes(searchTermLower) ||
-        student.student_id.toLowerCase().includes(searchTermLower)
-    );
+      const searchTermLower = text.toLowerCase();
+      const filtered = students.filter(
+        (student) =>
+          student.name.toLowerCase().includes(searchTermLower) ||
+          student.student_id.toLowerCase().includes(searchTermLower)
+      );
 
-    setFilteredStudents(filtered);
-  };
+      setFilteredStudents(filtered);
+    },
+    [students]
+  );
 
   const handleStudentPress = (student) => {
     router.push({
-      pathname: "eventManagement/records/Attendance",
+      pathname: RECORD_ROUTES.attendance,
       params: {
         eventId,
         blockId,
@@ -110,13 +117,13 @@ const StudentsList = () => {
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <View style={{ width: "100%", paddingHorizontal: theme.spacing.medium }}>
+      <View style={styles.searchContainer}>
         <CustomSearch
           onSearch={handleSearch}
           placeholder="Search by name or ID"
         />
       </View>
-      <ScrollView style={{ width: "100%" }}>
+      <ScrollView style={styles.scrollview}>
         {filteredStudents.length === 0 ? (
           <View style={styles.noResultsContainer}>
             <Text style={styles.noResultsText}>
@@ -149,6 +156,13 @@ const StudentsList = () => {
 export default StudentsList;
 
 const styles = StyleSheet.create({
+  searchContainer: {
+    width: "100%",
+    paddingHorizontal: theme.spacing.medium,
+  },
+  scrollview: {
+    width: "100%",
+  },
   studentContainer: {
     justifyContent: "space-between",
     flexDirection: "row",
