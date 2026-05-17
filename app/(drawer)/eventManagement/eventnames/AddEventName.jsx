@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import TabsComponent from "../../../../components/TabsComponent";
 import globalStyles from "../../../../constants/globalStyles";
@@ -9,14 +9,28 @@ import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
 import { addEventName } from "../../../../services/api";
 
+const INITIAL_FORM_DATA = {
+  name: "",
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
 const AddEventName = () => {
-  const [formData, setFormData] = useState({ name: "" });
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [modal, setModal] = useState(INITIAL_MODAL);
+
+  const showModal = useCallback((title, message, type) => {
+    setModal({ visible: true, title, message, type });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModal((currentModal) => ({ ...currentModal, visible: false }));
+  }, []);
 
   const handleChange = (name, value) => {
     setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
@@ -25,34 +39,22 @@ const AddEventName = () => {
   const handleSubmit = async () => {
     try {
       if (!formData.name || typeof formData.name !== "string") {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please enter a valid event name.",
-          type: "warning",
-        });
+        showModal("Warning", "Please enter a valid event name.", "warning");
         return;
       }
 
       const submitData = { name: formData.name.trim() };
       await addEventName(submitData);
 
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Event name added successfully!",
-        type: "success",
-      });
-      setFormData({ name: "" });
+      showModal("Success", "Event name added successfully!", "success");
+      setFormData(INITIAL_FORM_DATA);
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message:
-          error.response?.data?.message ||
+      showModal(
+        "Error",
+        error.response?.data?.message ||
           "Failed to add event name. Please try again.",
-        type: "error",
-      });
+        "error"
+      );
     }
   };
 
@@ -63,7 +65,7 @@ const AddEventName = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 

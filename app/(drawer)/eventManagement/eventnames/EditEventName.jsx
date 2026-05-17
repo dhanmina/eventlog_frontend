@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -17,25 +17,37 @@ import { fetchEventNameById, editEventName } from "../../../../services/api";
 import CustomModal from "../../../../components/CustomModal";
 import { useLocalSearchParams } from "expo-router";
 
+const INITIAL_FORM_DATA = {
+  name: "",
+  status: "Active",
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const STATUS_OPTIONS = [
+  { label: "Active", value: "Active" },
+  { label: "Disabled", value: "Disabled" },
+];
+
 const EditEventName = () => {
   const { id: eventNameId } = useLocalSearchParams();
-  const [formData, setFormData] = useState({
-    name: "",
-    status: "Active",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL);
 
-  const statusOptions = [
-    { label: "Active", value: "Active" },
-    { label: "Disabled", value: "Disabled" },
-  ];
+  const showModal = useCallback((title, message, type) => {
+    setModal({ visible: true, title, message, type });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModal((currentModal) => ({ ...currentModal, visible: false }));
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,15 +63,14 @@ const EditEventName = () => {
           throw new Error("Event name details not found");
         }
 
-        const { name, status } = eventNameDetails.data;
+        const { name, status } = eventNameDetails;
 
         if (!name || name.trim() === "0") {
-          setModal({
-            visible: true,
-            title: "Warning",
-            message: "The fetched event name is invalid or missing.",
-            type: "warning",
-          });
+          showModal(
+            "Warning",
+            "The fetched event name is invalid or missing.",
+            "warning"
+          );
           return;
         }
 
@@ -68,19 +79,18 @@ const EditEventName = () => {
           status: status || "Active",
         });
       } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: error.message || "Failed to load event name details.",
-          type: "error",
-        });
+        showModal(
+          "Error",
+          error.message || "Failed to load event name details.",
+          "error"
+        );
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [eventNameId]);
+  }, [eventNameId, showModal]);
 
   const handleChange = (name, value) => {
     const trimmedValue =
@@ -96,12 +106,7 @@ const EditEventName = () => {
         typeof formData.name !== "string" ||
         !formData.name.trim()
       ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please enter a valid event name.",
-          type: "warning",
-        });
+        showModal("Warning", "Please enter a valid event name.", "warning");
         return;
       }
 
@@ -110,22 +115,15 @@ const EditEventName = () => {
         status: formData.status,
       };
 
-      const response = await editEventName(eventNameId, submitData);
+      await editEventName(eventNameId, submitData);
 
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Event name updated successfully!",
-        type: "success",
-      });
+      showModal("Success", "Event name updated successfully!", "success");
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message:
-          error.response?.data?.message || "Failed to update event name.",
-        type: "error",
-      });
+      showModal(
+        "Error",
+        error.response?.data?.message || "Failed to update event name.",
+        "error"
+      );
     }
   };
 
@@ -144,7 +142,7 @@ const EditEventName = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 
@@ -168,7 +166,7 @@ const EditEventName = () => {
 
           <CustomDropdown
             title="Status"
-            data={statusOptions}
+            data={STATUS_OPTIONS}
             placeholder="Select Status"
             value={formData.status}
             onSelect={(item) => handleChange("status", item.value)}

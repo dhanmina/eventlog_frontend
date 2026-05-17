@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,16 @@ import CustomButton from "../../../../components/CustomButton";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 
+const EVENT_NAME_ROUTES = {
+  add: "/eventManagement/eventnames/AddEventName",
+  details: (eventNameId) =>
+    `/eventManagement/eventnames/EventNameDetails?id=${eventNameId}`,
+  edit: (eventNameId) =>
+    `/eventManagement/eventnames/EditEventName?id=${eventNameId}`,
+};
+
+const isEventNameDisabled = (eventName) => eventName.status === "Disabled";
+
 export default function EventNamesScreen() {
   const [eventNames, setEventNames] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,12 +38,12 @@ export default function EventNamesScreen() {
   const [eventNameToDisable, setEventNameToDisable] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadEventNames = async () => {
+  const loadEventNames = useCallback(async () => {
     try {
       const fetchedEventNames = await fetchEventNames();
       setEventNames(Array.isArray(fetchedEventNames) ? fetchedEventNames : []);
     } catch (err) {}
-  };
+  }, []);
 
   const refreshData = async () => {
     setRefreshing(true);
@@ -46,17 +56,21 @@ export default function EventNamesScreen() {
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       loadEventNames();
-    }, [])
+    }, [loadEventNames])
   );
 
-  const filteredEventNames = Array.isArray(eventNames)
-    ? eventNames.filter((eventName) => {
-        const eventNameText = eventName.label?.toLowerCase() || "";
-        return eventNameText.includes(searchQuery.toLowerCase());
-      })
-    : [];
+  const filteredEventNames = useMemo(() => {
+    const normalizedSearchQuery = searchQuery.toLowerCase();
+
+    return Array.isArray(eventNames)
+      ? eventNames.filter((eventName) => {
+          const eventNameText = eventName.label?.toLowerCase() || "";
+          return eventNameText.includes(normalizedSearchQuery);
+        })
+      : [];
+  }, [eventNames, searchQuery]);
 
   const handleDisablePress = (eventName) => {
     if (!eventName || !eventName.label) return;
@@ -88,15 +102,15 @@ export default function EventNamesScreen() {
   return (
     <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
       <Text style={styles.headerText}>EVENT NAMES</Text>
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={styles.searchContainer}>
         <SearchBar
           placeholder="Search event names..."
           onSearch={setSearchQuery}
         />
       </View>
       <ScrollView
-        style={{ flex: 1, width: "100%", marginBottom: 70 }}
-        contentContainerStyle={[styles.scrollview, { paddingBottom: 80 }]}
+        style={styles.scrollviewContainer}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
@@ -108,9 +122,7 @@ export default function EventNamesScreen() {
               key={eventName.value}
               style={styles.eventNameContainer}
               onPress={() =>
-                router.push(
-                  `/eventManagement/eventnames/EventNameDetails?id=${eventName.value}`
-                )
+                router.push(EVENT_NAME_ROUTES.details(eventName.value))
               }
             >
               <View style={styles.textContainer}>
@@ -125,9 +137,7 @@ export default function EventNamesScreen() {
                 <TouchableOpacity
                   onPress={() => {
                     if (eventName.value) {
-                      router.push(
-                        `/eventManagement/eventnames/EditEventName?id=${eventName.value}`
-                      );
+                      router.push(EVENT_NAME_ROUTES.edit(eventName.value));
                     }
                   }}
                 >
@@ -135,10 +145,11 @@ export default function EventNamesScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDisablePress(eventName)}
-                  disabled={eventName.status === "Disabled"}
-                  style={{
-                    opacity: eventName.status === "Disabled" ? 0.5 : 1,
-                  }}
+                  disabled={isEventNameDisabled(eventName)}
+                  style={[
+                    styles.disableButton,
+                    isEventNameDisabled(eventName) && styles.disabledButton,
+                  ]}
                 >
                   <Image source={images.disabled} style={styles.icon} />
                 </TouchableOpacity>
@@ -153,9 +164,7 @@ export default function EventNamesScreen() {
       <View style={styles.buttonContainer}>
         <CustomButton
           title="ADD EVENT NAME"
-          onPress={() =>
-            router.push("/eventManagement/eventnames/AddEventName")
-          }
+          onPress={() => router.push(EVENT_NAME_ROUTES.add)}
         />
       </View>
 
@@ -193,6 +202,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: theme.spacing.small,
   },
+  searchContainer: {
+    paddingHorizontal: theme.spacing.medium,
+    width: "100%",
+  },
+  scrollviewContainer: {
+    flex: 1,
+    width: "100%",
+    marginBottom: 70,
+  },
   eventNameContainer: {
     borderWidth: 2,
     borderColor: theme.colors.primary,
@@ -210,6 +228,7 @@ const styles = StyleSheet.create({
   },
   scrollview: {
     padding: theme.spacing.medium,
+    paddingBottom: 80,
     flexGrow: 1,
   },
   icon: {
@@ -221,6 +240,12 @@ const styles = StyleSheet.create({
   iconContainer: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  disableButton: {
+    opacity: 1,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   name: {
     fontFamily: theme.fontFamily.SquadaOne,

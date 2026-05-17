@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import TabsComponent from "../../../../components/TabsComponent";
 import CustomButton from "../../../../components/CustomButton";
@@ -10,7 +10,9 @@ import CustomModal from "../../../../components/CustomModal";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import { fetchEventNameById, disableEventName } from "../../../../services/api";
-import { useLocalSearchParams } from "expo-router";
+
+const getEditEventNameRoute = (eventNameId) =>
+  `/eventManagement/eventnames/EditEventName?id=${eventNameId}`;
 
 const EventNameDetails = () => {
   const { id: eventNameId } = useLocalSearchParams();
@@ -19,30 +21,53 @@ const EventNameDetails = () => {
   const [isDisabledModalVisible, setIsDisabledModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
-  const fetchEventNameDetails = async () => {
+  const fetchEventNameDetails = useCallback(async () => {
     try {
       if (!eventNameId) throw new Error("Invalid event name ID");
 
       const eventNameData = await fetchEventNameById(eventNameId);
 
-      if (!eventNameData || !eventNameData.data) {
+      if (!eventNameData) {
         throw new Error("Event name details not found");
       }
 
-      setEventNameDetails(eventNameData.data);
+      setEventNameDetails(eventNameData);
     } catch (error) {
       console.error(error.message || error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [eventNameId]);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setIsLoading(true);
       fetchEventNameDetails();
-    }, [eventNameId])
+    }, [fetchEventNameDetails])
   );
+
+  const handleDisablePress = () => {
+    setIsDisabledModalVisible(true);
+  };
+
+  const handleDisableModalClose = () => {
+    setIsDisabledModalVisible(false);
+  };
+
+  const handleSuccessModalClose = () => {
+    setIsSuccessModalVisible(false);
+  };
+
+  const handleConfirmDisable = async () => {
+    try {
+      await disableEventName(eventNameDetails.id);
+      setIsSuccessModalVisible(true);
+    } catch (error) {
+      console.error(error.message || error);
+    } finally {
+      handleDisableModalClose();
+    }
+  };
 
   if (isLoading) {
     return (
@@ -60,20 +85,10 @@ const EventNameDetails = () => {
     );
   }
 
-  const handleDisablePress = () => {
-    setIsDisabledModalVisible(true);
-  };
-
-  const handleConfirmDisable = async () => {
-    try {
-      await disableEventName(eventNameDetails.id);
-      setIsSuccessModalVisible(true);
-    } catch (error) {
-      console.error(error.message || error);
-    } finally {
-      setIsDisabledModalVisible(false);
-    }
-  };
+  const eventNameDetailRows = [
+    { label: "Event Name:", value: eventNameDetails.name },
+    { label: "Status:", value: eventNameDetails.status || "-" },
+  ];
 
   return (
     <View
@@ -87,14 +102,12 @@ const EventNameDetails = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.detailsWrapper}>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Event Name:</Text>
-          <Text style={styles.detail}>{eventNameDetails.name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Status:</Text>
-          <Text style={styles.detail}>{eventNameDetails.status || "-"}</Text>
-        </View>
+        {eventNameDetailRows.map((row) => (
+          <View key={row.label} style={styles.detailsContainer}>
+            <Text style={styles.detailTitle}>{row.label}</Text>
+            <Text style={styles.detail}>{row.value}</Text>
+          </View>
+        ))}
       </ScrollView>
 
       <View style={styles.buttonContainer}>
@@ -102,9 +115,7 @@ const EventNameDetails = () => {
           <CustomButton
             title="EDIT"
             onPress={() =>
-              router.push(
-                `/eventManagement/eventnames/EditEventName?id=${eventNameDetails.id}`
-              )
+              router.push(getEditEventNameRoute(eventNameDetails.id))
             }
           />
         </View>
@@ -124,7 +135,7 @@ const EventNameDetails = () => {
         title="Confirm Deletion"
         message={`Are you sure you want to disable ${eventNameDetails.name}?`}
         type="warning"
-        onClose={() => setIsDisableModalVisible(false)}
+        onClose={handleDisableModalClose}
         onConfirm={handleConfirmDisable}
         cancelTitle="Cancel"
         confirmTitle="Disable"
@@ -135,9 +146,7 @@ const EventNameDetails = () => {
         title="Success"
         message={`${eventNameDetails.name} has been disabled successfully.`}
         type="success"
-        onClose={() => {
-          setIsSuccessModalVisible(false);
-        }}
+        onClose={handleSuccessModalClose}
         cancelTitle="Close"
       />
 
