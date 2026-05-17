@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -21,29 +21,52 @@ import {
 import CustomModal from "../../../../components/CustomModal";
 import { useLocalSearchParams } from "expo-router";
 
+const INITIAL_FORM_DATA = {
+  course_name: "",
+  course_code: "",
+  short_name: "",
+  department_id: null,
+  status: "Active",
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const STATUS_OPTIONS = [
+  { label: "Active", value: "Active" },
+  { label: "Disabled", value: "Disabled" },
+];
+
+const toArray = (value) => (Array.isArray(value) ? value : []);
+
+const getDepartmentList = (response) =>
+  toArray(Array.isArray(response) ? response : response?.departments);
+
+const formatDepartmentOptions = (departments) =>
+  toArray(departments).map((department) => ({
+    label: department.department_name,
+    value: department.department_id,
+  }));
+
 const EditCourse = () => {
   const { id: course_id } = useLocalSearchParams();
-  const [formData, setFormData] = useState({
-    course_name: "",
-    course_code: "",
-    short_name: "",
-    department_id: null,
-    status: "Active",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL);
 
-  const statusOptions = [
-    { label: "Active", value: "Active" },
-    { label: "Disabled", value: "Disabled" },
-  ];
+  const showModal = useCallback((title, message, type) => {
+    setModal({ visible: true, title, message, type });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModal((currentModal) => ({ ...currentModal, visible: false }));
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,7 +77,9 @@ const EditCourse = () => {
         }
 
         const departments = await fetchDepartments();
-        setDepartmentOptions(departments);
+        setDepartmentOptions(
+          formatDepartmentOptions(getDepartmentList(departments))
+        );
 
         const courseDetails = await fetchCourseById(course_id);
 
@@ -70,19 +95,18 @@ const EditCourse = () => {
           status: courseDetails.status || "Active",
         });
       } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: error.message || "Failed to load course details.",
-          type: "error",
-        });
+        showModal(
+          "Error",
+          error.message || "Failed to load course details.",
+          "error",
+        );
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [course_id]);
+  }, [course_id, showModal]);
 
   const handleChange = (name, value) => {
     setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
@@ -90,13 +114,11 @@ const EditCourse = () => {
 
   const handleSubmit = async () => {
     try {
-      if (!formData.course_name.trim() || formData.department_id === null) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
+      const hasMissingRequiredFields =
+        !formData.course_name.trim() || formData.department_id === null;
+
+      if (hasMissingRequiredFields) {
+        showModal("Warning", "Please fill in all required fields.", "warning");
         return;
       }
 
@@ -110,19 +132,13 @@ const EditCourse = () => {
 
       await editCourse(course_id, submitData);
 
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Course updated successfully!",
-        type: "success",
-      });
+      showModal("Success", "Course updated successfully!", "success");
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message: error.response?.data?.message || "Failed to update course.",
-        type: "error",
-      });
+      showModal(
+        "Error",
+        error.response?.data?.message || "Failed to update course.",
+        "error",
+      );
     }
   };
 
@@ -141,7 +157,7 @@ const EditCourse = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 
@@ -187,7 +203,7 @@ const EditCourse = () => {
 
           <CustomDropdown
             title="Status"
-            data={statusOptions}
+            data={STATUS_OPTIONS}
             placeholder="Select Status"
             value={formData.status}
             onSelect={(item) => handleChange("status", item.value)}

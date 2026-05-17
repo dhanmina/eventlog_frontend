@@ -5,7 +5,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import TabsComponent from "../../../../components/TabsComponent";
 import globalStyles from "../../../../constants/globalStyles";
@@ -16,43 +16,67 @@ import CustomButton from "../../../../components/CustomButton";
 import { fetchDepartments, addCourse } from "../../../../services/api";
 import CustomModal from "../../../../components/CustomModal";
 
+const INITIAL_FORM_DATA = {
+  course_name: "",
+  course_code: "",
+  short_name: "",
+  department_id: null,
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const toArray = (value) => (Array.isArray(value) ? value : []);
+
+const getDepartmentList = (response) =>
+  toArray(Array.isArray(response) ? response : response?.departments);
+
+const formatDepartmentOptions = (departments) =>
+  toArray(departments).map((department) => ({
+    label: department.department_name,
+    value: department.department_id,
+  }));
+
 const AddCourse = () => {
-  const [formData, setFormData] = useState({
-    course_name: "",
-    course_code: "",
-    short_name: "",
-    department_id: null,
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL);
+
+  const showModal = useCallback((title, message, type) => {
+    setModal({ visible: true, title, message, type });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModal((currentModal) => ({ ...currentModal, visible: false }));
+  }, []);
 
   useEffect(() => {
     const fetchDepartmentsData = async () => {
       setIsLoading(true);
       try {
         const departments = await fetchDepartments();
-        setDepartmentOptions(departments);
+        setDepartmentOptions(
+          formatDepartmentOptions(getDepartmentList(departments))
+        );
       } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load departments. Please try again.",
-          type: "error",
-        });
+        showModal(
+          "Error",
+          "Failed to load departments. Please try again.",
+          "error",
+        );
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchDepartmentsData();
-  }, []);
+  }, [showModal]);
 
   const handleChange = (name, value) => {
     setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
@@ -60,17 +84,13 @@ const AddCourse = () => {
 
   const handleSubmit = async () => {
     try {
-      if (
+      const hasMissingRequiredFields =
         !formData.course_name.trim() ||
         !formData.course_code.trim() ||
-        formData.department_id === null
-      ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
+        formData.department_id === null;
+
+      if (hasMissingRequiredFields) {
+        showModal("Warning", "Please fill in all required fields.", "warning");
         return;
       }
 
@@ -78,32 +98,22 @@ const AddCourse = () => {
         course_name: formData.course_name,
         course_code: formData.course_code,
         department_id: formData.department_id,
-        ...(formData.short_name.trim() && { short_name: formData.short_name.trim() }),
+        ...(formData.short_name.trim() && {
+          short_name: formData.short_name.trim(),
+        }),
       };
 
       await addCourse(submitData);
 
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Course added successfully!",
-        type: "success",
-      });
-      setFormData({
-        course_name: "",
-        course_code: "",
-        short_name: "",
-        department_id: null,
-      });
+      showModal("Success", "Course added successfully!", "success");
+      setFormData(INITIAL_FORM_DATA);
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message:
-          error.response?.data?.message ||
+      showModal(
+        "Error",
+        error.response?.data?.message ||
           "Failed to add course. Please try again.",
-        type: "error",
-      });
+        "error",
+      );
     }
   };
 
@@ -122,7 +132,7 @@ const AddCourse = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 

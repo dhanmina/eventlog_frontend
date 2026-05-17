@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import TabsComponent from "../../../../components/TabsComponent";
 import CustomButton from "../../../../components/CustomButton";
@@ -10,7 +10,9 @@ import CustomModal from "../../../../components/CustomModal";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import { fetchCourseById, disableCourse } from "../../../../services/api";
-import { useLocalSearchParams } from "expo-router";
+
+const getEditCourseRoute = (courseId) =>
+  `/academicManagement/courses/EditCourse?id=${courseId}`;
 
 const CourseDetails = () => {
   const { id: course_id } = useLocalSearchParams();
@@ -19,7 +21,7 @@ const CourseDetails = () => {
   const [isDisableModalVisible, setIsDisableModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
-  const fetchCourseDetails = async () => {
+  const fetchCourseDetails = useCallback(async () => {
     try {
       if (!course_id) throw new Error("Invalid course ID");
 
@@ -32,14 +34,37 @@ const CourseDetails = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [course_id]);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setIsLoading(true);
       fetchCourseDetails();
-    }, [course_id]),
+    }, [fetchCourseDetails]),
   );
+
+  const handleDisablePress = () => {
+    setIsDisableModalVisible(true);
+  };
+
+  const handleDisableModalClose = () => {
+    setIsDisableModalVisible(false);
+  };
+
+  const handleConfirmDisable = async () => {
+    try {
+      await disableCourse(courseDetails.course_id);
+
+      setCourseDetails((prevDetails) =>
+        prevDetails ? { ...prevDetails, status: "Disabled" } : null,
+      );
+
+      handleDisableModalClose();
+      setIsSuccessModalVisible(true);
+    } catch (error) {
+      console.error("Error disabling course:", error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -57,24 +82,12 @@ const CourseDetails = () => {
     );
   }
 
-  const handleDisablePress = () => {
-    setIsDisableModalVisible(true);
-  };
-
-  const handleConfirmDisable = async () => {
-    try {
-      await disableCourse(courseDetails.course_id);
-
-      setCourseDetails((prevDetails) =>
-        prevDetails ? { ...prevDetails, status: "Disabled" } : null,
-      );
-
-      setIsDisableModalVisible(false);
-      setIsSuccessModalVisible(true);
-    } catch (error) {
-      console.error("Error disabling course:", error);
-    }
-  };
+  const courseDetailRows = [
+    { label: "Course Name:", value: courseDetails.course_name },
+    { label: "Course Code:", value: courseDetails.course_code || "-" },
+    { label: "Department:", value: courseDetails.department_name || "-" },
+    { label: "Status:", value: courseDetails.status || "-" },
+  ];
 
   return (
     <View
@@ -88,24 +101,12 @@ const CourseDetails = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.detailsWrapper}>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Course Name:</Text>
-          <Text style={styles.detail}>{courseDetails.course_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Course Code:</Text>
-          <Text style={styles.detail}>{courseDetails.course_code || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Department:</Text>
-          <Text style={styles.detail}>
-            {courseDetails.department_name || "-"}
-          </Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Status:</Text>
-          <Text style={styles.detail}>{courseDetails.status || "-"}</Text>
-        </View>
+        {courseDetailRows.map((row) => (
+          <View key={row.label} style={styles.detailsContainer}>
+            <Text style={styles.detailTitle}>{row.label}</Text>
+            <Text style={styles.detail}>{row.value}</Text>
+          </View>
+        ))}
       </ScrollView>
 
       <View style={styles.buttonContainer}>
@@ -113,9 +114,7 @@ const CourseDetails = () => {
           <CustomButton
             title="EDIT"
             onPress={() =>
-              router.push(
-                `/academicManagement/courses/EditCourse?id=${courseDetails.course_id}`,
-              )
+              router.push(getEditCourseRoute(courseDetails.course_id))
             }
           />
         </View>
@@ -135,7 +134,7 @@ const CourseDetails = () => {
         title="Confirm Disable"
         message={`Are you sure you want to disable ${courseDetails.course_name}?`}
         type="warning"
-        onClose={() => setIsDisableModalVisible(false)}
+        onClose={handleDisableModalClose}
         onConfirm={handleConfirmDisable}
         cancelTitle="Cancel"
         confirmTitle="Disable"

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -21,6 +21,15 @@ import CustomButton from "../../../../components/CustomButton";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 
+const COURSE_ROUTES = {
+  add: "/academicManagement/courses/AddCourse",
+  details: (courseId) =>
+    `/academicManagement/courses/CourseDetails?id=${courseId}`,
+  edit: (courseId) => `/academicManagement/courses/EditCourse?id=${courseId}`,
+};
+
+const isCourseDisabled = (course) => course.status === "Disabled";
+
 export default function CoursesScreen() {
   const [courses, setCourses] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,14 +38,14 @@ export default function CoursesScreen() {
   const [courseToDisable, setCourseToDisable] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadCourses = async () => {
+  const loadCourses = useCallback(async () => {
     try {
       const fetchedCourses = await fetchCourses();
       setCourses(Array.isArray(fetchedCourses) ? fetchedCourses : []);
     } catch (err) {
       console.error("Error fetching courses:", err);
     }
-  };
+  }, []);
 
   const refreshData = async () => {
     setRefreshing(true);
@@ -50,21 +59,26 @@ export default function CoursesScreen() {
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       loadCourses();
-    }, [])
+    }, [loadCourses])
   );
 
-  const filteredCourses = Array.isArray(courses)
-    ? courses.filter((course) => {
-        const courseName = course.course_name?.toLowerCase() || "";
-        const departmentName = course.department_name?.toLowerCase() || "";
-        return (
-          courseName.includes(searchQuery.toLowerCase()) ||
-          departmentName.includes(searchQuery.toLowerCase())
-        );
-      })
-    : [];
+  const filteredCourses = useMemo(() => {
+    const normalizedSearchQuery = searchQuery.toLowerCase();
+
+    return Array.isArray(courses)
+      ? courses.filter((course) => {
+          const courseName = course.course_name?.toLowerCase() || "";
+          const departmentName = course.department_name?.toLowerCase() || "";
+
+          return (
+            courseName.includes(normalizedSearchQuery) ||
+            departmentName.includes(normalizedSearchQuery)
+          );
+        })
+      : [];
+  }, [courses, searchQuery]);
 
   const handleDisablePress = (course) => {
     setCourseToDisable(course);
@@ -100,12 +114,12 @@ export default function CoursesScreen() {
   return (
     <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
       <Text style={styles.headerText}>COURSES</Text>
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={styles.searchContainer}>
         <SearchBar placeholder="Search courses..." onSearch={setSearchQuery} />
       </View>
       <ScrollView
-        style={{ flex: 1, width: "100%", marginBottom: 70 }}
-        contentContainerStyle={[styles.scrollview, { paddingBottom: 80 }]}
+        style={styles.scrollviewContainer}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
@@ -117,9 +131,7 @@ export default function CoursesScreen() {
               key={course.course_id}
               style={styles.courseContainer}
               onPress={() =>
-                router.push(
-                  `/academicManagement/courses/CourseDetails?id=${course.course_id}`
-                )
+                router.push(COURSE_ROUTES.details(course.course_id))
               }
             >
               <View style={styles.textContainer}>
@@ -135,9 +147,7 @@ export default function CoursesScreen() {
                 <TouchableOpacity
                   onPress={() => {
                     if (course.course_id) {
-                      router.push(
-                        `/academicManagement/courses/EditCourse?id=${course.course_id}`
-                      );
+                      router.push(COURSE_ROUTES.edit(course.course_id));
                     }
                   }}
                 >
@@ -145,8 +155,11 @@ export default function CoursesScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDisablePress(course)}
-                  disabled={course.status === "Disabled"}
-                  style={{ opacity: course.status === "Disabled" ? 0.5 : 1 }}
+                  disabled={isCourseDisabled(course)}
+                  style={[
+                    styles.disableButton,
+                    isCourseDisabled(course) && styles.disabledButton,
+                  ]}
                 >
                   <Image source={images.disabled} style={styles.icon} />
                 </TouchableOpacity>
@@ -161,7 +174,7 @@ export default function CoursesScreen() {
       <View style={styles.buttonContainer}>
         <CustomButton
           title="ADD COURSE"
-          onPress={() => router.push("/academicManagement/courses/AddCourse")}
+          onPress={() => router.push(COURSE_ROUTES.add)}
         />
       </View>
 
@@ -199,6 +212,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: theme.spacing.small,
   },
+  searchContainer: {
+    paddingHorizontal: theme.spacing.medium,
+    width: "100%",
+  },
+  scrollviewContainer: {
+    flex: 1,
+    width: "100%",
+    marginBottom: 70,
+  },
   courseContainer: {
     borderWidth: 2,
     borderColor: theme.colors.primary,
@@ -216,6 +238,7 @@ const styles = StyleSheet.create({
   },
   scrollview: {
     padding: theme.spacing.medium,
+    paddingBottom: 80,
     flexGrow: 1,
   },
   icon: {
@@ -227,6 +250,12 @@ const styles = StyleSheet.create({
   iconContainer: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  disableButton: {
+    opacity: 1,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   name: {
     fontFamily: theme.fontFamily.SquadaOne,
