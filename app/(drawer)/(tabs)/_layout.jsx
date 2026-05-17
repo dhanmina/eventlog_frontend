@@ -7,6 +7,55 @@ import { getRoleID } from "../../../database/queries";
 import images from "../../../constants/images";
 import theme from "../../../constants/theme";
 
+const QR_ROUTES_BY_ROLE = {
+  1: "/qr/Generate",
+  2: "/(tabs)/qr",
+  3: "/qr/Scan",
+  4: "/qr/Scan",
+};
+
+const getQRRoute = (roleId) => {
+  if (roleId === null) return "/qr";
+  return QR_ROUTES_BY_ROLE[roleId] || "/(tabs)/qr";
+};
+
+const tabItems = {
+  home: {
+    name: "Home",
+    href: "/(tabs)/home",
+    icon: images.home,
+    label: "Home",
+  },
+  qr: {
+    name: "QR Code",
+    getHref: getQRRoute,
+    icon: images.scanner,
+    label: "QR Code",
+  },
+  records: {
+    name: "records",
+    href: "/(tabs)/records",
+    icon: images.calendar,
+    label: "Records",
+  },
+  account: {
+    name: "Account",
+    href: "/(tabs)/account",
+    icon: images.user,
+    label: "Account",
+  },
+};
+
+const standardTabOrder = ["home", "qr", "center", "records", "account"];
+const superAdminTabOrder = ["home", "center", "qr"];
+
+const TabIconItem = ({ icon, label }) => (
+  <View style={styles.tabItem}>
+    <Image source={icon} style={styles.tabIcon} />
+    <Text style={styles.tabText}>{label}</Text>
+  </View>
+);
+
 const TabsLayout = () => {
   const [roleId, setRoleId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,14 +75,6 @@ const TabsLayout = () => {
     fetchRoleId();
   }, []);
 
-  const getQRRoute = () => {
-    if (roleId === null) return "/qr";
-    if (roleId === 1) return "/qr/Generate";
-    if (roleId === 2) return "/(tabs)/qr";
-    if (roleId === 3 || roleId === 4) return "/qr/Scan";
-    return "/(tabs)/qr";
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -42,72 +83,37 @@ const TabsLayout = () => {
     );
   }
 
-  return roleId === 4 ? (
+  const tabOrder = roleId === 4 ? superAdminTabOrder : standardTabOrder;
+
+  return (
     <Tabs>
       <TabSlot />
       <TabList style={styles.tabList}>
-        <TabTrigger name="Home" href="/(tabs)/home">
-          <View style={styles.tabItem}>
-            <Image source={images.home} style={styles.tabIcon} />
-            <Text style={styles.tabText}>Home</Text>
-          </View>
-        </TabTrigger>
+        {tabOrder.map((tabKey) => {
+          if (tabKey === "center") {
+            return (
+              <TabTrigger
+                key={tabKey}
+                name="center"
+                style={styles.logoContainer}
+                href="/(tabs)/center"
+              >
+                <Image source={images.logo} style={styles.logoImage} />
+              </TabTrigger>
+            );
+          }
 
-        <TabTrigger
-          name="center"
-          style={styles.logoContainer}
-          href="/(tabs)/center"
-        >
-          <Image source={images.logo} style={styles.logoImage} />
-        </TabTrigger>
-
-        <TabTrigger name="QR Code" href={getQRRoute()}>
-          <View style={styles.tabItem}>
-            <Image source={images.scanner} style={styles.tabIcon} />
-            <Text style={styles.tabText}>QR Code</Text>
-          </View>
-        </TabTrigger>
-      </TabList>
-    </Tabs>
-  ) : (
-    <Tabs>
-      <TabSlot />
-      <TabList style={styles.tabList}>
-        <TabTrigger name="Home" href="/(tabs)/home">
-          <View style={styles.tabItem}>
-            <Image source={images.home} style={styles.tabIcon} />
-            <Text style={styles.tabText}>Home</Text>
-          </View>
-        </TabTrigger>
-
-        <TabTrigger name="QR Code" href={getQRRoute()}>
-          <View style={styles.tabItem}>
-            <Image source={images.scanner} style={styles.tabIcon} />
-            <Text style={styles.tabText}>QR Code</Text>
-          </View>
-        </TabTrigger>
-
-        <TabTrigger
-          name="center"
-          style={styles.logoContainer}
-          href="/(tabs)/center"
-        >
-          <Image source={images.logo} style={styles.logoImage} />
-        </TabTrigger>
-
-        <TabTrigger name="records" href="/(tabs)/records">
-          <View style={styles.tabItem}>
-            <Image source={images.calendar} style={styles.tabIcon} />
-            <Text style={styles.tabText}>Records</Text>
-          </View>
-        </TabTrigger>
-
-        <TabTrigger name="Account" href="/(tabs)/account">
-          <View style={styles.tabItem}>
-            <Image source={images.user} style={styles.tabIcon} />
-            <Text style={styles.tabText}>Account</Text>
-          </View>
-        </TabTrigger>
+          const tab = tabItems[tabKey];
+          return (
+            <TabTrigger
+              key={tabKey}
+              name={tab.name}
+              href={tab.getHref ? tab.getHref(roleId) : tab.href}
+            >
+              <TabIconItem icon={tab.icon} label={tab.label} />
+            </TabTrigger>
+          );
+        })}
       </TabList>
     </Tabs>
   );
