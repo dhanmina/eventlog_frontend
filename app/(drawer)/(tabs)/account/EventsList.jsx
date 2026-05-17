@@ -19,21 +19,9 @@ import theme from "../../../../constants/theme";
 import images from "../../../../constants/images";
 
 import CustomSearch from "../../../../components/CustomSearch";
-import { fetchEvents } from "../../../../services/api";
+import { fetchEditableEvents } from "../../../../services/api";
 
-const getEventTitle = (event) => event.name || event.event_name || "";
-
-const getEventDates = (event) => event.dates || event.event_dates || [];
-
-const normalizeEvent = (event) => ({
-  ...event,
-  id: event.id || event.event_id,
-  name: getEventTitle(event),
-  dates: getEventDates(event),
-});
-
-const getEventList = (response) =>
-  (response.data || response.events || []).map(normalizeEvent);
+const getEventList = (response) => response.events || [];
 
 const formatDates = (dates) => {
   if (!dates || dates.length === 0) return "No date";
@@ -102,7 +90,7 @@ const EventsList = () => {
     const fetchEventsData = async () => {
       setLoading(true);
       try {
-        const res = await fetchEvents({ search: searchQuery });
+        const res = await fetchEditableEvents({ search: searchQuery });
         if (res.success) {
           setEvents(getEventList(res));
         }
@@ -121,7 +109,7 @@ const EventsList = () => {
   };
 
   const filteredEvents = events.filter((event) =>
-    event.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (event.name || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
