@@ -11,6 +11,8 @@ import { getStoredEvents } from "../database/queries";
 import { useAuth } from "./AuthContext";
 
 const EventsContext = createContext();
+const EVENT_VIEWER_ROLE_IDS = [1, 2, 3, 4];
+const BLOCK_SCOPED_EVENT_ROLE_IDS = [1, 2];
 
 export const EventsProvider = ({ children }) => {
   const { user, isLoading: authLoading } = useAuth();
@@ -28,7 +30,11 @@ export const EventsProvider = ({ children }) => {
     }, 2000);
   }, []);
 
-  const canViewEvents = (userRoleId) => [1, 2, 3, 4].includes(userRoleId);
+  const canViewEvents = (userRoleId) =>
+    EVENT_VIEWER_ROLE_IDS.includes(userRoleId);
+
+  const shouldFilterByBlock = (userRoleId) =>
+    BLOCK_SCOPED_EVENT_ROLE_IDS.includes(userRoleId);
 
   const normalizeBlockId = (blockId) => {
     if (blockId === null || blockId === undefined) return null;
@@ -36,7 +42,7 @@ export const EventsProvider = ({ children }) => {
   };
 
   const isEventRelevantToUser = (eventBlockIds, userBlockId, userRoleId) => {
-    if (![1, 2, 3, 4].includes(userRoleId)) return false;
+    if (!canViewEvents(userRoleId)) return false;
     if (!userBlockId) return false;
 
     const normalizedUserBlockId = normalizeBlockId(userBlockId);
@@ -60,7 +66,7 @@ export const EventsProvider = ({ children }) => {
         (event) => event.status === "Approved",
       );
 
-      if ([1, 2, 3, 4].includes(user.role_id) && user.block_id) {
+      if (shouldFilterByBlock(user.role_id) && user.block_id) {
         approvedEvents = approvedEvents.filter((event) =>
           isEventRelevantToUser(
             event.eventBlocks || event.block_ids,
@@ -90,7 +96,7 @@ export const EventsProvider = ({ children }) => {
         await import("../database/queries");
 
       const blockIdToFetch =
-        [1, 2, 3, 4].includes(user.role_id) && user.block_id
+        shouldFilterByBlock(user.role_id) && user.block_id
           ? user.block_id
           : null;
       const response = await fetchUpcomingEvents(blockIdToFetch);

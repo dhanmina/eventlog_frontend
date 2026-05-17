@@ -22,6 +22,21 @@ import CustomButton from "../../../../components/CustomButton";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 
+const getBlockDisplayName = (block) =>
+  `${block.course_code || ""} ${block.block_name || ""}`.trim();
+
+const filterVisibleBlocks = (blocks, searchQuery) => {
+  const query = searchQuery.toLowerCase();
+
+  return blocks
+    .filter((block) => block.status !== "Archived")
+    .filter((block) => {
+      const name = block.block_name?.toLowerCase() || "";
+      const courseName = block.course_name?.toLowerCase() || "";
+      return name.includes(query) || courseName.includes(query);
+    });
+};
+
 export default function BlocksScreen() {
   const [blocks, setBlocks] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,14 +70,7 @@ export default function BlocksScreen() {
   );
 
   const filteredBlocks = Array.isArray(blocks)
-    ? blocks
-        .filter((block) => block.status !== "Archived")
-        .filter((block) => {
-          const name = block.block_name?.toLowerCase() || "";
-          const courseName = block.course_name?.toLowerCase() || "";
-          const query = searchQuery.toLowerCase();
-          return name.includes(query) || courseName.includes(query);
-        })
+    ? filterVisibleBlocks(blocks, searchQuery)
     : [];
 
   const handleDisablePress = (block) => {
@@ -93,17 +101,17 @@ export default function BlocksScreen() {
   };
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={[globalStyles.secondaryContainer, styles.screenContainer]}>
       <Text style={styles.headerText}>BLOCKS</Text>
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={styles.searchContainer}>
         <SearchBar
           placeholder="Search blocks..."
           onSearch={(query) => setSearchQuery(query)}
         />
       </View>
       <ScrollView
-        style={{ flex: 1, width: "100%", marginBottom: 70 }}
-        contentContainerStyle={[styles.scrollview, { paddingBottom: 80 }]}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
@@ -122,7 +130,7 @@ export default function BlocksScreen() {
             >
               <View style={styles.textContainer}>
                 <Text style={styles.name} numberOfLines={1}>
-                  {`${block.course_code || ""} ${block.block_name || ""}`.trim()}
+                  {getBlockDisplayName(block)}
                 </Text>
                 <Text style={styles.courseName} numberOfLines={1}>
                   {block.status}
@@ -141,7 +149,9 @@ export default function BlocksScreen() {
                 <TouchableOpacity
                   onPress={() => handleDisablePress(block)}
                   disabled={block.status === "Disabled"}
-                  style={{ opacity: block.status === "Disabled" ? 0.5 : 1 }}
+                  style={[
+                    block.status === "Disabled" && styles.disabledAction,
+                  ]}
                 >
                   <Image source={images.disabled} style={styles.icon} />
                 </TouchableOpacity>
@@ -165,7 +175,7 @@ export default function BlocksScreen() {
         title="Confirm Disable"
         message={`Are you sure you want to disable ${
           blockToDisable?.block_name
-            ? `${blockToDisable.course_code || ""} ${blockToDisable.block_name}`
+            ? getBlockDisplayName(blockToDisable)
             : ""
         }?`}
         type="warning"
@@ -191,6 +201,18 @@ export default function BlocksScreen() {
 }
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    paddingTop: 0,
+  },
+  searchContainer: {
+    paddingHorizontal: theme.spacing.medium,
+    width: "100%",
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+    marginBottom: 70,
+  },
   headerText: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.SquadaOne,
@@ -215,7 +237,11 @@ const styles = StyleSheet.create({
   },
   scrollview: {
     padding: theme.spacing.medium,
+    paddingBottom: 80,
     flexGrow: 1,
+  },
+  disabledAction: {
+    opacity: 0.5,
   },
   icon: {
     width: 20,

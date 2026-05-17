@@ -23,33 +23,86 @@ import {
 } from "../../../../services/api";
 import { fetchCoursesByDepartmentId } from "../../../../services/api/courses";
 
+const INITIAL_FORM_DATA = {
+  block_name: "",
+  course: "",
+  year_level: "",
+  department: "",
+  status: "Active",
+};
+
+const INITIAL_MODAL_STATE = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const statusOptions = [
+  { label: "Active", value: "Active" },
+  { label: "Disabled", value: "Disabled" },
+  { label: "Archived", value: "Archived" },
+];
+
+const toArray = (value) => (Array.isArray(value) ? value : []);
+
+const getDepartmentList = (response) =>
+  toArray(Array.isArray(response) ? response : response?.departments);
+
+const getYearLevelList = (response) =>
+  toArray(Array.isArray(response) ? response : response?.yearLevels);
+
+const getCourseList = (response) =>
+  toArray(Array.isArray(response) ? response : response?.courses);
+
+const formatDepartmentOptions = (departments) =>
+  toArray(departments).map((department) => ({
+    label: department.department_name,
+    value: department.department_id,
+  }));
+
+const formatCourseOptions = (courses) =>
+  toArray(courses).map((course) => ({
+    label: course.course_code,
+    value: course.course_id,
+  }));
+
+const formatYearLevelOptions = (yearLevels) =>
+  toArray(yearLevels).map((yearLevel) => ({
+    label: yearLevel.year_level_name,
+    value: yearLevel.year_level_id,
+  }));
+
+const buildFormData = (blockDetails) => ({
+  block_name: blockDetails.block_name || "",
+  course: blockDetails.course_id || "",
+  year_level: blockDetails.year_level_id || "",
+  department: blockDetails.department_id || "",
+  status: blockDetails.status || "Active",
+});
+
+const buildSubmitData = (formData) => ({
+  name: formData.block_name,
+  course_id: formData.course,
+  year_level_id: formData.year_level,
+  department_id: formData.department,
+  status: formData.status,
+});
+
 const EditBlock = () => {
   const { id: block_id } = useLocalSearchParams();
-  const [formData, setFormData] = useState({
-    block_name: "",
-    course: "",
-    year_level: "",
-    department: "",
-    status: "Active",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL_STATE);
 
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [yearLevels, setYearLevels] = useState([]);
 
-  const statusOptions = [
-    { label: "Active", value: "Active" },
-    { label: "Disabled", value: "Disabled" },
-    { label: "Archived", value: "Archived" },
-  ];
+  const showModal = (config) => {
+    setModal({ ...INITIAL_MODAL_STATE, visible: true, ...config });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,46 +113,24 @@ const EditBlock = () => {
         const blockDetails = await fetchBlockById(block_id);
         if (!blockDetails) throw new Error("Block details not found");
 
-        const initialStatus = blockDetails.status || "Active";
-
-        setFormData({
-          block_name: blockDetails.block_name || "",
-          course: blockDetails.course_id || "",
-          year_level: blockDetails.year_level_id || "",
-          department: blockDetails.department_id || "",
-          status: initialStatus,
-        });
+        setFormData(buildFormData(blockDetails));
 
         const departmentsData = await fetchDepartments();
         setDepartments(
-          departmentsData.departments.map((department) => ({
-            label: department.department_name,
-            value: department.department_id,
-          }))
+          formatDepartmentOptions(getDepartmentList(departmentsData))
         );
 
         const yearLevelsData = await fetchYearLevels();
-        setYearLevels(
-          yearLevelsData.map((yearLevel) => ({
-            label: yearLevel.year_level_name,
-            value: yearLevel.year_level_id,
-          }))
-        );
+        setYearLevels(formatYearLevelOptions(getYearLevelList(yearLevelsData)));
 
         if (blockDetails.department_id) {
           const coursesData = await fetchCoursesByDepartmentId(
             blockDetails.department_id
           );
-          setCourses(
-            coursesData.map((course) => ({
-              label: course.course_code,
-              value: course.course_id,
-            }))
-          );
+          setCourses(formatCourseOptions(getCourseList(coursesData)));
         }
       } catch (error) {
-        setModal({
-          visible: true,
+        showModal({
           title: "Error",
           message: error.message || "Failed to load block details.",
           type: "error",
@@ -120,15 +151,9 @@ const EditBlock = () => {
 
     try {
       const coursesData = await fetchCoursesByDepartmentId(item.value);
-      setCourses(
-        coursesData.map((course) => ({
-          label: course.course_code,
-          value: course.course_id,
-        }))
-      );
+      setCourses(formatCourseOptions(getCourseList(coursesData)));
     } catch (error) {
-      setModal({
-        visible: true,
+      showModal({
         title: "Error",
         message: "Failed to load courses for the selected department.",
         type: "error",
@@ -144,8 +169,7 @@ const EditBlock = () => {
         !formData.year_level ||
         !formData.department
       ) {
-        setModal({
-          visible: true,
+        showModal({
           title: "Warning",
           message: "Please fill in all required fields.",
           type: "warning",
@@ -153,25 +177,15 @@ const EditBlock = () => {
         return;
       }
 
-      const submitData = {
-        name: formData.block_name,
-        course_id: formData.course,
-        year_level_id: formData.year_level,
-        department_id: formData.department,
-        status: formData.status,
-      };
+      await editBlock(block_id, buildSubmitData(formData));
 
-      await editBlock(block_id, submitData);
-
-      setModal({
-        visible: true,
+      showModal({
         title: "Success",
         message: "Block updated successfully!",
         type: "success",
       });
     } catch (error) {
-      setModal({
-        visible: true,
+      showModal({
         title: "Error",
         message: error.response?.data?.message || "Failed to update block.",
         type: "error",
@@ -187,7 +201,7 @@ const EditBlock = () => {
     );
 
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={[globalStyles.secondaryContainer, styles.screenContainer]}>
       <CustomModal
         visible={modal.visible}
         title={modal.title}
@@ -262,6 +276,9 @@ const EditBlock = () => {
 export default EditBlock;
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    paddingTop: 0,
+  },
   textHeader: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.SquadaOne,

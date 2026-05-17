@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import TabsComponent from "../../../../components/TabsComponent";
 import CustomButton from "../../../../components/CustomButton";
@@ -10,7 +10,20 @@ import CustomModal from "../../../../components/CustomModal";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import { fetchBlockById, disableBlock } from "../../../../services/api";
-import { useLocalSearchParams } from "expo-router";
+
+const detailFields = [
+  { label: "Block Name:", key: "block_name" },
+  { label: "Course:", key: "course_code" },
+  { label: "Year Level:", key: "year_level_name" },
+  { label: "Status:", key: "status" },
+];
+
+const DetailRow = ({ label, value }) => (
+  <View style={styles.detailsContainer}>
+    <Text style={styles.detailTitle}>{label}</Text>
+    <Text style={styles.detail}>{value}</Text>
+  </View>
+);
 
 const BlockDetails = () => {
   const { id: block_id } = useLocalSearchParams();
@@ -37,7 +50,7 @@ const BlockDetails = () => {
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setIsLoading(true);
       fetchBlockDetails();
     }, [block_id])
@@ -82,7 +95,7 @@ const BlockDetails = () => {
     <View
       style={[
         globalStyles.secondaryContainer,
-        { paddingTop: 0, paddingBottom: 110 },
+        styles.screenContainer,
       ]}
     >
       <View style={styles.headerContainer}>
@@ -90,22 +103,13 @@ const BlockDetails = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.detailsWrapper}>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Block Name:</Text>
-          <Text style={styles.detail}>{blockDetails.block_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Course:</Text>
-          <Text style={styles.detail}>{blockDetails.course_code}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Year Level:</Text>
-          <Text style={styles.detail}>{blockDetails.year_level_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Status:</Text>
-          <Text style={styles.detail}>{blockDetails.status}</Text>
-        </View>
+        {detailFields.map((field) => (
+          <DetailRow
+            key={field.key}
+            label={field.label}
+            value={blockDetails[field.key]}
+          />
+        ))}
       </ScrollView>
 
       <View style={styles.buttonContainer}>
@@ -159,6 +163,10 @@ const BlockDetails = () => {
 export default BlockDetails;
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    paddingTop: 0,
+    paddingBottom: 110,
+  },
   headerContainer: {
     width: "100%",
     alignItems: "center",
