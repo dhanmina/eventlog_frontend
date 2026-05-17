@@ -7,46 +7,43 @@ import TabsComponent from "../../../components/TabsComponent";
 import globalStyles from "../../../constants/globalStyles";
 import theme from "../../../constants/theme";
 
+const USER_MANAGEMENT_LINKS = [
+  {
+    title: "Admins",
+    route: "/userManagement/admins",
+    accessibilityLabel: "Navigate to Admins",
+  },
+  {
+    title: "Roles",
+    route: "/userManagement/roles",
+    accessibilityLabel: "Navigate to Roles",
+  },
+  {
+    title: "Students",
+    route: "/userManagement/students",
+    accessibilityLabel: "Navigate to Students",
+  },
+];
+
 const UserManagementScreen = () => {
   return (
     <View style={globalStyles.secondaryContainerSA}>
       <Text style={styles.title}>User Management</Text>
 
-      <TouchableOpacity
-        style={styles.screenWrapper}
-        onPress={() => {
-          router.push("/userManagement/admins");
-        }}
-        accessibilityLabel="Navigate to Admins"
-      >
-        <View style={styles.screenContainer}>
-          <Text style={styles.screenTitle}>Admins</Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.screenWrapper}
-        onPress={() => {
-          router.push("/userManagement/roles");
-        }}
-        accessibilityLabel="Navigate to Roles"
-      >
-        <View style={styles.screenContainer}>
-          <Text style={styles.screenTitle}>Roles</Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.screenWrapper}
-        onPress={() => {
-          router.push("/userManagement/students");
-        }}
-        accessibilityLabel="Navigate to Students"
-      >
-        <View style={styles.screenContainer}>
-          <Text style={styles.screenTitle}>Students</Text>
-        </View>
-      </TouchableOpacity>
+      {USER_MANAGEMENT_LINKS.map(({ title, route, accessibilityLabel }) => (
+        <TouchableOpacity
+          key={route}
+          style={styles.screenWrapper}
+          onPress={() => {
+            router.push(route);
+          }}
+          accessibilityLabel={accessibilityLabel}
+        >
+          <View>
+            <Text style={styles.screenTitle}>{title}</Text>
+          </View>
+        </TouchableOpacity>
+      ))}
 
       <TabsComponent />
 
