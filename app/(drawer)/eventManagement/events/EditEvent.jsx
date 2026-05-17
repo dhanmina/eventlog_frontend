@@ -28,23 +28,48 @@ import {
 import { getStoredUser } from "../../../../database/queries";
 import { router, useLocalSearchParams } from "expo-router";
 
+const INITIAL_FORM_DATA = {
+  event_id: "",
+  event_name_id: "",
+  department_ids: [],
+  block_ids: [],
+  venue: "",
+  description: "",
+  am_in: null,
+  am_out: null,
+  pm_in: null,
+  pm_out: null,
+  event_date: null,
+  duration: 0,
+  created_by: "",
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const toSelectedValues = (selectedItems) =>
+  Array.isArray(selectedItems)
+    ? selectedItems.map((item) =>
+        typeof item === "object" && item !== null ? item.value : item
+      )
+    : [];
+
+const convertToMinutes = (timeString) => {
+  const [hours, minutes] = timeString.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+const logEditEventDebug = (label, payload) => {
+  console.log(`[EditEvent] ${label}:`, payload);
+};
+
 const EditEvent = () => {
   const { id: eventId } = useLocalSearchParams();
-  const [formData, setFormData] = useState({
-    event_id: "",
-    event_name_id: "",
-    department_ids: [],
-    block_ids: [],
-    venue: "",
-    description: "",
-    am_in: null,
-    am_out: null,
-    pm_in: null,
-    pm_out: null,
-    event_date: null,
-    duration: 0,
-    created_by: "",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [eventNames, setEventNames] = useState([]);
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [blockOptions, setBlockOptions] = useState([]);
@@ -52,12 +77,7 @@ const EditEvent = () => {
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [errorDepartments, setErrorDepartments] = useState(null);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL);
   const [isDurationPickerVisible, setIsDurationPickerVisible] = useState(false);
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState([]);
 
@@ -96,6 +116,14 @@ const EditEvent = () => {
           throw new Error("Event not found.");
         }
 
+        logEditEventDebug("fetched event data", {
+          eventId,
+          event_name_id: eventData.event_name_id,
+          raw_department_ids: eventData.department_ids,
+          raw_block_ids: eventData.block_ids,
+          raw_block_names_list: eventData.block_names_list,
+        });
+
         const blockIds = eventData.block_ids
           ? eventData.block_ids.split(",").map(Number)
           : [];
@@ -115,6 +143,13 @@ const EditEvent = () => {
           ? eventData.event_dates.split(",")
           : [];
 
+        logEditEventDebug("parsed event selections", {
+          departmentIds,
+          blockIds,
+          formattedBlocks,
+          formattedEventDates,
+        });
+
         setFormData({
           event_id: eventId,
           event_name_id: eventData.event_name_id || "",
@@ -133,6 +168,10 @@ const EditEvent = () => {
         setBlockOptions(formattedBlocks);
         setSelectedDepartmentIds(departmentIds);
       } catch (error) {
+        logEditEventDebug("failed to fetch event data", {
+          eventId,
+          message: error.message,
+        });
         setModal({
           visible: true,
           title: "Error",
@@ -195,8 +234,16 @@ const EditEvent = () => {
           value: dept.department_id,
         }));
 
+        logEditEventDebug("loaded department options", {
+          count: formattedDepartments.length,
+          options: formattedDepartments,
+        });
+
         setDepartmentOptions(formattedDepartments);
       } catch (err) {
+        logEditEventDebug("failed to load departments", {
+          message: err.message,
+        });
         setErrorDepartments(err);
         setModal({
           visible: true,
@@ -219,8 +266,17 @@ const EditEvent = () => {
     const fetchBlocksData = async () => {
       setLoadingBlocks(true);
       try {
+        logEditEventDebug("loading blocks for departments", {
+          selectedDepartmentIds,
+          formDepartmentIds: formData.department_ids,
+          currentBlockIds: formData.block_ids,
+        });
+
         if (!selectedDepartmentIds || selectedDepartmentIds.length === 0) {
           setBlockOptions([]);
+          logEditEventDebug("cleared block options", {
+            reason: "no selected departments",
+          });
           return;
         }
         const blocksResponse = await fetchBlocksByDepartment(
@@ -239,8 +295,20 @@ const EditEvent = () => {
 
           return { label, value: block.block_id };
         });
+
+        logEditEventDebug("loaded block options", {
+          selectedDepartmentIds,
+          responseCount: blocksResponse.length,
+          activeCount: activeBlocks.length,
+          formattedBlocks,
+        });
+
         setBlockOptions(formattedBlocks);
       } catch (error) {
+        logEditEventDebug("failed to load blocks", {
+          selectedDepartmentIds,
+          message: error.message,
+        });
         setModal({
           visible: true,
           title: "Error",
@@ -351,11 +419,6 @@ const EditEvent = () => {
         return;
       }
 
-      const convertToMinutes = (timeString) => {
-        const [hours, minutes] = timeString.split(":").map(Number);
-        return hours * 60 + minutes;
-      };
-
       if (formData.am_in && formData.am_out) {
         const amInMinutes = convertToMinutes(formData.am_in);
         const amOutMinutes = convertToMinutes(formData.am_out);
@@ -408,6 +471,7 @@ const EditEvent = () => {
       const requestData = {
         event_id: formData.event_id,
         event_name_id: formData.event_name_id,
+        department_ids: formData.department_ids,
         venue: formData.venue,
         dates: formattedDates,
         description: formData.description,
@@ -420,7 +484,17 @@ const EditEvent = () => {
         admin_id_number: formData.created_by,
       };
 
+      logEditEventDebug("submitting update", {
+        eventId,
+        selectedDepartmentIds,
+        formDepartmentIds: formData.department_ids,
+        formBlockIds: formData.block_ids,
+        requestData,
+      });
+
       const response = await updateEvent(eventId, requestData);
+      logEditEventDebug("update response", response);
+
       if (response?.success) {
         setModal({
           visible: true,
@@ -447,6 +521,15 @@ const EditEvent = () => {
         });
       }
     } catch (error) {
+      logEditEventDebug("update failed", {
+        eventId,
+        selectedDepartmentIds,
+        formDepartmentIds: formData.department_ids,
+        formBlockIds: formData.block_ids,
+        message: error.message,
+        response: error.response?.data,
+      });
+
       let errorMessage =
         "Failed to update the event. Please double-check your information and try again.";
       if (error?.response?.data?.message) {
@@ -548,13 +631,14 @@ const EditEvent = () => {
             placeholder="Select departments"
             value={selectedDepartmentIds}
             onSelect={(selectedItems) => {
-              const selectedValues = Array.isArray(selectedItems)
-                ? selectedItems.map((item) =>
-                    typeof item === "object" && item !== null
-                      ? item.value
-                      : item
-                  )
-                : [];
+              const selectedValues = toSelectedValues(selectedItems);
+              logEditEventDebug("department dropdown changed", {
+                selectedItems,
+                selectedValues,
+                previousSelectedDepartmentIds: selectedDepartmentIds,
+                previousFormDepartmentIds: formData.department_ids,
+                currentBlockIds: formData.block_ids,
+              });
               setSelectedDepartmentIds(selectedValues);
               handleChange("department_ids", selectedValues);
             }}
@@ -570,13 +654,13 @@ const EditEvent = () => {
               placeholder="Select blocks"
               value={formData.block_ids}
               onSelect={(selectedItems) => {
-                const selectedValues = Array.isArray(selectedItems)
-                  ? selectedItems.map((item) =>
-                      typeof item === "object" && item !== null
-                        ? item.value
-                        : item
-                    )
-                  : [];
+                const selectedValues = toSelectedValues(selectedItems);
+                logEditEventDebug("block dropdown changed", {
+                  selectedItems,
+                  selectedValues,
+                  selectedDepartmentIds,
+                  previousBlockIds: formData.block_ids,
+                });
                 handleChange("block_ids", selectedValues);
               }}
               multiSelect

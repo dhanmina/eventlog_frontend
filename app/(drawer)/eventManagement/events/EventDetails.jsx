@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import TabsComponent from "../../../../components/TabsComponent";
 import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
@@ -13,7 +13,9 @@ import {
   approveEvent,
 } from "../../../../services/api";
 import { getStoredUser } from "../../../../database/queries";
-import { useLocalSearchParams } from "expo-router";
+
+const getEditEventRoute = (eventId) =>
+  `/eventManagement/events/EditEvent?id=${eventId}`;
 
 const EventDetails = () => {
   const { id: eventId } = useLocalSearchParams();
@@ -35,7 +37,7 @@ const EventDetails = () => {
     fetchStoredUser();
   }, []);
 
-  const fetchEventDetails = async () => {
+  const fetchEventDetails = useCallback(async () => {
     try {
       if (!eventId) throw new Error("Invalid event ID");
       const eventData = await fetchEventById(eventId);
@@ -45,14 +47,75 @@ const EventDetails = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [eventId]);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setIsLoading(true);
       fetchEventDetails();
-    }, [eventId])
+    }, [fetchEventDetails])
   );
+
+  const handleDeletePress = () => {
+    setIsDeleteModalVisible(true);
+  };
+
+  const handleDeleteModalClose = () => {
+    setIsDeleteModalVisible(false);
+  };
+
+  const handleApprovePress = () => {
+    setIsApproveModalVisible(true);
+  };
+
+  const handleApproveModalClose = () => {
+    setIsApproveModalVisible(false);
+  };
+
+  const handleSuccessModalClose = () => {
+    setIsSuccessModalVisible(false);
+  };
+
+  const navigateBackAfterSuccess = () => {
+    setTimeout(() => {
+      setIsSuccessModalVisible(false);
+      router.back();
+    }, 2000);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteEvent(eventDetails.event_id);
+      handleDeleteModalClose();
+      setSuccessMessage(
+        `${eventDetails.event_name} has been successfully deleted.`
+      );
+      setIsSuccessModalVisible(true);
+      navigateBackAfterSuccess();
+    } catch (error) {}
+  };
+
+  const handleConfirmApprove = async () => {
+    try {
+      await approveEvent(eventDetails.event_id, storedUser.id_number);
+      handleApproveModalClose();
+      setSuccessMessage(
+        `${eventDetails.event_name} has been successfully approved.`
+      );
+      setIsSuccessModalVisible(true);
+      navigateBackAfterSuccess();
+    } catch (error) {}
+  };
+
+  const formatColumnData = (data, separator = ",") => {
+    if (!data) return <Text style={styles.columnItem}>-</Text>;
+    const items = data.split(separator).map((item) => item.trim());
+    return items.map((item, index) => (
+      <Text key={index} style={styles.columnItem}>
+        {item}
+      </Text>
+    ));
+  };
 
   if (isLoading) {
     return (
@@ -70,49 +133,12 @@ const EventDetails = () => {
     );
   }
 
-  const handleDeletePress = () => {
-    setIsDeleteModalVisible(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    try {
-      await deleteEvent(eventDetails.event_id);
-      setIsDeleteModalVisible(false);
-      setSuccessMessage(`${eventDetails.event_name} has been successfully deleted.`);
-      setIsSuccessModalVisible(true);
-      setTimeout(() => {
-        setIsSuccessModalVisible(false);
-        router.back();
-      }, 2000);
-    } catch (error) {}
-  };
-
-  const handleApprovePress = () => {
-    setIsApproveModalVisible(true);
-  };
-
-  const handleConfirmApprove = async () => {
-    try {
-      await approveEvent(eventDetails.event_id, storedUser.id_number);
-      setIsApproveModalVisible(false);
-      setSuccessMessage(`${eventDetails.event_name} has been successfully approved.`);
-      setIsSuccessModalVisible(true);
-      setTimeout(() => {
-        setIsSuccessModalVisible(false);
-        router.back();
-      }, 2000);
-    } catch (error) {}
-  };
-
-  const formatColumnData = (data, separator = ",") => {
-    if (!data) return <Text style={styles.columnItem}>-</Text>;
-    const items = data.split(separator).map((item) => item.trim());
-    return items.map((item, index) => (
-      <Text key={index} style={styles.columnItem}>
-        {item}
-      </Text>
-    ));
-  };
+  const eventDetailRows = [
+    { label: "Event Name:", value: eventDetails.event_name || "-" },
+    { label: "Description:", value: eventDetails.description || "-" },
+    { label: "Venue:", value: eventDetails.venue || "-" },
+    { label: "Created By:", value: eventDetails.created_by || "-" },
+  ];
 
   return (
     <View
@@ -125,22 +151,12 @@ const EventDetails = () => {
         <Text style={styles.title}>Event Details</Text>
       </View>
       <ScrollView contentContainerStyle={styles.detailsWrapper}>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Event Name:</Text>
-          <Text style={styles.detail}>{eventDetails.event_name || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Description:</Text>
-          <Text style={styles.detail}>{eventDetails.description || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Venue:</Text>
-          <Text style={styles.detail}>{eventDetails.venue || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Created By:</Text>
-          <Text style={styles.detail}>{eventDetails.created_by || "-"}</Text>
-        </View>
+        {eventDetailRows.map((row) => (
+          <View key={row.label} style={styles.detailsContainer}>
+            <Text style={styles.detailTitle}>{row.label}</Text>
+            <Text style={styles.detail}>{row.value}</Text>
+          </View>
+        ))}
         {eventDetails.status !== "Pending" && (
           <View style={styles.detailsContainer}>
             <Text style={styles.detailTitle}>Approved By:</Text>
@@ -206,9 +222,7 @@ const EventDetails = () => {
                 <CustomButton
                   title="EDIT"
                   onPress={() =>
-                    router.push(
-                      `/eventManagement/events/EditEvent?id=${eventDetails.event_id}`
-                    )
+                    router.push(getEditEventRoute(eventDetails.event_id))
                   }
                 />
               </View>
@@ -230,7 +244,7 @@ const EventDetails = () => {
         title="Confirm Approval"
         message={`Are you sure you want to approve ${eventDetails.event_name}?`}
         type="warning"
-        onClose={() => setIsApproveModalVisible(false)}
+        onClose={handleApproveModalClose}
         onConfirm={handleConfirmApprove}
         cancelTitle="Cancel"
         confirmTitle="Approve"
@@ -240,7 +254,7 @@ const EventDetails = () => {
         title="Confirm Deletion"
         message={`Are you sure you want to delete ${eventDetails.event_name}?`}
         type="warning"
-        onClose={() => setIsDeleteModalVisible(false)}
+        onClose={handleDeleteModalClose}
         onConfirm={handleConfirmDelete}
         cancelTitle="Cancel"
         confirmTitle="Delete"
@@ -250,7 +264,7 @@ const EventDetails = () => {
         title="Success"
         message={successMessage}
         type="success"
-        onClose={() => setIsSuccessModalVisible(false)}
+        onClose={handleSuccessModalClose}
         cancelTitle="CLOSE"
         hideButtons={true}
       />

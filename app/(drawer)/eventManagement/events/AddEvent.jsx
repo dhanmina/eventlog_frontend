@@ -26,21 +26,42 @@ import {
 import { getStoredUser } from "../../../../database/queries";
 import { router } from "expo-router";
 
+const INITIAL_FORM_DATA = {
+  event_name_id: "",
+  department_ids: [],
+  block_ids: [],
+  venue: "",
+  description: "",
+  am_in: null,
+  am_out: null,
+  pm_in: null,
+  pm_out: null,
+  event_date: null,
+  duration: 0,
+  created_by: "",
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const toSelectedValues = (selectedItems) =>
+  Array.isArray(selectedItems)
+    ? selectedItems.map((item) =>
+        typeof item === "object" && item !== null ? item.value : item
+      )
+    : [];
+
+const convertToMinutes = (timeString) => {
+  const [hours, minutes] = timeString.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
 const AddEvent = () => {
-  const [formData, setFormData] = useState({
-    event_name_id: "",
-    department_ids: [],
-    block_ids: [],
-    venue: "",
-    description: "",
-    am_in: null,
-    am_out: null,
-    pm_in: null,
-    pm_out: null,
-    event_date: null,
-    duration: 0,
-    created_by: "",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [eventNames, setEventNames] = useState([]);
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [blockOptions, setBlockOptions] = useState([]);
@@ -48,12 +69,7 @@ const AddEvent = () => {
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [errorDepartments, setErrorDepartments] = useState(null);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL);
   const [isDurationPickerVisible, setIsDurationPickerVisible] = useState(false);
 
   const initializeData = async () => {
@@ -267,11 +283,6 @@ const AddEvent = () => {
         return;
       }
 
-      const convertToMinutes = (timeString) => {
-        const [hours, minutes] = timeString.split(":").map(Number);
-        return hours * 60 + minutes;
-      };
-
       if (formData.am_in && formData.am_out) {
         const amInMinutes = convertToMinutes(formData.am_in);
         const amOutMinutes = convertToMinutes(formData.am_out);
@@ -338,17 +349,7 @@ const AddEvent = () => {
         router.back();
       }, 1500);
       setFormData({
-        event_name_id: "",
-        department_ids: [],
-        block_ids: [],
-        venue: "",
-        description: "",
-        am_in: null,
-        am_out: null,
-        pm_in: null,
-        pm_out: null,
-        event_date: null,
-        duration: 0,
+        ...INITIAL_FORM_DATA,
         created_by: formData.created_by,
       });
     } catch (error) {
@@ -455,13 +456,7 @@ const AddEvent = () => {
             placeholder="Select departments"
             value={formData.department_ids}
             onSelect={(selectedItems) => {
-              const selectedValues = Array.isArray(selectedItems)
-                ? selectedItems.map((item) =>
-                    typeof item === "object" && item !== null
-                      ? item.value
-                      : item
-                  )
-                : [];
+              const selectedValues = toSelectedValues(selectedItems);
               handleChange("department_ids", selectedValues);
             }}
             multiSelect
@@ -475,13 +470,7 @@ const AddEvent = () => {
               placeholder="Select blocks"
               value={formData.block_ids}
               onSelect={(selectedItems) => {
-                const selectedValues = Array.isArray(selectedItems)
-                  ? selectedItems.map((item) =>
-                      typeof item === "object" && item !== null
-                        ? item.value
-                        : item
-                    )
-                  : [];
+                const selectedValues = toSelectedValues(selectedItems);
                 handleChange("block_ids", selectedValues);
               }}
               multiSelect

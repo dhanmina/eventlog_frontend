@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,17 @@ import theme from "../../../../constants/theme";
 import CustomModal from "../../../../components/CustomModal";
 import { getStoredUser } from "../../../../database/queries";
 
+const EVENT_ROUTES = {
+  details: (eventId) => `/eventManagement/events/EventDetails?id=${eventId}`,
+};
+
+const MODAL_TYPES = {
+  approve: "approve",
+  delete: "delete",
+};
+
+const isPendingEvent = (event) => event.status === "Pending" && event.event_id;
+
 export default function PendingEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,15 +46,13 @@ export default function PendingEvents() {
     useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadPendingEvents = async () => {
+  const loadPendingEvents = useCallback(async () => {
     try {
       const response = await fetchEvents();
       const fetchedEvents = Array.isArray(response?.events)
         ? response.events
         : [];
-      const filteredPendingEvents = fetchedEvents.filter(
-        (event) => event.status === "Pending" && event.event_id
-      );
+      const filteredPendingEvents = fetchedEvents.filter(isPendingEvent);
       setEvents(filteredPendingEvents);
     } catch (error) {
       console.error("Error loading events:", error);
@@ -51,7 +60,7 @@ export default function PendingEvents() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -73,7 +82,7 @@ export default function PendingEvents() {
     };
     loadAdminId();
     loadPendingEvents();
-  }, []);
+  }, [loadPendingEvents]);
 
   const handleOpenModal = (type, event) => {
     if (!event || !event.event_id) return;
@@ -127,8 +136,8 @@ export default function PendingEvents() {
     <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
       <Text style={styles.headerText}>PENDING EVENTS</Text>
       <ScrollView
-        style={{ flex: 1, width: "100%", marginBottom: 70 }}
-        contentContainerStyle={[styles.scrollview, { paddingBottom: 80 }]}
+        style={styles.scrollviewContainer}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
@@ -140,9 +149,7 @@ export default function PendingEvents() {
               key={event.event_id}
               style={styles.eventContainer}
               onPress={() =>
-                router.push(
-                  `/eventManagement/events/EventDetails?id=${event.event_id}`
-                )
+                router.push(EVENT_ROUTES.details(event.event_id))
               }
             >
               <View style={styles.textContainer}>
@@ -155,12 +162,12 @@ export default function PendingEvents() {
               </View>
               <View style={styles.iconContainer}>
                 <TouchableOpacity
-                  onPress={() => handleOpenModal("approve", event)}
+                  onPress={() => handleOpenModal(MODAL_TYPES.approve, event)}
                 >
                   <Image source={images.check} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => handleOpenModal("delete", event)}
+                  onPress={() => handleOpenModal(MODAL_TYPES.delete, event)}
                 >
                   <Image source={images.trash} style={styles.icon} />
                 </TouchableOpacity>
@@ -172,7 +179,7 @@ export default function PendingEvents() {
         )}
       </ScrollView>
       <CustomModal
-        visible={isModalVisible && modalType === "approve"}
+        visible={isModalVisible && modalType === MODAL_TYPES.approve}
         title="Confirm Approval"
         message={`Are you sure you want to approve "${selectedEvent?.event_name}"?`}
         type="warning"
@@ -182,7 +189,7 @@ export default function PendingEvents() {
         confirmTitle="Approve"
       />
       <CustomModal
-        visible={isModalVisible && modalType === "delete"}
+        visible={isModalVisible && modalType === MODAL_TYPES.delete}
         title="Confirm Deletion"
         message={`Are you sure you want to delete "${selectedEvent?.event_name}"?`}
         type="warning"
@@ -237,6 +244,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.small,
     marginBottom: theme.spacing.small,
   },
+  scrollviewContainer: {
+    flex: 1,
+    width: "100%",
+    marginBottom: 70,
+  },
   textContainer: {
     flex: 1,
     flexDirection: "column",
@@ -244,6 +256,7 @@ const styles = StyleSheet.create({
   },
   scrollview: {
     padding: theme.spacing.medium,
+    paddingBottom: 80,
     flexGrow: 1,
   },
   icon: {

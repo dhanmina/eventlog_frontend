@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,19 @@ import CustomButton from "../../../../components/CustomButton";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 
+const EVENT_ROUTES = {
+  add: "/eventManagement/events/AddEvent",
+  details: (eventId) => `/eventManagement/events/EventDetails?id=${eventId}`,
+  edit: (eventId) => `/eventManagement/events/EditEvent?id=${eventId}`,
+  pending: "/eventManagement/events/PendingEvents",
+};
+
+const isArchivedEvent = (event) => event.status === "Archived";
+const isVisibleEvent = (event) => event.status !== "Deleted";
+const isApprovedOrArchivedEvent = (event) =>
+  event.status === "Approved" || event.status === "Archived";
+const isPendingEvent = (event) => event.status === "Pending";
+
 export default function EventsList() {
   const [events, setEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,19 +40,17 @@ export default function EventsList() {
   const [eventToDelete, setEventToDelete] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     try {
       const response = await fetchEvents();
       if (!response?.events) return;
       const fetchedEvents = Array.isArray(response.events)
         ? response.events
         : [];
-      const filteredEvents = fetchedEvents.filter(
-        (event) => event.status !== "Deleted"
-      );
+      const filteredEvents = fetchedEvents.filter(isVisibleEvent);
       setEvents(filteredEvents);
     } catch (err) {}
-  };
+  }, []);
 
   const refreshData = async () => {
     setRefreshing(true);
@@ -52,27 +63,34 @@ export default function EventsList() {
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       loadEvents();
-    }, [])
+    }, [loadEvents])
   );
 
-  const filteredEvents = events.filter((event) => {
-    const eventName = event.event_name?.toLowerCase() || "";
-    const venue = event.venue?.toLowerCase() || "";
-    return (
-      eventName.includes(searchQuery.toLowerCase()) ||
-      venue.includes(searchQuery.toLowerCase())
-    );
-  });
+  const filteredEvents = useMemo(() => {
+    const normalizedSearchQuery = searchQuery.toLowerCase();
 
-  const approvedOrArchivedEvents = filteredEvents.filter(
-    (event) => event.status === "Approved" || event.status === "Archived"
+    return events.filter((event) => {
+      const eventName = event.event_name?.toLowerCase() || "";
+      const venue = event.venue?.toLowerCase() || "";
+
+      return (
+        eventName.includes(normalizedSearchQuery) ||
+        venue.includes(normalizedSearchQuery)
+      );
+    });
+  }, [events, searchQuery]);
+
+  const approvedOrArchivedEvents = useMemo(
+    () => filteredEvents.filter(isApprovedOrArchivedEvent),
+    [filteredEvents]
   );
 
-  const pendingEventsCount = events.filter(
-    (event) => event.status === "Pending"
-  ).length;
+  const pendingEventsCount = useMemo(
+    () => events.filter(isPendingEvent).length,
+    [events]
+  );
 
   const handleDeletePress = (event) => {
     setEventToDelete(event);
@@ -104,14 +122,14 @@ export default function EventsList() {
     <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
       <Text style={styles.headerText}>EVENTS</Text>
 
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={styles.searchContainer}>
         <SearchBar placeholder="Search events..." onSearch={setSearchQuery} />
       </View>
 
       {pendingEventsCount > 0 && (
         <TouchableOpacity
-          style={{ width: "100%" }}
-          onPress={() => router.push(`/eventManagement/events/PendingEvents`)}
+          style={styles.pendingButton}
+          onPress={() => router.push(EVENT_ROUTES.pending)}
         >
           <View style={styles.pendingContainer}>
             <Text style={styles.pendingText}>
@@ -123,8 +141,8 @@ export default function EventsList() {
       )}
 
       <ScrollView
-        style={{ flex: 1, width: "100%", marginBottom: 70 }}
-        contentContainerStyle={[styles.scrollview, { paddingBottom: 80 }]}
+        style={styles.scrollviewContainer}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
@@ -136,9 +154,7 @@ export default function EventsList() {
               key={event.event_id}
               style={styles.eventContainer}
               onPress={() =>
-                router.push(
-                  `/eventManagement/events/EventDetails?id=${event.event_id}`
-                )
+                router.push(EVENT_ROUTES.details(event.event_id))
               }
             >
               <View style={styles.textContainer}>
@@ -152,20 +168,24 @@ export default function EventsList() {
               <View style={styles.iconContainer}>
                 <TouchableOpacity
                   onPress={() =>
-                    router.push(
-                      `/eventManagement/events/EditEvent?id=${event.event_id}`
-                    )
+                    router.push(EVENT_ROUTES.edit(event.event_id))
                   }
-                  disabled={event.status === "Archived"}
-                  style={{ opacity: event.status === "Archived" ? 0.5 : 1 }}
+                  disabled={isArchivedEvent(event)}
+                  style={[
+                    styles.iconButton,
+                    isArchivedEvent(event) && styles.disabledIconButton,
+                  ]}
                 >
                   <Image source={images.edit} style={styles.icon} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   onPress={() => handleDeletePress(event)}
-                  disabled={event.status === "Archived"}
-                  style={{ opacity: event.status === "Archived" ? 0.5 : 1 }}
+                  disabled={isArchivedEvent(event)}
+                  style={[
+                    styles.iconButton,
+                    isArchivedEvent(event) && styles.disabledIconButton,
+                  ]}
                 >
                   <Image source={images.trash} style={styles.icon} />
                 </TouchableOpacity>
@@ -180,7 +200,7 @@ export default function EventsList() {
       <View style={styles.buttonContainer}>
         <CustomButton
           title="ADD EVENT"
-          onPress={() => router.push("/eventManagement/events/AddEvent")}
+          onPress={() => router.push(EVENT_ROUTES.add)}
         />
       </View>
 
@@ -217,6 +237,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: theme.spacing.small,
   },
+  searchContainer: {
+    paddingHorizontal: theme.spacing.medium,
+    width: "100%",
+  },
+  pendingButton: {
+    width: "100%",
+  },
+  scrollviewContainer: {
+    flex: 1,
+    width: "100%",
+    marginBottom: 70,
+  },
   pendingContainer: {
     borderWidth: 2,
     borderColor: theme.colors.primary,
@@ -249,6 +281,7 @@ const styles = StyleSheet.create({
   },
   scrollview: {
     padding: theme.spacing.medium,
+    paddingBottom: 80,
     flexGrow: 1,
   },
   icon: {
@@ -260,6 +293,12 @@ const styles = StyleSheet.create({
   iconContainer: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  iconButton: {
+    opacity: 1,
+  },
+  disabledIconButton: {
+    opacity: 0.5,
   },
   name: {
     fontFamily: theme.fontFamily.SquadaOne,
