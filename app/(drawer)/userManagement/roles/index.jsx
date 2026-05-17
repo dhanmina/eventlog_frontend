@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
 
 import { StatusBar } from "expo-status-bar";
 import { fetchRoles } from "../../../../services/api";
@@ -10,23 +10,23 @@ import TabsComponent from "../../../../components/TabsComponent";
 export default function RolesScreen() {
   const [roles, setRoles] = useState([]);
 
-  useEffect(() => {
-    const loadRoles = async () => {
-      try {
-        const fetchedRoles = await fetchRoles();
-        setRoles(fetchedRoles);
-      } catch (err) {
-        console.error("Error fetching roles:", err);
-      }
-    };
-
-    loadRoles();
+  const loadRoles = useCallback(async () => {
+    try {
+      const fetchedRoles = await fetchRoles();
+      setRoles(fetchedRoles);
+    } catch (err) {
+      console.error("Error fetching roles:", err);
+    }
   }, []);
 
+  useEffect(() => {
+    loadRoles();
+  }, [loadRoles]);
+
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0, paddingBottom: 100}]}>
+    <View style={[globalStyles.secondaryContainer, styles.container]}>
       <Text style={styles.headerText}>ROLES</Text>
-      <View style={{width: "100%" }}>
+      <View style={styles.rolesContainer}>
         {roles.length > 0 ? (
           roles.map((role) => (
             <View key={role.role_id} style={styles.roleContainer}>
@@ -45,12 +45,19 @@ export default function RolesScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    paddingTop: 0,
+    paddingBottom: 100,
+  },
   headerText: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.SquadaOne,
     fontSize: theme.fontSizes.display,
     textAlign: "center",
     marginBottom: theme.spacing.medium,
+  },
+  rolesContainer: {
+    width: "100%",
   },
   roleContainer: {
     borderWidth: 2,
