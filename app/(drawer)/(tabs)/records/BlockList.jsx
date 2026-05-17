@@ -22,6 +22,275 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import CustomModal from "../../../../components/CustomModal";
 
+const INITIAL_MODAL_CONFIG = {
+  title: "",
+  message: "",
+  type: "success",
+  cancelTitle: "OK",
+};
+
+const DEFAULT_TIME_PERIODS = {
+  hasAmIn: false,
+  hasAmOut: false,
+  hasPmIn: false,
+  hasPmOut: false,
+};
+
+const EMPTY_ATTENDANCE_SUMMARY = {
+  data: {
+    attendance_summary: [],
+    available_time_periods: DEFAULT_TIME_PERIODS,
+    first_event_date: null,
+    last_event_date: null,
+  },
+};
+
+const ALL_DEPARTMENTS_OPTION = { label: "All Departments", value: "" };
+
+const ATTENDANCE_FILTER_LABELS = {
+  all: "General List",
+  present: "Present List",
+};
+
+const getBlockDisplayName = (block) =>
+  block.course_code ? `${block.course_code} ${block.block_name}` : block.block_name;
+
+const mapBlocks = (blocks = []) =>
+  blocks.map((block) => ({
+    ...block,
+    display_name: getBlockDisplayName(block),
+  }));
+
+const buildDepartmentOptions = (mappedBlocks) => {
+  const uniqueDepartments = [
+    ...new Set(mappedBlocks.map((block) => block.department_id)),
+  ];
+
+  const departmentOptions = uniqueDepartments.map((departmentId) => ({
+    label: mappedBlocks.find((block) => block.department_id === departmentId)
+      ?.course_code,
+    value: String(departmentId),
+  }));
+
+  return [ALL_DEPARTMENTS_OPTION, ...departmentOptions];
+};
+
+const buildYearLevelOptions = (mappedBlocks) => {
+  const uniqueYearLevels = [
+    ...new Set(mappedBlocks.map((block) => block.year_level_id)),
+  ];
+
+  return uniqueYearLevels.map((yearId) => ({
+    label: `Year ${yearId}`,
+    value: String(yearId),
+  }));
+};
+
+const filterBlocksForPrint = (blocks, filters) => {
+  const { departmentIds, blockIds, yearLevelIds } = filters;
+
+  return blocks.filter((block) => {
+    const departmentMatch =
+      departmentIds.length === 0 ||
+      departmentIds.includes(String(block.department_id));
+    const yearLevelMatch =
+      yearLevelIds.length === 0 ||
+      yearLevelIds.includes(String(block.year_level_id));
+    const blockMatch =
+      blockIds.length === 0 || blockIds.includes(String(block.block_id));
+
+    return departmentMatch && yearLevelMatch && blockMatch;
+  });
+};
+
+const getAttendanceCounts = (student) => ({
+  am_in_count: student.am_in_attended || 0,
+  am_out_count: student.am_out_attended || 0,
+  pm_in_count: student.pm_in_attended || 0,
+  pm_out_count: student.pm_out_attended || 0,
+});
+
+const getAttendanceFilterLabel = (attendanceFilter) =>
+  ATTENDANCE_FILTER_LABELS[attendanceFilter] || "Absent List";
+
+const formatEventDateRange = (eventStartDate, eventEndDate) => {
+  if (!eventStartDate || !eventEndDate) return "Date not available";
+
+  const startDate = new Date(eventStartDate);
+  const endDate = new Date(eventEndDate);
+  const formatDate = (date) =>
+    date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
+  if (
+    startDate.getDate() === endDate.getDate() &&
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getFullYear() === endDate.getFullYear()
+  ) {
+    return `${formatDate(startDate)}`;
+  }
+
+  if (
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getFullYear() === endDate.getFullYear()
+  ) {
+    return `${startDate.toLocaleDateString("en-US", {
+      month: "long",
+    })} ${startDate.getDate()}–${endDate.getDate()}, ${startDate.getFullYear()}`;
+  }
+
+  return `${formatDate(startDate)} – ${formatDate(endDate)}`;
+};
+
+const buildHeaderColumns = (availableTimePeriods) => {
+  let headerColumns = `
+    <span class="col-id">ID Number</span>
+    <span class="col-name">Name</span>
+  `;
+
+  if (availableTimePeriods.hasAmIn) {
+    headerColumns += '<span class="col-time">AM In</span>';
+  }
+  if (availableTimePeriods.hasAmOut) {
+    headerColumns += '<span class="col-time">AM Out</span>';
+  }
+  if (availableTimePeriods.hasPmIn) {
+    headerColumns += '<span class="col-time">PM In</span>';
+  }
+  if (availableTimePeriods.hasPmOut) {
+    headerColumns += '<span class="col-time">PM Out</span>';
+  }
+
+  return `${headerColumns}
+    <span class="col-count">Present</span>
+    <span class="col-count">Absent</span>
+  `;
+};
+
+const buildStudentRows = (students, availableTimePeriods) => {
+  if (students.length === 0) {
+    return `<div style="text-align: center; margin-top: 20px; font-style: italic; color: #666;">
+       No records
+     </div>`;
+  }
+
+  return students
+    .map((record) => {
+      let rowColumns = `
+        <span class="col-id">${record.id}</span>
+        <span class="col-name">${record.name}</span>
+      `;
+
+      if (availableTimePeriods.hasAmIn) {
+        rowColumns += `<span class="col-time">${record.am_in}</span>`;
+      }
+      if (availableTimePeriods.hasAmOut) {
+        rowColumns += `<span class="col-time">${record.am_out}</span>`;
+      }
+      if (availableTimePeriods.hasPmIn) {
+        rowColumns += `<span class="col-time">${record.pm_in}</span>`;
+      }
+      if (availableTimePeriods.hasPmOut) {
+        rowColumns += `<span class="col-time">${record.pm_out}</span>`;
+      }
+
+      rowColumns += `
+        <span class="col-count">${record.present}</span>
+        <span class="col-count">${record.absent}</span>
+      `;
+
+      return `<div class="record-line">${rowColumns}</div>`;
+    })
+    .join("");
+};
+
+const buildBlockPage = ({
+  blockName,
+  blockData,
+  dateString,
+  eventTitle,
+  attendanceFilter,
+  isFirst = false,
+}) => {
+  const { students, availableTimePeriods } = blockData;
+
+  return `
+    <div style="${
+      isFirst
+        ? "padding-top: 10px;"
+        : "page-break-before: always; padding-top: 10px;"
+    }">
+      <h2 style="color: black; text-align: left; margin-bottom: 3px;">${eventTitle}</h2>
+      <h3 style="color: black; text-align: left; margin-bottom: 3px;">${getAttendanceFilterLabel(
+        attendanceFilter
+      )}</h3>
+      <h4 style="color: black; text-align: left; margin-bottom: 3px;">Date: ${dateString}</h4>
+      <h3 style="color: black; text-align: left; margin-bottom: 10px;">${blockName}</h3>
+      <div class="header-line">
+        ${buildHeaderColumns(availableTimePeriods)}
+      </div>
+      ${buildStudentRows(students, availableTimePeriods)}
+    </div>
+  `;
+};
+
+const buildPdfHtml = ({
+  studentsByBlock,
+  dateString,
+  eventTitle,
+  attendanceFilter,
+}) => `
+  <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          padding: 0px 20px 20px 20px;
+          color: black;
+          font-size: 11px;
+        }
+        h1, h2, h3 {
+          color: black;
+          text-align: center;
+        }
+        .header-line {
+          color: black;
+          font-weight: bold;
+          margin-bottom: 10px;
+          display: flex;
+        }
+        .record-line {
+          color: black;
+          margin-bottom: 2px;
+          display: flex;
+        }
+        .col-id { width: 90px; }
+        .col-name { width: 200px; }
+        .col-time { width: 55px; text-align: center; font-size: 11px; }
+        .col-count { width: 55px; text-align: center; }
+      </style>
+    </head>
+    <body>
+      ${Object.entries(studentsByBlock)
+        .map(([blockName, blockData], index) =>
+          buildBlockPage({
+            blockName,
+            blockData,
+            dateString,
+            eventTitle,
+            attendanceFilter,
+            isFirst: index === 0,
+          })
+        )
+        .join("")}
+    </body>
+  </html>
+`;
+
 const BlockList = () => {
   const { eventId } = useLocalSearchParams();
   const [eventTitle, setEventTitle] = useState("");
@@ -35,12 +304,12 @@ const BlockList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalConfig, setModalConfig] = useState({
-    title: "",
-    message: "",
-    type: "success",
-    cancelTitle: "OK",
-  });
+  const [modalConfig, setModalConfig] = useState(INITIAL_MODAL_CONFIG);
+
+  const showModal = (config) => {
+    setModalConfig({ ...INITIAL_MODAL_CONFIG, ...config });
+    setModalVisible(true);
+  };
 
   useEffect(() => {
     if (!eventId) return;
@@ -53,36 +322,11 @@ const BlockList = () => {
         const eventTitle =
           blocksData.data?.event_title || "Event Title Not Found";
         setEventTitle(eventTitle);
-        const mappedBlocks =
-          blocksData.data?.blocks?.map((block) => ({
-            ...block,
-            display_name: block.course_code
-              ? `${block.course_code} ${block.block_name}`
-              : block.block_name,
-          })) || [];
+        const mappedBlocks = mapBlocks(blocksData.data?.blocks);
         setAllBlocks(mappedBlocks);
         setBlocks(mappedBlocks);
-        const uniqueDepartments = [
-          ...new Set(mappedBlocks.map((b) => b.department_id)),
-        ];
-        const deptOptions = uniqueDepartments.map((deptId) => ({
-          label: mappedBlocks.find((b) => b.department_id === deptId)
-            ?.course_code,
-          value: String(deptId),
-        }));
-        const departmentsWithAll = [
-          { label: "All Departments", value: "" },
-          ...deptOptions,
-        ];
-        setDepartments(departmentsWithAll);
-        const uniqueYearLevels = [
-          ...new Set(mappedBlocks.map((b) => b.year_level_id)),
-        ];
-        const yearOptions = uniqueYearLevels.map((yearId) => ({
-          label: `Year ${yearId}`,
-          value: String(yearId),
-        }));
-        setYearLevels(yearOptions);
+        setDepartments(buildDepartmentOptions(mappedBlocks));
+        setYearLevels(buildYearLevelOptions(mappedBlocks));
       } catch (error) {
         setAllBlocks([]);
         setBlocks([]);
@@ -104,15 +348,7 @@ const BlockList = () => {
           selectedDepartment || undefined,
           selectedYearLevel || undefined
         );
-        let mappedBlocks = [];
-        if (blocksData?.data?.blocks?.length > 0) {
-          mappedBlocks = blocksData.data.blocks.map((block) => ({
-            ...block,
-            display_name: block.course_code
-              ? `${block.course_code} ${block.block_name}`
-              : block.block_name,
-          }));
-        }
+        const mappedBlocks = mapBlocks(blocksData?.data?.blocks);
         setAllBlocks(mappedBlocks);
         setBlocks(mappedBlocks);
       } catch (error) {
@@ -137,53 +373,17 @@ const BlockList = () => {
     setBlocks(filtered);
   }, [searchQuery, allBlocks]);
 
-  const formatTime = (timeString) => {
-    if (!timeString) return "-";
-    try {
-      const date = new Date(timeString);
-      return date.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } catch (error) {
-      return "-";
-    }
-  };
-
-  const getAttendanceCounts = (student) => {
-    return {
-      am_in_count: student.am_in_attended || 0,
-      am_out_count: student.am_out_attended || 0,
-      pm_in_count: student.pm_in_attended || 0,
-      pm_out_count: student.pm_out_attended || 0,
-    };
-  };
-
   const handleSavePDF = async (filters) => {
     try {
-      const { departmentIds, blockIds, yearLevelIds, attendanceFilter } =
-        filters;
-      const filteredBlocks = allBlocks.filter((block) => {
-        const departmentMatch =
-          departmentIds.length === 0 ||
-          departmentIds.includes(String(block.department_id));
-        const yearLevelMatch =
-          yearLevelIds.length === 0 ||
-          yearLevelIds.includes(String(block.year_level_id));
-        const blockMatch =
-          blockIds.length === 0 || blockIds.includes(String(block.block_id));
-        return departmentMatch && yearLevelMatch && blockMatch;
-      });
+      const { attendanceFilter } = filters;
+      const filteredBlocks = filterBlocksForPrint(allBlocks, filters);
 
       if (filteredBlocks.length === 0) {
-        setModalConfig({
+        showModal({
           title: "No Blocks Found",
           message: "No blocks match the selected filters.",
           type: "warning",
-          cancelTitle: "OK",
         });
-        setModalVisible(true);
         return;
       }
 
@@ -197,19 +397,7 @@ const BlockList = () => {
             );
             return summary;
           } catch (error) {
-            return {
-              data: {
-                attendance_summary: [],
-                available_time_periods: {
-                  hasAmIn: false,
-                  hasAmOut: false,
-                  hasPmIn: false,
-                  hasPmOut: false,
-                },
-                first_event_date: null,
-                last_event_date: null,
-              },
-            };
+            return EMPTY_ATTENDANCE_SUMMARY;
           }
         })
       );
@@ -224,60 +412,15 @@ const BlockList = () => {
         }
       }
 
-      let dateString = "Date not available";
-      if (eventStartDate && eventEndDate) {
-        const startDate = new Date(eventStartDate);
-        const endDate = new Date(eventEndDate);
-        const formatDate = (date) =>
-          date.toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          });
-        if (
-          startDate.getDate() === endDate.getDate() &&
-          startDate.getMonth() === endDate.getMonth() &&
-          startDate.getFullYear() === endDate.getFullYear()
-        ) {
-          dateString = `${formatDate(startDate)}`;
-        } else if (
-          startDate.getMonth() === endDate.getMonth() &&
-          startDate.getFullYear() === endDate.getFullYear()
-        ) {
-          dateString = `${startDate.toLocaleDateString("en-US", {
-            month: "long",
-          })} ${startDate.getDate()}–${endDate.getDate()}, ${startDate.getFullYear()}`;
-        } else {
-          dateString = `${formatDate(startDate)} – ${formatDate(endDate)}`;
-        }
-      }
+      const dateString = formatEventDateRange(eventStartDate, eventEndDate);
 
       const studentsByBlock = {};
-      let globalAvailableTimePeriods = {
-        hasAmIn: false,
-        hasAmOut: false,
-        hasPmIn: false,
-        hasPmOut: false,
-      };
 
       filteredBlocks.forEach((block, index) => {
         const summaryData = attendanceSummaries[index]?.data || {};
         const summary = summaryData.attendance_summary || [];
-        const availableTimePeriods = summaryData.available_time_periods || {
-          hasAmIn: false,
-          hasAmOut: false,
-          hasPmIn: false,
-          hasPmOut: false,
-        };
-
-        globalAvailableTimePeriods.hasAmIn =
-          globalAvailableTimePeriods.hasAmIn || availableTimePeriods.hasAmIn;
-        globalAvailableTimePeriods.hasAmOut =
-          globalAvailableTimePeriods.hasAmOut || availableTimePeriods.hasAmOut;
-        globalAvailableTimePeriods.hasPmIn =
-          globalAvailableTimePeriods.hasPmIn || availableTimePeriods.hasPmIn;
-        globalAvailableTimePeriods.hasPmOut =
-          globalAvailableTimePeriods.hasPmOut || availableTimePeriods.hasPmOut;
+        const availableTimePeriods =
+          summaryData.available_time_periods || DEFAULT_TIME_PERIODS;
 
         const departmentName =
           departments.find((dept) => dept.value === String(block.department_id))
@@ -312,134 +455,15 @@ const BlockList = () => {
         };
       });
 
-      const generateBlockPage = (blockName, blockData, isFirst = false) => {
-        const { students, availableTimePeriods } = blockData;
-
-        let headerColumns = `
-          <span class="col-id">ID Number</span>
-          <span class="col-name">Name</span>
-        `;
-        if (availableTimePeriods.hasAmIn) {
-          headerColumns += '<span class="col-time">AM In</span>';
-        }
-        if (availableTimePeriods.hasAmOut) {
-          headerColumns += '<span class="col-time">AM Out</span>';
-        }
-        if (availableTimePeriods.hasPmIn) {
-          headerColumns += '<span class="col-time">PM In</span>';
-        }
-        if (availableTimePeriods.hasPmOut) {
-          headerColumns += '<span class="col-time">PM Out</span>';
-        }
-        headerColumns += `
-          <span class="col-count">Present</span>
-          <span class="col-count">Absent</span>
-        `;
-
-        const studentRows =
-          students.length === 0
-            ? `<div style="text-align: center; margin-top: 20px; font-style: italic; color: #666;">
-               No records
-             </div>`
-            : students
-                .map((record) => {
-                  let rowColumns = `
-                <span class="col-id">${record.id}</span>
-                <span class="col-name">${record.name}</span>
-              `;
-                  if (availableTimePeriods.hasAmIn) {
-                    rowColumns += `<span class="col-time">${record.am_in}</span>`;
-                  }
-                  if (availableTimePeriods.hasAmOut) {
-                    rowColumns += `<span class="col-time">${record.am_out}</span>`;
-                  }
-                  if (availableTimePeriods.hasPmIn) {
-                    rowColumns += `<span class="col-time">${record.pm_in}</span>`;
-                  }
-                  if (availableTimePeriods.hasPmOut) {
-                    rowColumns += `<span class="col-time">${record.pm_out}</span>`;
-                  }
-                  rowColumns += `
-                <span class="col-count">${record.present}</span>
-                <span class="col-count">${record.absent}</span>
-              `;
-                  return `<div class="record-line">${rowColumns}</div>`;
-                })
-                .join("");
-
-        return `
-          <div style="${
-            isFirst
-              ? "padding-top: 10px;"
-              : "page-break-before: always; padding-top: 10px;"
-          }">
-            <h2 style="color: black; text-align: left; margin-bottom: 3px;">${eventTitle}</h2>
-            <h3 style="color: black; text-align: left; margin-bottom: 3px;">${
-              attendanceFilter === "all"
-                ? "General List"
-                : attendanceFilter === "present"
-                ? "Present List"
-                : "Absent List"
-            }</h3>
-            <h4 style="color: black; text-align: left; margin-bottom: 3px;">Date: ${dateString}</h4>
-            <h3 style="color: black; text-align: left; margin-bottom: 10px;">${blockName}</h3>
-            <div class="header-line">
-              ${headerColumns}
-            </div>
-            ${studentRows}
-          </div>
-        `;
-      };
-
-      const html = `
-        <html>
-          <head>
-            <meta charset="utf-8" />
-            <style>
-              body { 
-                font-family: Arial, sans-serif; 
-                padding: 0px 20px 20px 20px; 
-                color: black;
-                font-size: 11px;
-              }
-              h1, h2, h3 { 
-                color: black; 
-                text-align: center;
-              }
-              .header-line {
-                color: black;
-                font-weight: bold;
-                margin-bottom: 10px;
-                display: flex;
-              }
-              .record-line {
-                color: black;
-                margin-bottom: 2px;
-                display: flex;
-              }
-              .col-id { width: 90px; }
-              .col-name { width: 200px; }
-              .col-time { width: 55px; text-align: center; font-size: 11px; }
-              .col-count { width: 55px; text-align: center; }
-            </style>
-          </head>
-          <body>
-            ${Object.entries(studentsByBlock)
-              .map(([blockName, blockData], index) =>
-                generateBlockPage(blockName, blockData, index === 0)
-              )
-              .join("")}
-          </body>
-        </html>
-      `;
+      const html = buildPdfHtml({
+        studentsByBlock,
+        dateString,
+        eventTitle,
+        attendanceFilter,
+      });
 
       const { uri } = await Print.printToFileAsync({ html });
-      const filterName =
-        attendanceFilter === "all"
-          ? "General List"
-          : attendanceFilter === "present"
-          ? "Present List"
-          : "Absent List";
+      const filterName = getAttendanceFilterLabel(attendanceFilter);
       const pdfName = `${eventTitle} - ${filterName}.pdf`;
       const pdfPath = `${FileSystem.documentDirectory}${pdfName}`;
       await FileSystem.moveAsync({ from: uri, to: pdfPath });
@@ -447,21 +471,17 @@ const BlockList = () => {
         UTI: ".pdf",
         mimeType: "application/pdf",
       });
-      setModalConfig({
+      showModal({
         title: "Download Successful",
         message: "Your attendance record has been downloaded successfully.",
         type: "success",
-        cancelTitle: "OK",
       });
-      setModalVisible(true);
     } catch (error) {
-      setModalConfig({
+      showModal({
         title: "Download Failed",
         message: "An error occurred while generating the PDF.",
         type: "error",
-        cancelTitle: "OK",
       });
-      setModalVisible(true);
     }
   };
 
@@ -474,13 +494,11 @@ const BlockList = () => {
 
   const handleDownloadPress = () => {
     if (allBlocks.length === 0) {
-      setModalConfig({
+      showModal({
         title: "No Blocks Available",
         message: "No blocks available to print.",
         type: "warning",
-        cancelTitle: "OK",
       });
-      setModalVisible(true);
       return;
     }
     setShowPrintModal(true);
@@ -497,7 +515,7 @@ const BlockList = () => {
       </View>
       <View style={styles.container}>
         <View style={styles.filterContainer}>
-          <View style={{ width: "48%" }}>
+          <View style={styles.filterDropdown}>
             <CustomDropdown
               placeholder="Department"
               data={departments}
@@ -507,7 +525,7 @@ const BlockList = () => {
               onSelect={(item) => setSelectedDepartment(item.value)}
             />
           </View>
-          <View style={{ width: "48%" }}>
+          <View style={styles.filterDropdown}>
             <CustomDropdown
               placeholder="Year Level"
               data={yearLevels}
@@ -596,6 +614,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: theme.spacing.medium,
+  },
+  filterDropdown: {
+    width: "48%",
   },
   scrollviewContainer: {
     paddingHorizontal: theme.spacing.medium,

@@ -22,6 +22,98 @@ import {
   fetchAllOngoingEvents,
 } from "../../../../services/api/attendance";
 
+const RECORD_VIEWER_ROLES = [1, 2, 3];
+const STUDENT_RECORD_ROLES = [1, 2];
+const ADMIN_RECORD_ROLE = 3;
+
+const canViewRecords = (userRoleId) => RECORD_VIEWER_ROLES.includes(userRoleId);
+
+const processEventDates = (eventDates) => {
+  if (!eventDates) return [];
+
+  let dates = [];
+
+  if (typeof eventDates === "string") {
+    dates = eventDates
+      .split(",")
+      .map((date) => date.trim())
+      .filter(Boolean);
+  } else if (Array.isArray(eventDates)) {
+    dates = eventDates.filter(Boolean);
+  } else {
+    dates = [eventDates].filter(Boolean);
+  }
+
+  return dates
+    .map((date) => {
+      const parsedDate = moment(date);
+      return parsedDate.isValid() ? parsedDate.format("YYYY-MM-DD") : null;
+    })
+    .filter(Boolean);
+};
+
+const processEvents = (events) =>
+  events.map((event) => ({
+    event_id: event.event_id,
+    event_name: event.event_name,
+    event_dates: processEventDates(event.event_dates),
+  }));
+
+const formatEventDates = (eventDates) => {
+  if (!Array.isArray(eventDates) || eventDates.length === 0) {
+    return "No dates available";
+  }
+
+  const validDates = eventDates
+    .map((date) => moment(date))
+    .filter((momentDate) => momentDate.isValid())
+    .sort((a, b) => a.valueOf() - b.valueOf());
+
+  if (validDates.length === 0) {
+    return "No dates available";
+  }
+
+  if (validDates.length === 1) {
+    return validDates[0].format("MMM DD, YYYY");
+  }
+
+  let isConsecutive = true;
+  for (let i = 1; i < validDates.length; i++) {
+    const diff = validDates[i].diff(validDates[i - 1], "days");
+    if (diff !== 1) {
+      isConsecutive = false;
+      break;
+    }
+  }
+
+  if (isConsecutive) {
+    const startDate = validDates[0];
+    const endDate = validDates[validDates.length - 1];
+
+    if (
+      startDate.year() === endDate.year() &&
+      startDate.month() === endDate.month()
+    ) {
+      return `${startDate.format("MMM DD")}-${endDate.format("DD, YYYY")}`;
+    }
+
+    return `${startDate.format("MMM DD")} - ${endDate.format(
+      "MMM DD, YYYY"
+    )}`;
+  }
+
+  const datesToShow = validDates.slice(0, 3);
+  const formatted = datesToShow
+    .map((date) => date.format("MMM DD, YYYY"))
+    .join(", ");
+
+  if (validDates.length > 3) {
+    return `${formatted}... (+${validDates.length - 3} more)`;
+  }
+
+  return formatted;
+};
+
 const Records = () => {
   const { user } = useAuth();
   const { loading: eventsLoading, lastEventUpdate } = useEvents();
@@ -31,10 +123,6 @@ const Records = () => {
   const [pastEvents, setPastEvents] = useState([]);
   const [studentId, setStudentId] = useState(null);
   const [blockId, setBlockId] = useState(null);
-
-  const canViewRecords = (userRoleId) => {
-    return [1, 2, 3].includes(userRoleId);
-  };
 
   const fetchRecordsData = useCallback(async () => {
     if (!user || !canViewRecords(user.role_id)) {
@@ -49,7 +137,7 @@ const Records = () => {
       let userIdNumber = null;
       let userBlockNumber = null;
 
-      if (user.role_id === 1 || user.role_id === 2) {
+      if (STUDENT_RECORD_ROLES.includes(user.role_id)) {
         const storedUser = await getStoredUser();
         if (!storedUser || !storedUser.id_number) {
           return;
@@ -64,7 +152,7 @@ const Records = () => {
         ]);
         ongoingEventsData = ongoingResponse?.events || [];
         pastEventsData = pastResponse?.events || [];
-      } else if (user.role_id === 3) {
+      } else if (user.role_id === ADMIN_RECORD_ROLE) {
         const [ongoingResponse, pastResponse] = await Promise.all([
           fetchAllOngoingEvents(),
           fetchAllPastEvents(),
@@ -73,49 +161,14 @@ const Records = () => {
         pastEventsData = pastResponse?.events || [];
       }
 
-      const processEvents = (events) => {
-        return events.map((event) => ({
-          event_id: event.event_id,
-          event_name: event.event_name,
-          event_dates: processEventDates(event.event_dates),
-        }));
-      };
-
-      const processedOngoing = processEvents(ongoingEventsData);
-      const processedPast = processEvents(pastEventsData);
-
-      setOngoingEvents(processedOngoing);
-      setPastEvents(processedPast);
+      setOngoingEvents(processEvents(ongoingEventsData));
+      setPastEvents(processEvents(pastEventsData));
     } catch (error) {
       console.error("Error fetching records:", error);
     } finally {
       setLoading(false);
     }
   }, [user?.role_id, user?.id_number]);
-
-  const processEventDates = (eventDates) => {
-    if (!eventDates) return [];
-
-    let dates = [];
-
-    if (typeof eventDates === "string") {
-      dates = eventDates
-        .split(",")
-        .map((date) => date.trim())
-        .filter(Boolean);
-    } else if (Array.isArray(eventDates)) {
-      dates = eventDates.filter(Boolean);
-    } else {
-      dates = [eventDates].filter(Boolean);
-    }
-
-    return dates
-      .map((date) => {
-        const parsedDate = moment(date);
-        return parsedDate.isValid() ? parsedDate.format("YYYY-MM-DD") : null;
-      })
-      .filter(Boolean);
-  };
 
   useEffect(() => {
     if (user) {
@@ -154,68 +207,13 @@ const Records = () => {
     await fetchRecordsData();
   }, [loading, fetchRecordsData]);
 
-  const formatEventDates = useCallback((eventDates) => {
-    if (!Array.isArray(eventDates) || eventDates.length === 0) {
-      return "No dates available";
-    }
-
-    const validDates = eventDates
-      .map((date) => moment(date))
-      .filter((momentDate) => momentDate.isValid())
-      .sort((a, b) => a.valueOf() - b.valueOf());
-
-    if (validDates.length === 0) {
-      return "No dates available";
-    }
-
-    if (validDates.length === 1) {
-      return validDates[0].format("MMM DD, YYYY");
-    }
-
-    let isConsecutive = true;
-    for (let i = 1; i < validDates.length; i++) {
-      const diff = validDates[i].diff(validDates[i - 1], "days");
-      if (diff !== 1) {
-        isConsecutive = false;
-        break;
-      }
-    }
-
-    if (isConsecutive) {
-      const startDate = validDates[0];
-      const endDate = validDates[validDates.length - 1];
-
-      if (
-        startDate.year() === endDate.year() &&
-        startDate.month() === endDate.month()
-      ) {
-        return `${startDate.format("MMM DD")}-${endDate.format("DD, YYYY")}`;
-      } else {
-        return `${startDate.format("MMM DD")} - ${endDate.format(
-          "MMM DD, YYYY"
-        )}`;
-      }
-    }
-
-    const datesToShow = validDates.slice(0, 3);
-    const formatted = datesToShow
-      .map((date) => date.format("MMM DD, YYYY"))
-      .join(", ");
-
-    if (validDates.length > 3) {
-      return `${formatted}... (+${validDates.length - 3} more)`;
-    }
-
-    return formatted;
-  }, []);
-
   const handleEventPress = useCallback(
     (eventId) => {
-      if (user?.role_id === 1 || user?.role_id === 2) {
+      if (STUDENT_RECORD_ROLES.includes(user?.role_id)) {
         router.push(
           `/records/Attendance?eventId=${eventId}&studentId=${studentId}&blockId=${blockId}`
         );
-      } else if (user?.role_id === 3) {
+      } else if (user?.role_id === ADMIN_RECORD_ROLE) {
         router.push(`/records/BlockList?eventId=${eventId}`);
       }
     },
@@ -243,7 +241,7 @@ const Records = () => {
         </View>
       );
     },
-    [handleEventPress, formatEventDates]
+    [handleEventPress]
   );
 
   const renderContent = useCallback(() => {
@@ -285,7 +283,6 @@ const Records = () => {
     loading,
     ongoingEvents.length,
     pastEvents.length,
-    canViewRecords,
     user?.role_id,
     filteredOngoing,
     filteredPast,

@@ -20,6 +20,132 @@ import CustomModal from "../../../../components/CustomModal";
 import { fetchStudentAttendanceByEventAndBlock } from "../../../../services/api/attendance";
 import { getStudentAttSummary } from "../../../../services/api/attendance";
 
+const INITIAL_MODAL_CONFIG = {
+  title: "",
+  message: "",
+  type: "success",
+  cancelTitle: "OK",
+};
+
+const emptyAttendanceState = {
+  eventName: "",
+  studentDetails: null,
+  attendanceDataList: [],
+};
+
+const getStudentDetails = (student, data) => ({
+  name: student.name,
+  id: student.student_id,
+  courseBlock: `${data.course_code} ${data.block_name}`,
+});
+
+const buildTableHeaders = (availableTimePeriods) => {
+  let tableHeaders = `<span class="col-date">Date</span>`;
+  if (availableTimePeriods.hasAmIn) {
+    tableHeaders += '<span class="col-time">AM In</span>';
+  }
+  if (availableTimePeriods.hasAmOut) {
+    tableHeaders += '<span class="col-time">AM Out</span>';
+  }
+  if (availableTimePeriods.hasPmIn) {
+    tableHeaders += '<span class="col-time">PM In</span>';
+  }
+  if (availableTimePeriods.hasPmOut) {
+    tableHeaders += '<span class="col-time">PM Out</span>';
+  }
+  tableHeaders += `
+    <span class="col-count">Present</span>
+    <span class="col-count">Absent</span>
+  `;
+  return tableHeaders;
+};
+
+const buildTableRows = (attendanceSummary, availableTimePeriods) =>
+  Object.entries(attendanceSummary || {})
+    .map(([date, summary]) => {
+      let rowColumns = `<span class="col-date">${moment(date).format(
+        "MMMM D, YYYY"
+      )}</span>`;
+      if (availableTimePeriods.hasAmIn) {
+        rowColumns += `<span class="col-time">${
+          summary.am_in_attended || 0
+        }</span>`;
+      }
+      if (availableTimePeriods.hasAmOut) {
+        rowColumns += `<span class="col-time">${
+          summary.am_out_attended || 0
+        }</span>`;
+      }
+      if (availableTimePeriods.hasPmIn) {
+        rowColumns += `<span class="col-time">${
+          summary.pm_in_attended || 0
+        }</span>`;
+      }
+      if (availableTimePeriods.hasPmOut) {
+        rowColumns += `<span class="col-time">${
+          summary.pm_out_attended || 0
+        }</span>`;
+      }
+      rowColumns += `
+        <span class="col-count">${summary.present_count}</span>
+        <span class="col-count">${summary.absent_count}</span>
+      `;
+      return `<div class="record-line">${rowColumns}</div>`;
+    })
+    .join("");
+
+const buildAttendanceReportHtml = ({
+  eventName,
+  studentId,
+  studentName,
+  courseBlock,
+  tableHeaders,
+  tableRows,
+}) => `
+  <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>
+        body { font-family: Arial, sans-serif; padding: 0px 40px 20px 40px; color: black; font-size: 11px; }
+        h2, h3, h4 { color: black; }
+        .header-line { color: black; font-weight: bold; margin-bottom: 10px; display: flex; }
+        .record-line { color: black; margin-bottom: 2px; display: flex; }
+        .col-date { width: 120px; text-align: left; }
+        .col-time { width: 60px; text-align: center; font-size: 11px; }
+        .col-count { width: 60px; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div style="padding-top: 10px;">
+        <h2 style="color: black; text-align: left; margin-bottom: 3px;">${
+          eventName || "Unknown Event"
+        }</h2>
+        <h3 style="color: black; text-align: left; margin-bottom: 3px;">Individual Attendance Report</h3>
+        <h4 style="color: black; text-align: left; margin-bottom: 3px;">Generated: ${new Date().toLocaleDateString(
+          "en-US",
+          {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          }
+        )}</h4>
+        <h3 style="color: black; text-align: left; margin-bottom: 10px;">${
+          studentName || "N/A"
+        } (${studentId || "N/A"})</h3>
+        <div style="margin-bottom: 15px;">
+          <p style="margin: 5px 0; text-align: left;"><strong>Course/Block:</strong> ${
+            courseBlock || "N/A"
+          }</p>
+        </div>
+        <div class="header-line">
+          ${tableHeaders}
+        </div>
+        ${tableRows}
+      </div>
+    </body>
+  </html>
+`;
+
 const SessionLog = ({ label, data, sessionType = "am" }) => {
   const now = moment.now();
   const isAttendanceTimePassed = (time) => {
@@ -97,12 +223,21 @@ const Attendance = () => {
   const [studentDetails, setStudentDetails] = useState(null);
   const { eventId, blockId, studentId } = useLocalSearchParams();
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalConfig, setModalConfig] = useState({
-    title: "",
-    message: "",
-    type: "success",
-    cancelTitle: "OK",
-  });
+  const [modalConfig, setModalConfig] = useState(INITIAL_MODAL_CONFIG);
+
+  const resetAttendanceState = () => {
+    setEventName(emptyAttendanceState.eventName);
+    setStudentDetails(emptyAttendanceState.studentDetails);
+    setAttendanceDataList(emptyAttendanceState.attendanceDataList);
+  };
+
+  const showModal = (config) => {
+    setModalConfig({
+      ...INITIAL_MODAL_CONFIG,
+      ...config,
+    });
+    setModalVisible(true);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -118,26 +253,16 @@ const Attendance = () => {
           const student = data.students.find((s) => s.student_id === studentId);
           if (student) {
             setEventName(data.event_name);
-            setStudentDetails({
-              name: student.name,
-              id: student.student_id,
-              courseBlock: `${data.course_code} ${data.block_name}`,
-            });
+            setStudentDetails(getStudentDetails(student, data));
             setAttendanceDataList(student.dates);
           } else {
-            setEventName("");
-            setStudentDetails(null);
-            setAttendanceDataList([]);
+            resetAttendanceState();
           }
         } else {
-          setEventName("");
-          setStudentDetails(null);
-          setAttendanceDataList([]);
+          resetAttendanceState();
         }
       } catch (error) {
-        setEventName("");
-        setStudentDetails(null);
-        setAttendanceDataList([]);
+        resetAttendanceState();
       } finally {
         setLoading(false);
       }
@@ -164,101 +289,14 @@ const Attendance = () => {
         available_time_periods = {},
       } = response.data;
 
-      let tableHeaders = `<span class="col-date">Date</span>`;
-      if (available_time_periods.hasAmIn) {
-        tableHeaders += '<span class="col-time">AM In</span>';
-      }
-      if (available_time_periods.hasAmOut) {
-        tableHeaders += '<span class="col-time">AM Out</span>';
-      }
-      if (available_time_periods.hasPmIn) {
-        tableHeaders += '<span class="col-time">PM In</span>';
-      }
-      if (available_time_periods.hasPmOut) {
-        tableHeaders += '<span class="col-time">PM Out</span>';
-      }
-      tableHeaders += `
-        <span class="col-count">Present</span>
-        <span class="col-count">Absent</span>
-      `;
-
-      const tableRows = Object.entries(attendance_summary || {})
-        .map(([date, summary]) => {
-          let rowColumns = `<span class="col-date">${moment(date).format(
-            "MMMM D, YYYY"
-          )}</span>`;
-          if (available_time_periods.hasAmIn) {
-            rowColumns += `<span class="col-time">${
-              summary.am_in_attended || 0
-            }</span>`;
-          }
-          if (available_time_periods.hasAmOut) {
-            rowColumns += `<span class="col-time">${
-              summary.am_out_attended || 0
-            }</span>`;
-          }
-          if (available_time_periods.hasPmIn) {
-            rowColumns += `<span class="col-time">${
-              summary.pm_in_attended || 0
-            }</span>`;
-          }
-          if (available_time_periods.hasPmOut) {
-            rowColumns += `<span class="col-time">${
-              summary.pm_out_attended || 0
-            }</span>`;
-          }
-          rowColumns += `
-            <span class="col-count">${summary.present_count}</span>
-            <span class="col-count">${summary.absent_count}</span>
-          `;
-          return `<div class="record-line">${rowColumns}</div>`;
-        })
-        .join("");
-
-      const htmlContent = `
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <style>
-            body { font-family: Arial, sans-serif; padding: 0px 40px 20px 40px; color: black; font-size: 11px; }
-            h2, h3, h4 { color: black; }
-            .header-line { color: black; font-weight: bold; margin-bottom: 10px; display: flex; }
-            .record-line { color: black; margin-bottom: 2px; display: flex; }
-            .col-date { width: 120px; text-align: left; }
-            .col-time { width: 60px; text-align: center; font-size: 11px; }
-            .col-count { width: 60px; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div style="padding-top: 10px;">
-            <h2 style="color: black; text-align: left; margin-bottom: 3px;">${
-              event_name || "Unknown Event"
-            }</h2>
-            <h3 style="color: black; text-align: left; margin-bottom: 3px;">Individual Attendance Report</h3>
-            <h4 style="color: black; text-align: left; margin-bottom: 3px;">Generated: ${new Date().toLocaleDateString(
-              "en-US",
-              {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              }
-            )}</h4>
-            <h3 style="color: black; text-align: left; margin-bottom: 10px;">${
-              student_name || "N/A"
-            } (${student_id || "N/A"})</h3>
-            <div style="margin-bottom: 15px;">
-              <p style="margin: 5px 0; text-align: left;"><strong>Course/Block:</strong> ${
-                studentDetails?.courseBlock || "N/A"
-              }</p>
-            </div>
-            <div class="header-line">
-              ${tableHeaders}
-            </div>
-            ${tableRows}
-          </div>
-        </body>
-      </html>
-    `;
+      const htmlContent = buildAttendanceReportHtml({
+        eventName: event_name,
+        studentId: student_id,
+        studentName: student_name,
+        courseBlock: studentDetails?.courseBlock,
+        tableHeaders: buildTableHeaders(available_time_periods),
+        tableRows: buildTableRows(attendance_summary, available_time_periods),
+      });
 
       const { uri: tempUri } = await Print.printToFileAsync({ html: htmlContent });
       const pdfName = `${
@@ -275,25 +313,21 @@ const Attendance = () => {
       const shareResult = await Share.share({ url: tempFile.uri, title: pdfName });
 
       if (shareResult.action === Share.sharedAction) {
-        setModalConfig({
+        showModal({
           title: "Download Successful",
           message: "Your attendance record has been downloaded successfully.",
           type: "success",
-          cancelTitle: "OK",
         });
-        setModalVisible(true);
       }
       return;
     } catch (error) {
-      setModalConfig({
+      showModal({
         title: "Download Failed",
         message: `An error occurred while generating the PDF: ${
           error.message || "Unknown error"
         }`,
         type: "error",
-        cancelTitle: "OK",
       });
-      setModalVisible(true);
     }
   };
 

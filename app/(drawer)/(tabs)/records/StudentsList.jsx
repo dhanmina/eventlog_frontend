@@ -16,6 +16,19 @@ import images from "../../../../constants/images";
 
 import CustomSearch from "../../../../components/CustomSearch";
 
+const getStudentList = (response) => response.data?.students || [];
+
+const filterStudents = (students, searchText) => {
+  if (!searchText.trim()) return students;
+
+  const searchTermLower = searchText.toLowerCase();
+  return students.filter(
+    (student) =>
+      student.name.toLowerCase().includes(searchTermLower) ||
+      student.student_id.toLowerCase().includes(searchTermLower)
+  );
+};
+
 const StudentsList = () => {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
@@ -33,8 +46,7 @@ const StudentsList = () => {
         );
 
         if (response.success) {
-          const { data } = response;
-          const studentList = data.students || [];
+          const studentList = getStudentList(response);
           setStudents(studentList);
           setFilteredStudents(studentList);
         } else {
@@ -55,19 +67,7 @@ const StudentsList = () => {
   }, [eventId, blockId]);
 
   const handleSearch = (text) => {
-    if (!text.trim()) {
-      setFilteredStudents(students);
-      return;
-    }
-
-    const searchTermLower = text.toLowerCase();
-    const filtered = students.filter(
-      (student) =>
-        student.name.toLowerCase().includes(searchTermLower) ||
-        student.student_id.toLowerCase().includes(searchTermLower)
-    );
-
-    setFilteredStudents(filtered);
+    setFilteredStudents(filterStudents(students, text));
   };
 
   const handleStudentPress = (student) => {
@@ -109,13 +109,13 @@ const StudentsList = () => {
 
   return (
     <View style={globalStyles.secondaryContainer}>
-      <View style={{ width: "100%", paddingHorizontal: theme.spacing.medium }}>
+      <View style={styles.searchContainer}>
         <CustomSearch
           onSearch={handleSearch}
           placeholder="Search by name or ID"
         />
       </View>
-      <ScrollView style={{ width: "100%" }}>
+      <ScrollView style={styles.scrollView}>
         {filteredStudents.length === 0 ? (
           <View style={styles.noResultsContainer}>
             <Text style={styles.noResultsText}>
@@ -147,6 +147,13 @@ const StudentsList = () => {
 export default StudentsList;
 
 const styles = StyleSheet.create({
+  searchContainer: {
+    width: "100%",
+    paddingHorizontal: theme.spacing.medium,
+  },
+  scrollView: {
+    width: "100%",
+  },
   studentContainer: {
     justifyContent: "space-between",
     flexDirection: "row",
