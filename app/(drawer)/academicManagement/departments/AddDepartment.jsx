@@ -5,7 +5,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import TabsComponent from "../../../../components/TabsComponent";
 import globalStyles from "../../../../constants/globalStyles";
@@ -15,19 +15,31 @@ import CustomButton from "../../../../components/CustomButton";
 import { addDepartment } from "../../../../services/api";
 import CustomModal from "../../../../components/CustomModal";
 
+const INITIAL_FORM_DATA = {
+  department_name: "",
+  department_code: "",
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
 const AddDepartment = () => {
-  const [formData, setFormData] = useState({
-    department_name: "",
-    department_code: "",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL);
+
+  const showModal = useCallback((title, message, type) => {
+    setModal({ visible: true, title, message, type });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModal((currentModal) => ({ ...currentModal, visible: false }));
+  }, []);
 
   const handleChange = (name, value) => {
     setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
@@ -35,16 +47,11 @@ const AddDepartment = () => {
 
   const handleSubmit = async () => {
     try {
-      if (
-        !formData.department_name.trim() ||
-        !formData.department_code.trim()
-      ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
+      const hasMissingRequiredFields =
+        !formData.department_name.trim() || !formData.department_code.trim();
+
+      if (hasMissingRequiredFields) {
+        showModal("Warning", "Please fill in all required fields.", "warning");
         return;
       }
 
@@ -56,26 +63,16 @@ const AddDepartment = () => {
       setIsLoading(true);
       await addDepartment(submitData);
 
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Department added successfully!",
-        type: "success",
-      });
+      showModal("Success", "Department added successfully!", "success");
 
-      setFormData({
-        department_name: "",
-        department_code: "",
-      });
+      setFormData(INITIAL_FORM_DATA);
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message:
-          error.response?.data?.message ||
+      showModal(
+        "Error",
+        error.response?.data?.message ||
           "Failed to add department. Please try again.",
-        type: "error",
-      });
+        "error"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +93,7 @@ const AddDepartment = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 

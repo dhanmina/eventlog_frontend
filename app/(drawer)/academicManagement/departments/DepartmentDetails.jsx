@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import TabsComponent from "../../../../components/TabsComponent";
 import CustomButton from "../../../../components/CustomButton";
@@ -13,7 +13,9 @@ import {
   fetchDepartmentById,
   disableDepartment,
 } from "../../../../services/api";
-import { useLocalSearchParams } from "expo-router";
+
+const getEditDepartmentRoute = (departmentId) =>
+  `/academicManagement/departments/EditDepartment?id=${departmentId}`;
 
 const DepartmentDetails = () => {
   const { id: department_id } = useLocalSearchParams();
@@ -22,7 +24,7 @@ const DepartmentDetails = () => {
   const [isDisableModalVisible, setIsDisableModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
-  const fetchDepartmentDetails = async () => {
+  const fetchDepartmentDetails = useCallback(async () => {
     try {
       if (!department_id) throw new Error("Invalid department ID");
 
@@ -35,14 +37,42 @@ const DepartmentDetails = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [department_id]);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setIsLoading(true);
       fetchDepartmentDetails();
-    }, [department_id])
+    }, [fetchDepartmentDetails])
   );
+
+  const handleDisablePress = () => {
+    setIsDisableModalVisible(true);
+  };
+
+  const handleDisableModalClose = () => {
+    setIsDisableModalVisible(false);
+  };
+
+  const handleConfirmDisable = async () => {
+    try {
+      await disableDepartment(departmentDetails.department_id);
+
+      setDepartmentDetails((prevDetails) =>
+        prevDetails ? { ...prevDetails, status: "Disabled" } : null
+      );
+
+      handleDisableModalClose();
+      setIsSuccessModalVisible(true);
+    } catch (error) {
+      console.error("Error disabling department:", error);
+    }
+  };
+
+  const handleSuccessModalClose = () => {
+    setIsSuccessModalVisible(false);
+    fetchDepartmentDetails();
+  };
 
   if (isLoading) {
     return (
@@ -60,29 +90,11 @@ const DepartmentDetails = () => {
     );
   }
 
-  const handleDisablePress = () => {
-    setIsDisableModalVisible(true);
-  };
-
-  const handleConfirmDisable = async () => {
-    try {
-      await disableDepartment(departmentDetails.department_id);
-
-      setDepartmentDetails((prevDetails) =>
-        prevDetails ? { ...prevDetails, status: "Disabled" } : null
-      );
-
-      setIsDisableModalVisible(false);
-      setIsSuccessModalVisible(true);
-    } catch (error) {
-      console.error("Error disabling department:", error);
-    }
-  };
-
-  const handleSuccessModalClose = () => {
-    setIsSuccessModalVisible(false);
-    fetchDepartmentDetails();
-  };
+  const departmentDetailRows = [
+    { label: "Department Name:", value: departmentDetails.department_name },
+    { label: "Department Code:", value: departmentDetails.department_code },
+    { label: "Status:", value: departmentDetails.status },
+  ];
 
   return (
     <View
@@ -96,18 +108,12 @@ const DepartmentDetails = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.detailsWrapper}>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Department Name:</Text>
-          <Text style={styles.detail}>{departmentDetails.department_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Department Code:</Text>
-          <Text style={styles.detail}>{departmentDetails.department_code}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Status:</Text>
-          <Text style={styles.detail}>{departmentDetails.status}</Text>
-        </View>
+        {departmentDetailRows.map((row) => (
+          <View key={row.label} style={styles.detailsContainer}>
+            <Text style={styles.detailTitle}>{row.label}</Text>
+            <Text style={styles.detail}>{row.value}</Text>
+          </View>
+        ))}
       </ScrollView>
 
       <View style={styles.buttonContainer}>
@@ -116,7 +122,7 @@ const DepartmentDetails = () => {
             title="EDIT"
             onPress={() =>
               router.push(
-                `/academicManagement/departments/EditDepartment?id=${departmentDetails.department_id}`
+                getEditDepartmentRoute(departmentDetails.department_id)
               )
             }
           />
@@ -137,7 +143,7 @@ const DepartmentDetails = () => {
         title="Confirm Disable"
         message={`Are you sure you want to disable ${departmentDetails.department_name}?`}
         type="warning"
-        onClose={() => setIsDisableModalVisible(false)}
+        onClose={handleDisableModalClose}
         onConfirm={handleConfirmDisable}
         cancelTitle="Cancel"
         confirmTitle="Disable"

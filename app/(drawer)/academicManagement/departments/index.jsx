@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,16 @@ import CustomButton from "../../../../components/CustomButton";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 
+const DEPARTMENT_ROUTES = {
+  add: "/academicManagement/departments/AddDepartment",
+  details: (departmentId) =>
+    `/academicManagement/departments/DepartmentDetails?id=${departmentId}`,
+  edit: (departmentId) =>
+    `/academicManagement/departments/EditDepartment?id=${departmentId}`,
+};
+
+const isDepartmentDisabled = (department) => department.status === "Disabled";
+
 export default function DepartmentsScreen() {
   const [departments, setDepartments] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,7 +37,7 @@ export default function DepartmentsScreen() {
   const [departmentToDisable, setDepartmentToDisable] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadDepartments = async () => {
+  const loadDepartments = useCallback(async () => {
     try {
       const response = await fetchDepartments();
       if (!response || !Array.isArray(response.departments)) {
@@ -35,7 +45,7 @@ export default function DepartmentsScreen() {
       }
       setDepartments(response.departments);
     } catch (err) {}
-  };
+  }, []);
 
   const refreshData = async () => {
     setRefreshing(true);
@@ -50,29 +60,33 @@ export default function DepartmentsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadDepartments();
-    }, [])
+    }, [loadDepartments]),
   );
 
-  const filteredDepartments = Array.isArray(departments)
-    ? departments.filter((dept) => {
-        if (!searchQuery.trim()) return true;
+  const filteredDepartments = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
 
-        const departmentName = dept.department_name?.toLowerCase() || "";
-        const status = dept.status?.toLowerCase() || "";
-        const departmentId = dept.department_id?.toString().toLowerCase() || "";
-        const query = searchQuery.toLowerCase().trim();
+    return Array.isArray(departments)
+      ? departments.filter((dept) => {
+          if (!searchQuery.trim()) return true;
 
-        return (
-          departmentName.includes(query) ||
-          status.includes(query) ||
-          departmentId.includes(query)
-        );
-      })
-    : [];
+          const departmentName = dept.department_name?.toLowerCase() || "";
+          const status = dept.status?.toLowerCase() || "";
+          const departmentId =
+            dept.department_id?.toString().toLowerCase() || "";
+
+          return (
+            departmentName.includes(query) ||
+            status.includes(query) ||
+            departmentId.includes(query)
+          );
+        })
+      : [];
+  }, [departments, searchQuery]);
 
   const handleDisablePress = (departmentId) => {
     const department = departments.find(
-      (dept) => dept.department_id === departmentId
+      (dept) => dept.department_id === departmentId,
     );
     if (!department) return;
     setDepartmentToDisable(department);
@@ -92,8 +106,8 @@ export default function DepartmentsScreen() {
         prevDepartments.map((dept) =>
           dept.department_id === departmentToDisable.department_id
             ? { ...dept, status: "Disabled" }
-            : dept
-        )
+            : dept,
+        ),
       );
       handleDisableModalClose();
       setIsSuccessModalVisible(true);
@@ -111,7 +125,7 @@ export default function DepartmentsScreen() {
   return (
     <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
       <Text style={styles.headerText}>DEPARTMENTS</Text>
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={styles.searchContainer}>
         <SearchBar
           placeholder="Search departments..."
           value={searchQuery}
@@ -121,8 +135,8 @@ export default function DepartmentsScreen() {
         />
       </View>
       <ScrollView
-        style={{ flex: 1, width: "100%", marginBottom: 70 }}
-        contentContainerStyle={[styles.scrollview, { paddingBottom: 80 }]}
+        style={styles.scrollviewContainer}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
@@ -134,9 +148,7 @@ export default function DepartmentsScreen() {
               key={department.department_id}
               style={styles.departmentContainer}
               onPress={() =>
-                router.push(
-                  `/academicManagement/departments/DepartmentDetails?id=${department.department_id}`
-                )
+                router.push(DEPARTMENT_ROUTES.details(department.department_id))
               }
             >
               <View style={styles.textContainer}>
@@ -144,14 +156,14 @@ export default function DepartmentsScreen() {
                   {department.department_name}
                 </Text>
                 <Text style={styles.departmentCode} numberOfLines={1}>
-                  Status: {department.status}
+                  {department.status}
                 </Text>
               </View>
               <View style={styles.iconContainer}>
                 <TouchableOpacity
                   onPress={() =>
                     router.push(
-                      `/academicManagement/departments/EditDepartment?id=${department.department_id}`
+                      DEPARTMENT_ROUTES.edit(department.department_id),
                     )
                   }
                 >
@@ -159,10 +171,11 @@ export default function DepartmentsScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDisablePress(department.department_id)}
-                  disabled={department.status === "Disabled"}
-                  style={{
-                    opacity: department.status === "Disabled" ? 0.5 : 1,
-                  }}
+                  disabled={isDepartmentDisabled(department)}
+                  style={[
+                    styles.disableButton,
+                    isDepartmentDisabled(department) && styles.disabledButton,
+                  ]}
                 >
                   <Image source={images.disabled} style={styles.icon} />
                 </TouchableOpacity>
@@ -181,9 +194,7 @@ export default function DepartmentsScreen() {
       <View style={styles.buttonContainer}>
         <CustomButton
           title="ADD DEPARTMENT"
-          onPress={() =>
-            router.push("/academicManagement/departments/AddDepartment")
-          }
+          onPress={() => router.push(DEPARTMENT_ROUTES.add)}
         />
       </View>
 
@@ -221,6 +232,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: theme.spacing.small,
   },
+  searchContainer: {
+    paddingHorizontal: theme.spacing.medium,
+    width: "100%",
+  },
+  scrollviewContainer: {
+    flex: 1,
+    width: "100%",
+    marginBottom: 70,
+  },
   departmentContainer: {
     borderWidth: 2,
     borderColor: theme.colors.primary,
@@ -238,6 +258,7 @@ const styles = StyleSheet.create({
   },
   scrollview: {
     padding: theme.spacing.medium,
+    paddingBottom: 80,
     flexGrow: 1,
   },
   icon: {
@@ -249,6 +270,12 @@ const styles = StyleSheet.create({
   iconContainer: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  disableButton: {
+    opacity: 1,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   name: {
     fontFamily: theme.fontFamily.SquadaOne,

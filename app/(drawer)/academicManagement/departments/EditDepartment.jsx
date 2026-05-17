@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -18,26 +18,38 @@ import CustomModal from "../../../../components/CustomModal";
 import { useLocalSearchParams } from "expo-router";
 import CustomDropdown from "../../../../components/CustomDropdown";
 
+const INITIAL_FORM_DATA = {
+  department_name: "",
+  department_code: "",
+  status: "active",
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const STATUS_OPTIONS = [
+  { label: "Active", value: "Active" },
+  { label: "Disabled", value: "Disabled" },
+];
+
 const EditDepartment = () => {
   const { id: department_id } = useLocalSearchParams();
-  const [formData, setFormData] = useState({
-    department_name: "",
-    department_code: "",
-    status: "active",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL);
 
-  const statusOptions = [
-    { label: "Active", value: "Active" },
-    { label: "Disabled", value: "Disabled" },
-  ];
+  const showModal = useCallback((title, message, type) => {
+    setModal({ visible: true, title, message, type });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModal((currentModal) => ({ ...currentModal, visible: false }));
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,19 +71,18 @@ const EditDepartment = () => {
           status: departmentDetails.status || "active",
         });
       } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: error.message || "Failed to load department details.",
-          type: "error",
-        });
+        showModal(
+          "Error",
+          error.message || "Failed to load department details.",
+          "error"
+        );
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [department_id]);
+  }, [department_id, showModal]);
 
   const handleChange = (name, value) => {
     setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
@@ -79,16 +90,11 @@ const EditDepartment = () => {
 
   const handleSubmit = async () => {
     try {
-      if (
-        !formData.department_name.trim() ||
-        !formData.department_code.trim()
-      ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
+      const hasMissingRequiredFields =
+        !formData.department_name.trim() || !formData.department_code.trim();
+
+      if (hasMissingRequiredFields) {
+        showModal("Warning", "Please fill in all required fields.", "warning");
         return;
       }
 
@@ -100,20 +106,13 @@ const EditDepartment = () => {
 
       await editDepartment(department_id, submitData);
 
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Department updated successfully!",
-        type: "success",
-      });
+      showModal("Success", "Department updated successfully!", "success");
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message:
-          error.response?.data?.message || "Failed to update department.",
-        type: "error",
-      });
+      showModal(
+        "Error",
+        error.response?.data?.message || "Failed to update department.",
+        "error"
+      );
     }
   };
 
@@ -132,7 +131,7 @@ const EditDepartment = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 
@@ -163,7 +162,7 @@ const EditDepartment = () => {
 
           <CustomDropdown
             title="Status"
-            data={statusOptions}
+            data={STATUS_OPTIONS}
             placeholder="Select Status"
             value={formData.status}
             onSelect={(item) => handleChange("status", item.value)}
