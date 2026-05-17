@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,20 @@ import CustomButton from "../../../../components/CustomButton";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import { getStoredUser } from "../../../../database/queries";
+
+const ADMIN_ROUTES = {
+  add: "/userManagement/admins/AddAdmin",
+  details: (idNumber) =>
+    `/userManagement/admins/AdminDetails?id_number=${idNumber}`,
+  edit: (idNumber) => `/userManagement/admins/EditAdmin?id_number=${idNumber}`,
+};
+
+const OWN_ACCOUNT_DISABLE_MODAL = {
+  message: "You cannot disable your own account.",
+  type: "error",
+};
+
+const isAdminDisabled = (admin) => admin.status === "Disabled";
 
 export default function AdminsScreen() {
   const [admins, setAdmins] = useState([]);
@@ -41,42 +55,63 @@ export default function AdminsScreen() {
     fetchCurrentAdmin();
   }, []);
 
-  const loadAdmins = async () => {
+  const loadAdmins = useCallback(async () => {
     try {
       const fetchedAdmins = await fetchAdmins();
       setAdmins(fetchedAdmins);
     } catch (err) {
       console.error("Error fetching admins:", err);
     }
-  };
+  }, []);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       loadAdmins();
-    }, [])
+    }, [loadAdmins])
   );
 
   const refreshData = async () => {
     setRefreshing(true);
-    await loadAdmins();
-    setRefreshing(false);
+    try {
+      await loadAdmins();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const lowerCaseQuery = searchQuery.toLowerCase();
-  const filteredAdmins = admins.filter(
-    (admin) =>
-      admin.first_name.toLowerCase().includes(lowerCaseQuery) ||
-      admin.last_name.toLowerCase().includes(lowerCaseQuery)
-  );
+  const filteredAdmins = useMemo(() => {
+    const lowerCaseQuery = searchQuery.toLowerCase();
+
+    return admins.filter(
+      (admin) =>
+        admin.first_name.toLowerCase().includes(lowerCaseQuery) ||
+        admin.last_name.toLowerCase().includes(lowerCaseQuery)
+    );
+  }, [admins, searchQuery]);
+
+  const showOwnAccountDisableModal = () => {
+    setIsDisableModalVisible(false);
+    setAdminToDisable(null);
+    setIsSuccessModalVisible(false);
+    setModalMessage(OWN_ACCOUNT_DISABLE_MODAL.message);
+    setModalType(OWN_ACCOUNT_DISABLE_MODAL.type);
+    setIsModalVisible(true);
+  };
+
+  const closeActionModal = () => {
+    setIsModalVisible(false);
+  };
+
+  const closeSuccessModal = () => {
+    setIsSuccessModalVisible(false);
+  };
+
+  const getDisabledButtonStyle = (admin) =>
+    isAdminDisabled(admin) ? styles.disabledButton : null;
 
   const handleDisablePress = (admin) => {
     if (admin.id_number === currentAdminId) {
-      setIsDisableModalVisible(false);
-      setAdminToDisable(null);
-      setIsSuccessModalVisible(false);
-      setModalMessage("You cannot disable your own account.");
-      setModalType("error");
-      setIsModalVisible(true);
+      showOwnAccountDisableModal();
       return;
     }
 
@@ -93,12 +128,7 @@ export default function AdminsScreen() {
     if (!adminToDisable) return;
 
     if (adminToDisable.id_number === currentAdminId) {
-      setIsDisableModalVisible(false);
-      setAdminToDisable(null);
-      setIsSuccessModalVisible(false);
-      setModalMessage("You cannot disable your own account.");
-      setModalType("error");
-      setIsModalVisible(true);
+      showOwnAccountDisableModal();
       return;
     }
 
@@ -115,11 +145,11 @@ export default function AdminsScreen() {
   return (
     <View style={globalStyles.secondaryContainer}>
       <Text style={styles.headerText}>ADMINS</Text>
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={styles.searchContainer}>
         <SearchBar placeholder="Search admins..." onSearch={setSearchQuery} />
       </View>
       <ScrollView
-        style={{ flex: 1, width: "100%" }}
+        style={styles.scrollviewContainer}
         contentContainerStyle={styles.scrollview}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
@@ -130,11 +160,7 @@ export default function AdminsScreen() {
             <TouchableOpacity
               key={admin.id_number}
               style={styles.adminContainer}
-              onPress={() =>
-                router.push(
-                  `/userManagement/admins/AdminDetails?id_number=${admin.id_number}`
-                )
-              }
+              onPress={() => router.push(ADMIN_ROUTES.details(admin.id_number))}
             >
               <View>
                 <Text style={styles.name}>
@@ -145,17 +171,15 @@ export default function AdminsScreen() {
               <View style={styles.iconContainer}>
                 <TouchableOpacity
                   onPress={() =>
-                    router.push(
-                      `/userManagement/admins/EditAdmin?id_number=${admin.id_number}`
-                    )
+                    router.push(ADMIN_ROUTES.edit(admin.id_number))
                   }
                 >
                   <Image source={images.edit} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDisablePress(admin)}
-                  disabled={admin.status === "Disabled"}
-                  style={{ opacity: admin.status === "Disabled" ? 0.5 : 1 }}
+                  disabled={isAdminDisabled(admin)}
+                  style={getDisabledButtonStyle(admin)}
                 >
                   <Image source={images.disabled} style={styles.icon} />
                 </TouchableOpacity>
@@ -169,7 +193,7 @@ export default function AdminsScreen() {
       <View style={styles.buttonContainer}>
         <CustomButton
           title="ADD ADMIN"
-          onPress={() => router.push("/userManagement/admins/AddAdmin")}
+          onPress={() => router.push(ADMIN_ROUTES.add)}
         />
       </View>
       <CustomModal
@@ -187,7 +211,7 @@ export default function AdminsScreen() {
         title="Success"
         message="Admin disabled successfully!"
         type="success"
-        onClose={() => setIsSuccessModalVisible(false)}
+        onClose={closeSuccessModal}
         cancelTitle="CLOSE"
       />
 
@@ -196,7 +220,7 @@ export default function AdminsScreen() {
         title="Action Not Allowed"
         message={modalMessage}
         type={modalType}
-        onClose={() => setIsModalVisible(false)}
+        onClose={closeActionModal}
         cancelTitle="CLOSE"
       />
       <TabsComponent />
@@ -226,6 +250,14 @@ const styles = StyleSheet.create({
   scrollview: {
     padding: theme.spacing.medium,
     flexGrow: 1,
+  },
+  scrollviewContainer: {
+    flex: 1,
+    width: "100%",
+  },
+  searchContainer: {
+    paddingHorizontal: theme.spacing.medium,
+    width: "100%",
   },
   icon: {
     width: 20,
@@ -260,5 +292,8 @@ const styles = StyleSheet.create({
     bottom: "15%",
     width: "80%",
     padding: theme.spacing.medium,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });

@@ -1,15 +1,17 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import TabsComponent from "../../../../components/TabsComponent";
 import CustomButton from "../../../../components/CustomButton";
 import CustomModal from "../../../../components/CustomModal";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import { fetchAdminById, disableAdmin } from "../../../../services/api";
-import { useLocalSearchParams } from "expo-router";
 import { getStoredUser } from "../../../../database/queries";
+
+const getEditAdminRoute = (idNumber) =>
+  `/userManagement/admins/EditAdmin?id_number=${idNumber}`;
 
 const AdminDetails = () => {
   const { id_number } = useLocalSearchParams();
@@ -23,21 +25,7 @@ const AdminDetails = () => {
 
   const [currentUser, setCurrentUser] = useState(null);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      setIsLoading(true);
-
-      const fetchUserData = async () => {
-        const user = await getStoredUser();
-        setCurrentUser(user);
-        await fetchAdminDetails();
-      };
-
-      fetchUserData();
-    }, [id_number])
-  );
-
-  const fetchAdminDetails = async () => {
+  const fetchAdminDetails = useCallback(async () => {
     try {
       if (!id_number) throw new Error("Invalid admin ID");
 
@@ -50,35 +38,26 @@ const AdminDetails = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const fetchCurrentUser = async () => {
-    const currentUser = await getStoredUser();
-    return currentUser;
-  };
+  }, [id_number]);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setIsLoading(true);
-      fetchAdminDetails();
-    }, [id_number])
+
+      const fetchScreenData = async () => {
+        try {
+          const user = await getStoredUser();
+          setCurrentUser(user);
+        } catch (error) {
+          console.error("Error fetching current user:", error);
+        }
+
+        await fetchAdminDetails();
+      };
+
+      fetchScreenData();
+    }, [fetchAdminDetails])
   );
-
-  if (isLoading) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
-
-  if (!adminDetails) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.errorText}>Admin details not found.</Text>
-      </View>
-    );
-  }
 
   const handleDisablePress = () => {
     if (currentUser?.id_number === adminDetails.id_number) {
@@ -107,6 +86,37 @@ const AdminDetails = () => {
     setIsOwnAccountDisableVisible(false);
   };
 
+  const handleDisableConfirmationClose = () => {
+    setIsDisableConfirmationVisible(false);
+  };
+
+  if (isLoading) {
+    return (
+      <View style={globalStyles.secondaryContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (!adminDetails) {
+    return (
+      <View style={globalStyles.secondaryContainer}>
+        <Text style={styles.errorText}>Admin details not found.</Text>
+      </View>
+    );
+  }
+
+  const adminDetailRows = [
+    ["ID Number:", adminDetails.id_number],
+    ["First Name:", adminDetails.first_name],
+    ["Middle Name:", adminDetails.middle_name || "-"],
+    ["Last Name:", adminDetails.last_name],
+    ["Suffix:", adminDetails.suffix || "-"],
+    ["Email Address:", adminDetails.email],
+    ["Role:", adminDetails.role_name || "-"],
+    ["Status:", adminDetails.status],
+  ];
+
   return (
     <View
       style={[
@@ -119,39 +129,12 @@ const AdminDetails = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.detailsWrapper}>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>ID Number:</Text>
-          <Text style={styles.detail}>{adminDetails.id_number}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>First Name:</Text>
-          <Text style={styles.detail}>{adminDetails.first_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Middle Name:</Text>
-          <Text style={styles.detail}>{adminDetails.middle_name || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Last Name:</Text>
-          <Text style={styles.detail}>{adminDetails.last_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Suffix:</Text>
-          <Text style={styles.detail}>{adminDetails.suffix || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Email Address:</Text>
-          <Text style={styles.detail}>{adminDetails.email}</Text>
-        </View>
-
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Role:</Text>
-          <Text style={styles.detail}>{adminDetails.role_name || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Status:</Text>
-          <Text style={styles.detail}>{adminDetails.status}</Text>
-        </View>
+        {adminDetailRows.map(([label, value]) => (
+          <View key={label} style={styles.detailsContainer}>
+            <Text style={styles.detailTitle}>{label}</Text>
+            <Text style={styles.detail}>{value}</Text>
+          </View>
+        ))}
       </ScrollView>
 
       <View style={styles.buttonContainer}>
@@ -159,9 +142,7 @@ const AdminDetails = () => {
           <CustomButton
             title="EDIT"
             onPress={() =>
-              router.push(
-                `/userManagement/admins/EditAdmin?id_number=${adminDetails.id_number}`
-              )
+              router.push(getEditAdminRoute(adminDetails.id_number))
             }
           />
         </View>
@@ -182,7 +163,7 @@ const AdminDetails = () => {
         title="Confirm Disable"
         message={`Are you sure you want to disable ${adminDetails.first_name} ${adminDetails.last_name}?`}
         type="warning"
-        onClose={() => setIsDisableConfirmationVisible(false)}
+        onClose={handleDisableConfirmationClose}
         onConfirm={handleConfirmDisable}
         cancelTitle="Cancel"
         confirmTitle="Disable"

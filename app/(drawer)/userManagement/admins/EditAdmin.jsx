@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -19,39 +19,55 @@ import CustomModal from "../../../../components/CustomModal";
 import { useLocalSearchParams } from "expo-router";
 import { getStoredUser } from "../../../../database/queries";
 
+const INITIAL_FORM_DATA = {
+  id_number: "",
+  first_name: "",
+  middle_name: "",
+  last_name: "",
+  suffix: "",
+  email: "",
+  role_id: null,
+  status: "active",
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const ROLE_OPTIONS = [
+  { label: "Admin", value: 3 },
+  { label: "Super Admin", value: 4 },
+];
+
+const STATUS_OPTIONS = [
+  { label: "Active", value: "Active" },
+  { label: "Disabled", value: "Disabled" },
+];
+
 const EditAdmin = () => {
   const { id_number: initialIdNumber } = useLocalSearchParams();
   const [currentIdNumber, setCurrentIdNumber] = useState(initialIdNumber);
-  const [formData, setFormData] = useState({
-    id_number: "",
-    first_name: "",
-    middle_name: "",
-    last_name: "",
-    suffix: "",
-    email: "",
-    role_id: null,
-    status: "active",
-  });
-
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [isLoading, setIsLoading] = useState(true);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL);
 
-  const roleOptions = [
-    { label: "Admin", value: 3 },
-    { label: "Super Admin", value: 4 },
-  ];
+  const showModal = useCallback((title, message, type) => {
+    setModal({
+      visible: true,
+      title,
+      message,
+      type,
+    });
+  }, []);
 
-  const statusOptions = [
-    { label: "Active", value: "Active" },
-    { label: "Disabled", value: "Disabled" },
-  ];
+  const closeModal = () => {
+    setModal((prevModal) => ({ ...prevModal, visible: false }));
+  };
 
-  const fetchAdminDetails = async (id) => {
+  const fetchAdminDetails = useCallback(async (id) => {
     setIsLoading(true);
     try {
       if (!id) throw new Error("Invalid admin ID");
@@ -70,20 +86,19 @@ const EditAdmin = () => {
         status: adminDetails.status || "active",
       });
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message: error.message || "Failed to load admin details.",
-        type: "error",
-      });
+      showModal(
+        "Error",
+        error.message || "Failed to load admin details.",
+        "error"
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showModal]);
 
   useEffect(() => {
     fetchAdminDetails(initialIdNumber);
-  }, [initialIdNumber]);
+  }, [fetchAdminDetails, initialIdNumber]);
 
   const handleChange = (name, value) => {
     setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
@@ -97,12 +112,11 @@ const EditAdmin = () => {
       const isEditingOwnAccount = currentUser.id_number === currentIdNumber;
 
       if (isEditingOwnAccount && formData.status === "disabled") {
-        setModal({
-          visible: true,
-          title: "Action Not Allowed",
-          message: "You cannot disable your own account.",
-          type: "error",
-        });
+        showModal(
+          "Action Not Allowed",
+          "You cannot disable your own account.",
+          "error"
+        );
         return;
       }
 
@@ -111,12 +125,7 @@ const EditAdmin = () => {
         !formData.last_name ||
         formData.role_id === null
       ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
+        showModal("Warning", "Please fill in all required fields.", "warning");
         return;
       }
 
@@ -133,21 +142,15 @@ const EditAdmin = () => {
 
       await editAdmin(currentIdNumber, submitData);
 
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Admin updated successfully!",
-        type: "success",
-      });
+      showModal("Success", "Admin updated successfully!", "success");
 
       fetchAdminDetails(currentIdNumber);
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message: error.response?.data?.message || "Failed to update admin.",
-        type: "error",
-      });
+      showModal(
+        "Error",
+        error.response?.data?.message || "Failed to update admin.",
+        "error"
+      );
     }
   };
 
@@ -166,7 +169,7 @@ const EditAdmin = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 
@@ -207,13 +210,13 @@ const EditAdmin = () => {
         />
         <CustomDropdown
           title="Role"
-          data={roleOptions}
+          data={ROLE_OPTIONS}
           value={formData.role_id}
           onSelect={(item) => handleChange("role_id", item.value)}
         />
         <CustomDropdown
           title="Status"
-          data={statusOptions}
+          data={STATUS_OPTIONS}
           value={formData.status}
           onSelect={(item) => handleChange("status", item.value)}
         />

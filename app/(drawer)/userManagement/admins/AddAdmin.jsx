@@ -5,7 +5,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState } from "react";
 
 import { StatusBar } from "expo-status-bar";
 import TabsComponent from "../../../../components/TabsComponent";
@@ -17,32 +17,48 @@ import CustomButton from "../../../../components/CustomButton";
 import { addAdmin } from "../../../../services/api";
 import CustomModal from "../../../../components/CustomModal";
 
+const INITIAL_FORM_DATA = {
+  id_number: "",
+  first_name: "",
+  middle_name: "",
+  last_name: "",
+  suffix: "",
+  email: "",
+  role_id: null,
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const ROLE_OPTIONS = [
+  { label: "Admin", value: 3 },
+  { label: "Super Admin", value: 4 },
+];
+
 const AddAdmin = () => {
-  const [formData, setFormData] = useState({
-    id_number: "",
-    first_name: "",
-    middle_name: "",
-    last_name: "",
-    suffix: "",
-    email: "",
-    role_id: null,
-  });
-
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [isLoading, setIsLoading] = useState(false);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
-
-  const roleOptions = [
-    { label: "Admin", value: 3 },
-    { label: "Super Admin", value: 4 },
-  ];
+  const [modal, setModal] = useState(INITIAL_MODAL);
 
   const handleChange = (name, value) => {
     setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
+  };
+
+  const showModal = useCallback((title, message, type) => {
+    setModal({
+      visible: true,
+      title,
+      message,
+      type,
+    });
+  }, []);
+
+  const closeModal = () => {
+    setModal((prevModal) => ({ ...prevModal, visible: false }));
   };
 
   const handleSubmit = async () => {
@@ -54,12 +70,7 @@ const AddAdmin = () => {
         !formData.email.trim() ||
         formData.role_id === null
       ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
+        showModal("Warning", "Please fill in all required fields.", "warning");
         return;
       }
 
@@ -74,30 +85,15 @@ const AddAdmin = () => {
       };
 
       await addAdmin(submitData);
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Admin added successfully!",
-        type: "success",
-      });
-      setFormData({
-        id_number: "",
-        first_name: "",
-        middle_name: "",
-        last_name: "",
-        suffix: "",
-        email: "",
-        role_id: null,
-      });
+      showModal("Success", "Admin added successfully!", "success");
+      setFormData(INITIAL_FORM_DATA);
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message:
-          error.response?.data?.message ||
+      showModal(
+        "Error",
+        error.response?.data?.message ||
           "Failed to add admin. Please try again.",
-        type: "error",
-      });
+        "error"
+      );
     }
   };
 
@@ -116,7 +112,7 @@ const AddAdmin = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 
@@ -172,7 +168,7 @@ const AddAdmin = () => {
 
         <CustomDropdown
           title="Role"
-          data={roleOptions}
+          data={ROLE_OPTIONS}
           placeholder="Select a role"
           value={formData.role_id}
           onSelect={(item) => handleChange("role_id", item.value)}
