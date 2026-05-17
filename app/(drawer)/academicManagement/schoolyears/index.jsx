@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { View, StyleSheet, Text, ActivityIndicator } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import {
@@ -11,6 +11,36 @@ import globalStyles from "../../../../constants/globalStyles";
 import CustomModal from "../../../../components/CustomModal";
 import theme from "../../../../constants/theme";
 
+const FLOW_TYPES = {
+  changeSchoolYear: "changeSchoolYear",
+  updateStudentList: "updateStudentList",
+};
+
+const FLOW_CONTENT = {
+  [FLOW_TYPES.changeSchoolYear]: {
+    buttonTitle: "Change Semester",
+    confirmTitle: "Change Semester",
+    confirmMessage:
+      "Are you sure you want to change the semester based on the uploaded file?",
+    successMessage: "The semester has been changed successfully.",
+  },
+  [FLOW_TYPES.updateStudentList]: {
+    buttonTitle: "Update Student List",
+    confirmTitle: "Update Student List",
+    confirmMessage:
+      "Are you sure you want to update the student list based on the uploaded file?",
+    successMessage: "The student list has been updated successfully.",
+  },
+};
+
+const ALLOWED_FILE_EXTENSIONS = ["csv", "xlsx"];
+
+const getFileExtension = (fileName = "") =>
+  fileName.toLowerCase().split(".").pop();
+
+const isAllowedFileExtension = (extension) =>
+  ALLOWED_FILE_EXTENSIONS.includes(extension);
+
 export default function SchoolYearScreen() {
   const [uploading, setUploading] = useState(false);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
@@ -22,21 +52,47 @@ export default function SchoolYearScreen() {
   const [loading, setLoading] = useState(true);
   const [pendingFile, setPendingFile] = useState(null);
 
-  const fetchCurrentSchoolYear = async () => {
+  const fetchCurrentSchoolYear = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getCurrentSchoolYear();
-      setCurrentSchoolYear(response.success && response.data ? response.data : null);
+      setCurrentSchoolYear(
+        response.success && response.data ? response.data : null
+      );
     } catch {
       setCurrentSchoolYear(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCurrentSchoolYear();
-  }, []);
+  }, [fetchCurrentSchoolYear]);
+
+  const activeFlowContent = useMemo(
+    () =>
+      FLOW_CONTENT[confirmModalType] ||
+      FLOW_CONTENT[FLOW_TYPES.updateStudentList],
+    [confirmModalType]
+  );
+
+  const showErrorModal = (message) => {
+    setErrorMessage(message);
+    setErrorModalVisible(true);
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmModalVisible(false);
+  };
+
+  const closeSuccessModal = () => {
+    setSuccessModalVisible(false);
+  };
+
+  const closeErrorModal = () => {
+    setErrorModalVisible(false);
+  };
 
   const pickFile = async (flowType) => {
     try {
@@ -48,11 +104,10 @@ export default function SchoolYearScreen() {
       if (result.canceled || !result.assets?.length) return;
 
       const file = result.assets[0];
-      const ext = file.name?.toLowerCase().split(".").pop();
+      const extension = getFileExtension(file.name);
 
-      if (ext !== "csv" && ext !== "xlsx") {
-        setErrorMessage("Only CSV or Excel (.xlsx) files are allowed.");
-        setErrorModalVisible(true);
+      if (!isAllowedFileExtension(extension)) {
+        showErrorModal("Only CSV or Excel (.xlsx) files are allowed.");
         return;
       }
 
@@ -60,16 +115,15 @@ export default function SchoolYearScreen() {
       setConfirmModalType(flowType);
       setConfirmModalVisible(true);
     } catch {
-      setErrorMessage("Error picking file.");
-      setErrorModalVisible(true);
+      showErrorModal("Error picking file.");
     }
   };
 
   const handleConfirmUpload = async () => {
-    setConfirmModalVisible(false);
+    closeConfirmModal();
     setUploading(true);
     try {
-      if (confirmModalType === "changeSchoolYear") {
+      if (confirmModalType === FLOW_TYPES.changeSchoolYear) {
         await changeSchoolYear(pendingFile);
         await fetchCurrentSchoolYear();
       } else {
@@ -77,8 +131,7 @@ export default function SchoolYearScreen() {
       }
       setSuccessModalVisible(true);
     } catch (error) {
-      setErrorMessage(error?.message || "Upload failed. Please try again.");
-      setErrorModalVisible(true);
+      showErrorModal(error?.message || "Upload failed. Please try again.");
     } finally {
       setUploading(false);
       setPendingFile(null);
@@ -104,15 +157,23 @@ export default function SchoolYearScreen() {
       <View style={styles.buttonWrapper}>
         <View style={styles.buttonContainer}>
           <CustomButton
-            title={uploading ? "Uploading..." : "Change Semester"}
-            onPress={() => pickFile("changeSchoolYear")}
+            title={
+              uploading
+                ? "Uploading..."
+                : FLOW_CONTENT[FLOW_TYPES.changeSchoolYear].buttonTitle
+            }
+            onPress={() => pickFile(FLOW_TYPES.changeSchoolYear)}
             disabled={uploading}
           />
         </View>
         <View style={styles.buttonContainer}>
           <CustomButton
-            title={uploading ? "Uploading..." : "Update Student List"}
-            onPress={() => pickFile("updateStudentList")}
+            title={
+              uploading
+                ? "Uploading..."
+                : FLOW_CONTENT[FLOW_TYPES.updateStudentList].buttonTitle
+            }
+            onPress={() => pickFile(FLOW_TYPES.updateStudentList)}
             disabled={uploading}
             type="secondary"
           />
@@ -122,36 +183,24 @@ export default function SchoolYearScreen() {
       <CustomModal
         visible={confirmModalVisible}
         onConfirm={handleConfirmUpload}
-        onCancel={() => setConfirmModalVisible(false)}
-        title={
-          confirmModalType === "changeSchoolYear"
-            ? "Change Semester"
-            : "Update Student List"
-        }
-        message={
-          confirmModalType === "changeSchoolYear"
-            ? "Are you sure you want to change the semester based on the uploaded file?"
-            : "Are you sure you want to update the student list based on the uploaded file?"
-        }
+        onCancel={closeConfirmModal}
+        title={activeFlowContent.confirmTitle}
+        message={activeFlowContent.confirmMessage}
         confirmTitle="Confirm"
       />
 
       <CustomModal
         visible={successModalVisible}
-        onClose={() => setSuccessModalVisible(false)}
+        onClose={closeSuccessModal}
         title="Success"
-        message={
-          confirmModalType === "changeSchoolYear"
-            ? "The semester has been changed successfully."
-            : "The student list has been updated successfully."
-        }
+        message={activeFlowContent.successMessage}
         type="success"
         cancelTitle="CLOSE"
       />
 
       <CustomModal
         visible={errorModalVisible}
-        onClose={() => setErrorModalVisible(false)}
+        onClose={closeErrorModal}
         title="Upload Failed"
         message={errorMessage}
         type="error"
