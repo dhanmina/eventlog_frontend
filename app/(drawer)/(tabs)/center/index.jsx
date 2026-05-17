@@ -7,6 +7,30 @@ import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import images from "../../../../constants/images";
 
+const GUEST_ROLE_ID = 4;
+
+const contactItems = [
+  {
+    icon: images.email,
+    text: "cit_eventlogsupport@gmail.com",
+  },
+  {
+    icon: images.facebook,
+    text: "CITofficial.UCV",
+  },
+  {
+    icon: images.location,
+    text: "CIT Office - VHNPB Building 4th Floor",
+  },
+];
+
+const ContactRow = ({ icon, text }) => (
+  <View style={styles.contactRow}>
+    <Image source={icon} style={styles.icon} />
+    <Text style={styles.infoText}>{text}</Text>
+  </View>
+);
+
 const Tutorial = () => {
   const [roleID, setRoleID] = useState(null);
 
@@ -22,7 +46,7 @@ const Tutorial = () => {
     <View
       style={[
         globalStyles.secondaryContainer,
-        roleID === 4 && { paddingTop: 0 },
+        roleID === GUEST_ROLE_ID && { paddingTop: 0 },
       ]}
     >
       <View style={[styles.info]}>
@@ -67,22 +91,9 @@ const Tutorial = () => {
             </Text>
 
             <View style={styles.contactsContainer}>
-              <View style={styles.emailContainer}>
-                <Image source={images.email} style={styles.icon} />
-                <Text style={styles.infoText}>
-                  cit_eventlogsupport@gmail.com
-                </Text>
-              </View>
-              <View style={styles.facebookContainer}>
-                <Image source={images.facebook} style={styles.icon} />
-                <Text style={styles.infoText}>CITofficial.UCV</Text>
-              </View>
-              <View style={styles.locationContainer}>
-                <Image source={images.location} style={styles.icon} />
-                <Text style={styles.infoText}>
-                  CIT Office - VHNPB Building 4th Floor
-                </Text>
-              </View>
+              {contactItems.map((item) => (
+                <ContactRow key={item.text} icon={item.icon} text={item.text} />
+              ))}
             </View>
           </ScrollView>
         </View>
@@ -95,11 +106,6 @@ const Tutorial = () => {
 export default Tutorial;
 
 const styles = StyleSheet.create({
-  container: {
-    paddingLeft: theme.spacing.medium,
-    paddingRight: theme.spacing.medium,
-    paddingBottom: theme.spacing.medium,
-  },
   welcomeContainer: {
     backgroundColor: theme.colors.primary,
     height: 50,
@@ -131,23 +137,14 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.medium,
   },
   contactsContainer: { padding: theme.spacing.small },
+  contactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: theme.spacing.xsmall,
+  },
   icon: {
     width: 24,
     height: 24,
     tintColor: theme.colors.primary,
-  },
-  emailContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: theme.spacing.xsmall,
-  },
-  facebookContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: theme.spacing.xsmall,
-  },
-  locationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
   },
 });
