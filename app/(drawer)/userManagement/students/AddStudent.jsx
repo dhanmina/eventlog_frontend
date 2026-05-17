@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -16,30 +16,53 @@ import CustomButton from "../../../../components/CustomButton";
 import { fetchBlocks, addUser } from "../../../../services/api";
 import CustomModal from "../../../../components/CustomModal";
 
+const INITIAL_FORM_DATA = {
+  id_number: "",
+  role_id: "1",
+  block_id: null,
+  first_name: "",
+  middle_name: "",
+  last_name: "",
+  suffix: "",
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const ROLE_OPTIONS = [
+  { label: "Student", value: "1" },
+  { label: "Officer", value: "2" },
+];
+
+const formatBlockOption = (block) => ({
+  label: `${block.course_code || "N/A"} - ${
+    block.block_name || `Block ${block.block_id}`
+  }`,
+  value: block.block_id,
+});
+
 const AddStudent = () => {
-  const [formData, setFormData] = useState({
-    id_number: "",
-    role_id: "1",
-    block_id: null,
-    first_name: "",
-    middle_name: "",
-    last_name: "",
-    suffix: "",
-  });
-
-  const roles = [
-    { label: "Student", value: "1" },
-    { label: "Officer", value: "2" },
-  ];
-
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [blocks, setBlocks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL);
+
+  const showModal = useCallback((title, message, type) => {
+    setModal({
+      visible: true,
+      title,
+      message,
+      type,
+    });
+  }, []);
+
+  const closeModal = () => {
+    setModal((prevModal) => ({ ...prevModal, visible: false }));
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,27 +71,17 @@ const AddStudent = () => {
         if (Array.isArray(blocksData)) {
           const activeBlocks = blocksData
             .filter((block) => block.status === "Active")
-            .map((block) => ({
-              label: `${block.course_code || "N/A"} - ${
-                block.block_name || `Block ${block.block_id}`
-              }`,
-              value: block.block_id,
-            }));
+            .map(formatBlockOption);
           setBlocks(activeBlocks);
         } else {
           throw new Error("Invalid blocks data");
         }
       } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: "Failed to load blocks. Please try again.",
-          type: "error",
-        });
+        showModal("Error", "Failed to load blocks. Please try again.", "error");
       }
     };
     fetchData();
-  }, []);
+  }, [showModal]);
 
   const handleChange = (name, value) => {
     setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
@@ -83,12 +96,7 @@ const AddStudent = () => {
         !formData.first_name.trim() ||
         !formData.last_name.trim()
       ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
+        showModal("Warning", "Please fill in all required fields.", "warning");
         return;
       }
 
@@ -105,31 +113,16 @@ const AddStudent = () => {
       setIsLoading(true);
       await addUser(submitData);
 
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Student added successfully!",
-        type: "success",
-      });
+      showModal("Success", "Student added successfully!", "success");
 
-      setFormData({
-        id_number: "",
-        role_id: "1",
-        block_id: null,
-        first_name: "",
-        middle_name: "",
-        last_name: "",
-        suffix: "",
-      });
+      setFormData(INITIAL_FORM_DATA);
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message:
-          error.response?.data?.message ||
+      showModal(
+        "Error",
+        error.response?.data?.message ||
           "Failed to add student. Please try again.",
-        type: "error",
-      });
+        "error"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +143,7 @@ const AddStudent = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
 
@@ -215,7 +208,7 @@ const AddStudent = () => {
         />
         <CustomDropdown
           title="Role"
-          data={roles}
+          data={ROLE_OPTIONS}
           placeholder="Select a role"
           value={formData.role_id}
           onSelect={(item) => handleChange("role_id", item.value)}

@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import TabsComponent from "../../../../components/TabsComponent";
 import CustomButton from "../../../../components/CustomButton";
@@ -10,7 +10,11 @@ import CustomModal from "../../../../components/CustomModal";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 import { fetchUserById, disableUser } from "../../../../services/api";
-import { useLocalSearchParams } from "expo-router";
+
+const getEditStudentRoute = (idNumber) =>
+  `/userManagement/students/EditStudent?id=${idNumber}`;
+
+const getRoleLabel = (roleId) => (roleId === 1 ? "Student" : "Officer");
 
 const StudentDetails = () => {
   const { id: id_number } = useLocalSearchParams();
@@ -19,7 +23,7 @@ const StudentDetails = () => {
   const [isDisableModalVisible, setIsDisableModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
-  const fetchStudentDetails = async () => {
+  const fetchStudentDetails = useCallback(async () => {
     try {
       if (!id_number) throw new Error("Invalid student ID");
 
@@ -32,33 +36,21 @@ const StudentDetails = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id_number]);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setIsLoading(true);
       fetchStudentDetails();
-    }, [id_number])
+    }, [fetchStudentDetails])
   );
-
-  if (isLoading) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
-
-  if (!studentDetails) {
-    return (
-      <View style={globalStyles.secondaryContainer}>
-        <Text style={styles.errorText}>Student details not found.</Text>
-      </View>
-    );
-  }
 
   const handleDisablePress = () => {
     setIsDisableModalVisible(true);
+  };
+
+  const handleDisableModalClose = () => {
+    setIsDisableModalVisible(false);
   };
 
   const handleConfirmDisable = async () => {
@@ -76,6 +68,34 @@ const StudentDetails = () => {
     fetchStudentDetails();
   };
 
+  if (isLoading) {
+    return (
+      <View style={globalStyles.secondaryContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (!studentDetails) {
+    return (
+      <View style={globalStyles.secondaryContainer}>
+        <Text style={styles.errorText}>Student details not found.</Text>
+      </View>
+    );
+  }
+
+  const studentDetailRows = [
+    ["ID Number:", studentDetails.id_number],
+    ["Role:", getRoleLabel(studentDetails.role_id)],
+    ["Block:", studentDetails.block_name || "-"],
+    ["First Name:", studentDetails.first_name],
+    ["Middle Name:", studentDetails.middle_name || "-"],
+    ["Last Name:", studentDetails.last_name],
+    ["Suffix:", studentDetails.suffix || "-"],
+    ["Email: ", studentDetails.email || "-"],
+    ["Status:", studentDetails.status],
+  ];
+
   return (
     <View
       style={[
@@ -86,44 +106,12 @@ const StudentDetails = () => {
       <Text style={styles.textHeader}>Student Details</Text>
 
       <ScrollView contentContainerStyle={styles.detailsWrapper}>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>ID Number:</Text>
-          <Text style={styles.detail}>{studentDetails.id_number}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Role:</Text>
-          <Text style={styles.detail}>
-            {studentDetails.role_id === 1 ? "Student" : "Officer"}
-          </Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Block:</Text>
-          <Text style={styles.detail}>{studentDetails.block_name || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>First Name:</Text>
-          <Text style={styles.detail}>{studentDetails.first_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Middle Name:</Text>
-          <Text style={styles.detail}>{studentDetails.middle_name || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Last Name:</Text>
-          <Text style={styles.detail}>{studentDetails.last_name}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Suffix:</Text>
-          <Text style={styles.detail}>{studentDetails.suffix || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Email: </Text>
-          <Text style={styles.detail}>{studentDetails.email || "-"}</Text>
-        </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailTitle}>Status:</Text>
-          <Text style={styles.detail}>{studentDetails.status}</Text>
-        </View>
+        {studentDetailRows.map(([label, value]) => (
+          <View key={label} style={styles.detailsContainer}>
+            <Text style={styles.detailTitle}>{label}</Text>
+            <Text style={styles.detail}>{value}</Text>
+          </View>
+        ))}
       </ScrollView>
 
       <View style={styles.buttonContainer}>
@@ -131,9 +119,7 @@ const StudentDetails = () => {
           <CustomButton
             title="EDIT"
             onPress={() =>
-              router.push(
-                `/userManagement/students/EditStudent?id=${studentDetails.id_number}`
-              )
+              router.push(getEditStudentRoute(studentDetails.id_number))
             }
           />
         </View>
@@ -153,7 +139,7 @@ const StudentDetails = () => {
         title="Confirm Deletion"
         message={`Are you sure you want to disable ${studentDetails.first_name} ${studentDetails.last_name}?`}
         type="warning"
-        onClose={() => setIsDisableModalVisible(false)}
+        onClose={handleDisableModalClose}
         onConfirm={handleConfirmDisable}
         cancelTitle="Cancel"
         confirmTitle="Disable"

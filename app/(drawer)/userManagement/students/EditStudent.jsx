@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -22,65 +22,95 @@ import {
 } from "../../../../services/api";
 import { useLocalSearchParams } from "expo-router";
 
+const INITIAL_FORM_DATA = {
+  id_number: "",
+  role_id: null,
+  block_id: null,
+  first_name: "",
+  middle_name: "",
+  last_name: "",
+  suffix: "",
+  email: null,
+  status: "Active",
+};
+
+const INITIAL_MODAL = {
+  visible: false,
+  title: "",
+  message: "",
+  type: "success",
+};
+
+const ROLE_OPTIONS = [
+  { label: "Student", value: "1" },
+  { label: "Officer", value: "2" },
+];
+
+const ACTIVE_STATUS_OPTIONS = [
+  { label: "Active", value: "Active" },
+  { label: "Disabled", value: "Disabled" },
+];
+
+const NOT_ENROLLED_STATUS_OPTIONS = [
+  { label: "Active", value: "Active" },
+  { label: "Disabled", value: "Disabled" },
+  { label: "Not Enrolled", value: "Not Enrolled" },
+];
+
+const UNREGISTERED_STATUS_OPTIONS = [
+  { label: "Unregistered", value: "Unregistered" },
+  { label: "Disabled", value: "Disabled" },
+];
+
+const DISABLED_WITH_EMAIL_STATUS_OPTIONS = [
+  { label: "Disabled", value: "Disabled" },
+  { label: "Active", value: "Active" },
+];
+
+const DISABLED_WITHOUT_EMAIL_STATUS_OPTIONS = [
+  { label: "Disabled", value: "Disabled" },
+  { label: "Unregistered", value: "Unregistered" },
+];
+
+const formatBlockOption = (block) => ({
+  label: block.block_name || `Block ${block.block_id}`,
+  value: block.block_id,
+});
+
 const EditStudent = () => {
   const { id: id_number } = useLocalSearchParams();
-  const [formData, setFormData] = useState({
-    id_number: "",
-    role_id: null,
-    block_id: null,
-    first_name: "",
-    middle_name: "",
-    last_name: "",
-    suffix: "",
-    email: null,
-    status: "Active",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [blocks, setBlocks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [modal, setModal] = useState({
-    visible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [modal, setModal] = useState(INITIAL_MODAL);
 
-  const roles = [
-    { label: "Student", value: "1" },
-    { label: "Officer", value: "2" },
-  ];
+  const showModal = useCallback((title, message, type) => {
+    setModal({
+      visible: true,
+      title,
+      message,
+      type,
+    });
+  }, []);
 
-  const getStatusOptions = () => {
+  const closeModal = () => {
+    setModal((prevModal) => ({ ...prevModal, visible: false }));
+  };
+
+  const statusOptions = useMemo(() => {
     if (formData.status === "Not Enrolled") {
-      return [
-        { label: "Active", value: "Active" },
-        { label: "Disabled", value: "Disabled" },
-        { label: "Not Enrolled", value: "Not Enrolled" },
-      ];
+      return NOT_ENROLLED_STATUS_OPTIONS;
     }
     if (formData.status === "Unregistered") {
-      return [
-        { label: "Unregistered", value: "Unregistered" },
-        { label: "Disabled", value: "Disabled" },
-      ];
+      return UNREGISTERED_STATUS_OPTIONS;
     }
     if (formData.status === "Disabled") {
-      if (formData.email) {
-        return [
-          { label: "Disabled", value: "Disabled" },
-          { label: "Active", value: "Active" },
-        ];
-      } else {
-        return [
-          { label: "Disabled", value: "Disabled" },
-          { label: "Unregistered", value: "Unregistered" },
-        ];
-      }
+      return formData.email
+        ? DISABLED_WITH_EMAIL_STATUS_OPTIONS
+        : DISABLED_WITHOUT_EMAIL_STATUS_OPTIONS;
     }
-    return [
-      { label: "Active", value: "Active" },
-      { label: "Disabled", value: "Disabled" },
-    ];
-  };
+    return ACTIVE_STATUS_OPTIONS;
+  }, [formData.email, formData.status]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -94,10 +124,7 @@ const EditStudent = () => {
         setBlocks(
           blocksData
             .filter((block) => block.status === "Active")
-            .map((block) => ({
-              label: block.block_name || `Block ${block.block_id}`,
-              value: block.block_id,
-            }))
+            .map(formatBlockOption)
         );
 
         const studentDetails = await fetchUserById(id_number);
@@ -117,18 +144,17 @@ const EditStudent = () => {
           status: studentDetails.status || "Active",
         });
       } catch (error) {
-        setModal({
-          visible: true,
-          title: "Error",
-          message: error.message || "Failed to load student details.",
-          type: "error",
-        });
+        showModal(
+          "Error",
+          error.message || "Failed to load student details.",
+          "error"
+        );
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [id_number]);
+  }, [id_number, showModal]);
 
   const handleChange = (name, value) => {
     if (
@@ -138,12 +164,11 @@ const EditStudent = () => {
       value.trim() !== ""
     ) {
       setFormData((prevFormData) => ({ ...prevFormData, email: null }));
-      setModal({
-        visible: true,
-        title: "Warning",
-        message: `This student is currently ${formData.status.toLowerCase()}. Email cannot be added.`,
-        type: "warning",
-      });
+      showModal(
+        "Warning",
+        `This student is currently ${formData.status.toLowerCase()}. Email cannot be added.`,
+        "warning"
+      );
       return;
     }
     if (name === "email" && value.trim() === "") {
@@ -162,22 +187,12 @@ const EditStudent = () => {
         !formData.first_name.trim() ||
         !formData.last_name.trim()
       ) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Please fill in all required fields.",
-          type: "warning",
-        });
+        showModal("Warning", "Please fill in all required fields.", "warning");
         return;
       }
 
       if (formData.status === "Active" && !formData.email) {
-        setModal({
-          visible: true,
-          title: "Warning",
-          message: "Email is required for active students.",
-          type: "warning",
-        });
+        showModal("Warning", "Email is required for active students.", "warning");
         return;
       }
 
@@ -203,19 +218,13 @@ const EditStudent = () => {
 
       await updateUser(id_number, submitData);
 
-      setModal({
-        visible: true,
-        title: "Success",
-        message: "Student updated successfully!",
-        type: "success",
-      });
+      showModal("Success", "Student updated successfully!", "success");
     } catch (error) {
-      setModal({
-        visible: true,
-        title: "Error",
-        message: error.response?.data?.message || "Failed to update student.",
-        type: "error",
-      });
+      showModal(
+        "Error",
+        error.response?.data?.message || "Failed to update student.",
+        "error"
+      );
     }
   };
 
@@ -234,7 +243,7 @@ const EditStudent = () => {
         title={modal.title}
         message={modal.message}
         type={modal.type}
-        onClose={() => setModal({ ...modal, visible: false })}
+        onClose={closeModal}
         cancelTitle="CLOSE"
       />
       <Text style={styles.textHeader}>EVENTLOG</Text>
@@ -295,14 +304,14 @@ const EditStudent = () => {
           />
           <CustomDropdown
             title="Role"
-            data={roles}
+            data={ROLE_OPTIONS}
             placeholder="Select a role"
             value={formData.role_id}
             onSelect={(item) => handleChange("role_id", item.value)}
           />
           <CustomDropdown
             title="Status"
-            data={getStatusOptions()}
+            data={statusOptions}
             value={formData.status}
             onSelect={(item) => handleChange("status", item.value)}
           />

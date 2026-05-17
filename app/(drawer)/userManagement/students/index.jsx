@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,20 @@ import CustomModal from "../../../../components/CustomModal";
 import globalStyles from "../../../../constants/globalStyles";
 import theme from "../../../../constants/theme";
 
+const STUDENT_ROUTES = {
+  add: "/userManagement/students/AddStudent",
+  details: (idNumber) =>
+    `/userManagement/students/StudentDetails?id=${idNumber}`,
+  edit: (idNumber) => `/userManagement/students/EditStudent?id=${idNumber}`,
+};
+
+const getStudentName = (student) =>
+  `${student.first_name || ""} ${student.middle_name || ""} ${
+    student.last_name || ""
+  }${student.suffix ? `, ${student.suffix}` : ""}`;
+
+const isStudentDisabled = (student) => student.status === "Disabled";
+
 export default function StudentsScreen() {
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,7 +44,7 @@ export default function StudentsScreen() {
   const [studentToDisable, setStudentToDisable] = useState(null);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
-  const loadStudents = async (query = "", page = 1) => {
+  const loadStudents = useCallback(async (query = "", page = 1) => {
     try {
       const response = await fetchUsers({ search: query, page });
       if (response && response.success && Array.isArray(response.data)) {
@@ -48,7 +62,7 @@ export default function StudentsScreen() {
       setStudents([]);
       setTotalPages(1);
     }
-  };
+  }, []);
 
   const refreshData = async () => {
     setRefreshing(true);
@@ -60,10 +74,16 @@ export default function StudentsScreen() {
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       loadStudents(searchQuery, currentPage);
-    }, [])
+    }, [loadStudents])
   );
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+    loadStudents(query, 1);
+  };
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -75,6 +95,10 @@ export default function StudentsScreen() {
   const handleDisablePress = (student) => {
     setStudentToDisable(student);
     setIsDisableModalVisible(true);
+  };
+
+  const handleDisableModalClose = () => {
+    setIsDisableModalVisible(false);
   };
 
   const handleConfirmDisable = async () => {
@@ -94,22 +118,28 @@ export default function StudentsScreen() {
     setIsSuccessModalVisible(false);
   };
 
+  const getDisabledButtonStyle = (isDisabled) =>
+    isDisabled ? styles.disabledButton : null;
+
+  const getPageIconStyle = (isDisabled) => [
+    styles.pageIconNav,
+    {
+      tintColor: isDisabled ? theme.colors.secondary : theme.colors.primary,
+    },
+  ];
+
   return (
-    <View style={[globalStyles.secondaryContainer, { paddingTop: 0 }]}>
+    <View style={[globalStyles.secondaryContainer, styles.container]}>
       <Text style={styles.headerText}>STUDENTS</Text>
-      <View style={{ paddingHorizontal: theme.spacing.medium, width: "100%" }}>
+      <View style={styles.searchContainer}>
         <SearchBar
           placeholder="Search students..."
-          onSearch={(query) => {
-            setSearchQuery(query);
-            setCurrentPage(1);
-            loadStudents(query, 1);
-          }}
+          onSearch={handleSearch}
         />
       </View>
       <ScrollView
-        style={{ flex: 1, width: "100%" }}
-        contentContainerStyle={[styles.scrollview]}
+        style={styles.scrollviewContainer}
+        contentContainerStyle={styles.scrollview}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
@@ -121,16 +151,12 @@ export default function StudentsScreen() {
               key={student.id_number}
               style={styles.studentContainer}
               onPress={() =>
-                router.push(
-                  `/userManagement/students/StudentDetails?id=${student.id_number}`
-                )
+                router.push(STUDENT_ROUTES.details(student.id_number))
               }
             >
               <View style={styles.textContainer}>
                 <Text style={styles.name} numberOfLines={1}>
-                  {`${student.first_name || ""} ${student.middle_name || ""} ${
-                    student.last_name || ""
-                  }${student.suffix ? `, ${student.suffix}` : ""}`}
+                  {getStudentName(student)}
                 </Text>
                 <Text style={styles.status} numberOfLines={1}>
                   {student.status}
@@ -139,17 +165,15 @@ export default function StudentsScreen() {
               <View style={styles.iconContainer}>
                 <TouchableOpacity
                   onPress={() =>
-                    router.push(
-                      `/userManagement/students/EditStudent?id=${student.id_number}`
-                    )
+                    router.push(STUDENT_ROUTES.edit(student.id_number))
                   }
                 >
                   <Image source={images.edit} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDisablePress(student)}
-                  disabled={student.status === "Disabled"}
-                  style={{ opacity: student.status === "Disabled" ? 0.5 : 1 }}
+                  disabled={isStudentDisabled(student)}
+                  style={getDisabledButtonStyle(isStudentDisabled(student))}
                 >
                   <Image source={images.disabled} style={styles.icon} />
                 </TouchableOpacity>
@@ -161,55 +185,37 @@ export default function StudentsScreen() {
         )}
       </ScrollView>
       {totalPages > 1 && (
-  <View style={styles.pageNav}>
-    <TouchableOpacity
-      onPress={() => handlePageChange(currentPage - 1)}
-      disabled={currentPage === 1}
-      style={{ opacity: currentPage === 1 ? 0.5 : 1 }}
-    >
-      <Image
-        source={images.arrowLeft}
-        style={[
-          styles.pageIconNav,
-          {
-            tintColor:
-              currentPage === 1
-                ? theme.colors.secondary
-                : theme.colors.primary,
-          },
-        ]}
-      />
-    </TouchableOpacity>
-    <View style={styles.textPage}>
-      <Text style={styles.page}>{currentPage.toString()}</Text>
-    </View>
-    <TouchableOpacity
-      onPress={() => handlePageChange(currentPage + 1)}
-      disabled={currentPage === totalPages}
-      style={{ opacity: currentPage === totalPages ? 0.5 : 1 }}
-    >
-      <Image
-        source={images.arrowRight}
-        style={[
-          styles.pageIconNav,
-          {
-            tintColor:
-              currentPage === totalPages
-                ? theme.colors.secondary
-                : theme.colors.primary,
-          },
-        ]}
-      />
-    </TouchableOpacity>
-  </View>
-)}
+        <View style={styles.pageNav}>
+          <TouchableOpacity
+            onPress={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            style={getDisabledButtonStyle(currentPage === 1)}
+          >
+            <Image
+              source={images.arrowLeft}
+              style={getPageIconStyle(currentPage === 1)}
+            />
+          </TouchableOpacity>
+          <View style={styles.textPage}>
+            <Text style={styles.page}>{currentPage.toString()}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            style={getDisabledButtonStyle(currentPage === totalPages)}
+          >
+            <Image
+              source={images.arrowRight}
+              style={getPageIconStyle(currentPage === totalPages)}
+            />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.buttonContainer}>
         <CustomButton
           title="ADD STUDENT"
-          onPress={() => {
-            router.push("/userManagement/students/AddStudent");
-          }}
+          onPress={() => router.push(STUDENT_ROUTES.add)}
         />
       </View>
       <CustomModal
@@ -217,7 +223,7 @@ export default function StudentsScreen() {
         title="Confirm Disable"
         message={`Are you sure you want to disable ${studentToDisable?.first_name} ${studentToDisable?.last_name}?`}
         type="warning"
-        onClose={() => setIsDisableModalVisible(false)}
+        onClose={handleDisableModalClose}
         onConfirm={handleConfirmDisable}
         cancelTitle="Cancel"
         confirmTitle="Disable"
@@ -237,6 +243,9 @@ export default function StudentsScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    paddingTop: 0,
+  },
   headerText: {
     color: theme.colors.primary,
     fontFamily: theme.fontFamily.SquadaOne,
@@ -263,6 +272,14 @@ const styles = StyleSheet.create({
     padding: theme.spacing.medium,
     paddingBottom: 0,
     flexGrow: 1,
+  },
+  scrollviewContainer: {
+    flex: 1,
+    width: "100%",
+  },
+  searchContainer: {
+    paddingHorizontal: theme.spacing.medium,
+    width: "100%",
   },
   icon: {
     width: 20,
@@ -325,5 +342,8 @@ const styles = StyleSheet.create({
     fontFamily: theme.fontFamily.Arial,
     color: theme.colors.primary,
     fontSize: theme.fontSizes.medium,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });
