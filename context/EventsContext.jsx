@@ -18,17 +18,8 @@ export const EventsProvider = ({ children }) => {
   const { user, isLoading: authLoading } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [lastFetchTime, setLastFetchTime] = useState(0);
-  const updateNotificationTimeoutRef = useRef(null);
+  const lastFetchTimeRef = useRef(0);
   const [lastEventUpdate, setLastEventUpdate] = useState(0);
-
-  const notifyEventUpdate = useCallback(() => {
-    if (updateNotificationTimeoutRef.current)
-      clearTimeout(updateNotificationTimeoutRef.current);
-    updateNotificationTimeoutRef.current = setTimeout(() => {
-      setLastEventUpdate(Date.now());
-    }, 2000);
-  }, []);
 
   const canViewEvents = (userRoleId) =>
     EVENT_VIEWER_ROLE_IDS.includes(userRoleId);
@@ -83,12 +74,12 @@ export const EventsProvider = ({ children }) => {
     }
   }, [user]);
 
-  const fetchAndStoreEvents = useCallback(async () => {
+  const fetchAndStoreEvents = useCallback(async ({ force = false } = {}) => {
     if (!user) return;
 
     const now = Date.now();
-    if (now - lastFetchTime < 2000) return;
-    setLastFetchTime(now);
+    if (!force && now - lastFetchTimeRef.current < 2000) return;
+    lastFetchTimeRef.current = now;
 
     try {
       const { fetchUpcomingEvents } = await import("../services/api");
@@ -122,7 +113,7 @@ export const EventsProvider = ({ children }) => {
     } catch {
       await refreshEventsFromDatabase();
     }
-  }, [user, lastFetchTime, refreshEventsFromDatabase]);
+  }, [user, refreshEventsFromDatabase]);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -133,30 +124,30 @@ export const EventsProvider = ({ children }) => {
     refreshEventsFromDatabase();
     socketService.connect();
 
+    let joinedRoom = null;
     if (user.role_id === 3 || user.role_id === 4) {
-      socketService.joinRoom("all-events");
+      joinedRoom = "all-events";
     } else if ((user.role_id === 1 || user.role_id === 2) && user.block_id) {
-      socketService.joinRoom(`block-${user.block_id}`);
+      joinedRoom = `block-${user.block_id}`;
+    }
+
+    if (joinedRoom) {
+      socketService.joinRoom(joinedRoom);
     }
 
     const triggerRefresh = () => {
       setLastEventUpdate(Date.now());
+      fetchAndStoreEvents({ force: true });
     };
 
     const handleEventDeleted = (data) => {
-      setEvents((prev) => prev.filter((e) => e.event_id !== data.event_id));
+      setEvents((prev) =>
+        prev.filter(
+          (event) => String(event.event_id) !== String(data.event_id),
+        ),
+      );
       triggerRefresh();
     };
-
-    const eventTypes = [
-      "newApprovedEvent",
-      "upcoming-events-updated",
-      "events-list-updated",
-      "event-updated",
-      "event-deleted",
-    ];
-
-    eventTypes.forEach((type) => socketService.socket?.off(type));
 
     socketService.socket?.on("newApprovedEvent", triggerRefresh);
     socketService.socket?.on("upcoming-events-updated", triggerRefresh);
@@ -165,9 +156,16 @@ export const EventsProvider = ({ children }) => {
     socketService.socket?.on("event-deleted", handleEventDeleted);
 
     return () => {
-      eventTypes.forEach((type) => socketService.socket?.off(type));
+      socketService.socket?.off("newApprovedEvent", triggerRefresh);
+      socketService.socket?.off("upcoming-events-updated", triggerRefresh);
+      socketService.socket?.off("events-list-updated", triggerRefresh);
+      socketService.socket?.off("event-updated", triggerRefresh);
+      socketService.socket?.off("event-deleted", handleEventDeleted);
+      if (joinedRoom) {
+        socketService.leaveRoom(joinedRoom);
+      }
     };
-  }, [user, authLoading, refreshEventsFromDatabase]);
+  }, [user, authLoading, refreshEventsFromDatabase, fetchAndStoreEvents]);
 
   return (
     <EventsContext.Provider

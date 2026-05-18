@@ -1,4 +1,5 @@
 import io from "socket.io-client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../config/config";
 
 class SocketService {
@@ -20,62 +21,73 @@ class SocketService {
     this.isConnecting = true;
 
     try {
-      if (this.socket) {
-        this.socket.removeAllListeners();
-        this.socket.disconnect();
+      if (!this.socket) {
+        this.socket = io(serverUrl, {
+          withCredentials: true,
+          transports: ["polling", "websocket"],
+          timeout: 10000,
+          forceNew: true,
+          autoConnect: false,
+          reconnection: true,
+          reconnectionAttempts: this.maxReconnectAttempts,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+        });
+
+        this.socket.on("connect", () => {
+          this.isConnecting = false;
+          this.reconnectAttempts = 0;
+
+          if (this.reconnectInterval) {
+            clearTimeout(this.reconnectInterval);
+            this.reconnectInterval = null;
+          }
+
+          this.pendingRooms.forEach((room) => {
+            this.socket.emit("join-room", room);
+          });
+        });
+
+        this.socket.on("disconnect", (reason) => {
+          this.isConnecting = false;
+
+          if (reason === "io server disconnect" || reason === "transport close") {
+            this.attemptReconnection();
+          }
+        });
+
+        this.socket.on("connect_error", () => {
+          this.isConnecting = false;
+          this.attemptReconnection();
+        });
+
+        this.socket.on("reconnect", () => {
+          this.reconnectAttempts = 0;
+        });
+
+        this.socket.on("reconnect_error", () => {});
+
+        this.socket.on("reconnect_failed", () => {
+          this.isConnecting = false;
+        });
+
+        this.socket.on("room-joined", () => {});
+        this.socket.on("room-left", () => {});
       }
 
-      this.socket = io(serverUrl, {
-        withCredentials: true,
-        transports: ["polling", "websocket"],
-        timeout: 10000,
-        forceNew: true,
-        autoConnect: true,
-        reconnection: true,
-        reconnectionAttempts: this.maxReconnectAttempts,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-      });
+      const socket = this.socket;
+      AsyncStorage.getItem("userToken")
+        .then((token) => {
+          if (this.socket !== socket || socket.connected) {
+            return;
+          }
 
-      this.socket.on("connect", () => {
-        this.isConnecting = false;
-        this.reconnectAttempts = 0;
-
-        if (this.reconnectInterval) {
-          clearInterval(this.reconnectInterval);
-          this.reconnectInterval = null;
-        }
-
-        this.pendingRooms.forEach((room) => {
-          this.socket.emit("join-room", room);
+          socket.auth = token ? { token } : {};
+          socket.connect();
+        })
+        .catch(() => {
+          this.isConnecting = false;
         });
-      });
-
-      this.socket.on("disconnect", (reason) => {
-        this.isConnecting = false;
-
-        if (reason === "io server disconnect" || reason === "transport close") {
-          this.attemptReconnection();
-        }
-      });
-
-      this.socket.on("connect_error", (error) => {
-        this.isConnecting = false;
-        this.attemptReconnection();
-      });
-
-      this.socket.on("reconnect", () => {
-        this.reconnectAttempts = 0;
-      });
-
-      this.socket.on("reconnect_error", () => {});
-
-      this.socket.on("reconnect_failed", () => {
-        this.isConnecting = false;
-      });
-
-      this.socket.on("room-joined", () => {});
-      this.socket.on("room-left", () => {});
     } catch (error) {
       this.isConnecting = false;
       this.attemptReconnection();
@@ -102,7 +114,7 @@ class SocketService {
 
   disconnect() {
     if (this.reconnectInterval) {
-      clearInterval(this.reconnectInterval);
+      clearTimeout(this.reconnectInterval);
       this.reconnectInterval = null;
     }
 
@@ -190,6 +202,5 @@ class SocketService {
 }
 
 const socketService = new SocketService();
-socketService.connect();
 
 export default socketService;
